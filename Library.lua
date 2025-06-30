@@ -13,38 +13,35 @@ function Library:Create(title)
 
     local Main = Instance.new("Frame", ScreenGui)
 
-    -- Tornar responsivo para mobile, usar uma porcentagem da tela
+    -- Responsivo para mobile
     local screenSize = workspace.CurrentCamera.ViewportSize
     local width = math.clamp(screenSize.X * 0.9, 300, 450)
     local height = math.clamp(screenSize.Y * 0.75, 300, 380)
 
     Main.Size = UDim2.new(0, width, 0, height)
-    Main.Position = UDim2.new(0.5, -width/2, 0.5, -height/2)
+    Main.Position = UDim2.new(0.5, -width / 2, 0.5, -height / 2)
     Main.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
     Main.BorderSizePixel = 0
     Main.Active = true
 
-    local UICorner = Instance.new("UICorner", Main)
-    UICorner.CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
 
-    -- Header
     local Header = Instance.new("Frame", Main)
     Header.Size = UDim2.new(1, 0, 0, 40)
     Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Header.BorderSizePixel = 0
 
-    local HeaderCorner = Instance.new("UICorner", Header)
-    HeaderCorner.CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 12)
 
-    local Title = Instance.new("TextLabel", Header)
-    Title.Text = title or "Orion UI"
-    Title.Size = UDim2.new(1, -80, 1, 0)
-    Title.Position = UDim2.new(0, 15, 0, 0)
-    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Title.BackgroundTransparency = 1
-    Title.Font = Enum.Font.GothamMedium
-    Title.TextSize = 18
-    Title.TextXAlignment = Enum.TextXAlignment.Left
+    local TitleLabel = Instance.new("TextLabel", Header)
+    TitleLabel.Text = title or "Orion UI"
+    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Font = Enum.Font.GothamMedium
+    TitleLabel.TextSize = 18
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
     local Close = Instance.new("TextButton", Header)
     Close.Text = "×"
@@ -74,8 +71,7 @@ function Library:Create(title)
     TabHolder.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     TabHolder.BorderSizePixel = 0
 
-    local TabHolderCorner = Instance.new("UICorner", TabHolder)
-    TabHolderCorner.CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", TabHolder).CornerRadius = UDim.new(0, 12)
 
     local PageHolder = Instance.new("Frame", Main)
     PageHolder.Position = UDim2.new(0, 120, 0, 40)
@@ -84,8 +80,7 @@ function Library:Create(title)
     PageHolder.ClipsDescendants = true
     PageHolder.BorderSizePixel = 0
 
-    local PageHolderCorner = Instance.new("UICorner", PageHolder)
-    PageHolderCorner.CornerRadius = UDim.new(0, 12)
+    Instance.new("UICorner", PageHolder).CornerRadius = UDim.new(0, 12)
 
     local UIList = Instance.new("UIListLayout", TabHolder)
     UIList.Padding = UDim.new(0, 8)
@@ -97,12 +92,12 @@ function Library:Create(title)
     Minimize.MouseButton1Click:Connect(function()
         minimized = not minimized
         local goalSize = minimized and UDim2.new(0, width, 0, 40) or UDim2.new(0, width, 0, height)
-        TweenService:Create(Main, TweenInfo.new(0.3), {Size = goalSize}):Play()
+        TweenService:Create(Main, TweenInfo.new(0.3), { Size = goalSize }):Play()
         TabHolder.Visible = not minimized
         PageHolder.Visible = not minimized
     end)
 
-    -- Drag support (mouse + touch)
+    -- Drag
     local dragging, dragInput, dragStart, startPos
     local function update(input)
         local delta = input.Position - dragStart
@@ -135,7 +130,44 @@ function Library:Create(title)
         end
     end)
 
-    -- Criar tabs
+    -- Funções extras da lib
+    function Library:Notify(text, duration)
+        local message = Instance.new("TextLabel", Main)
+        message.Size = UDim2.new(1, -20, 0, 30)
+        message.Position = UDim2.new(0, 10, 1, -40)
+        message.Text = text
+        message.TextColor3 = Color3.new(1, 1, 1)
+        message.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+        message.BackgroundTransparency = 0.1
+        message.Font = Enum.Font.GothamMedium
+        message.TextSize = 14
+        message.ZIndex = 999
+        message.TextXAlignment = Enum.TextXAlignment.Center
+        Instance.new("UICorner", message).CornerRadius = UDim.new(0, 8)
+
+        TweenService:Create(message, TweenInfo.new(0.4), {
+            Position = UDim2.new(0, 10, 1, -80)
+        }):Play()
+
+        task.delay(duration or 3, function()
+            TweenService:Create(message, TweenInfo.new(0.4), {
+                Position = UDim2.new(0, 10, 1, 0)
+            }):Play()
+            task.wait(0.5)
+            message:Destroy()
+        end)
+    end
+
+    function Library:ChangeTheme(color)
+        Main.BackgroundColor3 = color or Color3.fromRGB(24, 24, 24)
+        PageHolder.BackgroundColor3 = color:lerp(Color3.new(1, 1, 1), 0.1)
+        TabHolder.BackgroundColor3 = color:lerp(Color3.new(0, 0, 0), 0.2)
+    end
+
+    function Library:SetTitle(newTitle)
+        TitleLabel.Text = newTitle
+    end
+
     function Library:CreateTab(name)
         local Button = Instance.new("TextButton", TabHolder)
         Button.Size = UDim2.new(1, -16, 0, 36)
@@ -146,9 +178,7 @@ function Library:Create(title)
         Button.Font = Enum.Font.Gotham
         Button.TextSize = 16
         Button.AutoButtonColor = false
-
-        local BtnCorner = Instance.new("UICorner", Button)
-        BtnCorner.CornerRadius = UDim.new(0, 10)
+        Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 10)
 
         local Page = Instance.new("ScrollingFrame", PageHolder)
         Page.Size = UDim2.new(1, 0, 1, 0)
@@ -158,9 +188,7 @@ function Library:Create(title)
         Page.CanvasSize = UDim2.new(0, 0, 0, 600)
         Page.VerticalScrollBarInset = Enum.ScrollBarInset.Always
 
-        local layout = Instance.new("UIListLayout", Page)
-        layout.Padding = UDim.new(0, 12)
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        Instance.new("UIListLayout", Page).Padding = UDim.new(0, 12)
 
         Tabs[name] = Page
 
@@ -173,9 +201,7 @@ function Library:Create(title)
             Page.Visible = true
         end)
 
-        -- Ativa primeira aba criada automaticamente
-        if #PageHolder:GetChildren() == 0 then
-            Button:CaptureFocus()
+        if #PageHolder:GetChildren() == 1 then
             Page.Visible = true
         end
 
@@ -202,188 +228,25 @@ function Library:Create(title)
             btn.Font = Enum.Font.GothamBold
             btn.TextSize = 16
             btn.AutoButtonColor = true
-
-            local btnCorner = Instance.new("UICorner", btn)
-            btnCorner.CornerRadius = UDim.new(0, 10)
-
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
             btn.MouseButton1Click:Connect(callback)
-
-            -- Efeito hover mobile e desktop
-            btn.MouseEnter:Connect(function()
-                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
-            end)
-            btn.MouseLeave:Connect(function()
-                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
-            end)
-
             return btn
-        end
-
-        function tabObj:AddToggle(text, default, callback)
-            local container = Instance.new("Frame", Page)
-            container.Size = UDim2.new(1, -20, 0, 36)
-            container.BackgroundTransparency = 1
-
-            local label = Instance.new("TextLabel", container)
-            label.Text = text
-            label.Font = Enum.Font.Gotham
-            label.TextSize = 14
-            label.TextColor3 = Color3.fromRGB(230, 230, 230)
-            label.BackgroundTransparency = 1
-            label.Size = UDim2.new(1, -50, 1, 0)
-            label.Position = UDim2.new(0, 0, 0, 0)
-            label.TextXAlignment = Enum.TextXAlignment.Left
-
-            local toggle = Instance.new("TextButton", container)
-            toggle.Size = UDim2.new(0, 40, 0, 20)
-            toggle.Position = UDim2.new(1, -40, 0.5, -10)
-            toggle.BackgroundColor3 = default and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(70, 70, 70)
-            toggle.AutoButtonColor = false
-            toggle.Text = ""
-            toggle.ClipsDescendants = true
-
-            local toggleCorner = Instance.new("UICorner", toggle)
-            toggleCorner.CornerRadius = UDim.new(0, 10)
-
-            local circle = Instance.new("Frame", toggle)
-            circle.Size = UDim2.new(0, 16, 0, 16)
-            circle.Position = default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-            circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-
-            local circleCorner = Instance.new("UICorner", circle)
-            circleCorner.CornerRadius = UDim.new(1, 0)
-
-            local toggled = default
-
-            toggle.MouseButton1Click:Connect(function()
-                toggled = not toggled
-                toggle.BackgroundColor3 = toggled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(70, 70, 70)
-                circle:TweenPosition(toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
-                if callback then
-                    callback(toggled)
-                end
-            end)
-
-            return container
-        end
-
-        function tabObj:AddSlider(text, min, max, default, callback)
-            local container = Instance.new("Frame", Page)
-            container.Size = UDim2.new(1, -20, 0, 50)
-            container.BackgroundTransparency = 1
-
-            local label = Instance.new("TextLabel", container)
-            label.Text = text .. ": " .. tostring(default)
-            label.Font = Enum.Font.Gotham
-            label.TextSize = 14
-            label.TextColor3 = Color3.fromRGB(230, 230, 230)
-            label.BackgroundTransparency = 1
-            label.Size = UDim2.new(1, 0, 0, 20)
-            label.Position = UDim2.new(0, 0, 0, 0)
-            label.TextXAlignment = Enum.TextXAlignment.Left
-
-            local sliderBar = Instance.new("Frame", container)
-            sliderBar.Size = UDim2.new(1, 0, 0, 16)
-            sliderBar.Position = UDim2.new(0, 0, 0, 30)
-            sliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            sliderBar.ClipsDescendants = true
-
-            local sliderCorner = Instance.new("UICorner", sliderBar)
-            sliderCorner.CornerRadius = UDim.new(0, 10)
-
-            local sliderFill = Instance.new("Frame", sliderBar)
-            sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-            sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-
-            local fillCorner = Instance.new("UICorner", sliderFill)
-            fillCorner.CornerRadius = UDim.new(0, 10)
-
-            local dragging = false
-
-            sliderBar.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    dragging = true
-                    local mouseX = input.Position.X
-                    local barPos = sliderBar.AbsolutePosition.X
-                    local barSize = sliderBar.AbsoluteSize.X
-                    local relativeX = math.clamp(mouseX - barPos, 0, barSize)
-                    local percent = relativeX / barSize
-                    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
-                    local value = math.floor(min + (max - min) * percent)
-                    label.Text = text .. ": " .. tostring(value)
-                    if callback then callback(value) end
-                end
-            end)
-
-            -- Função para exibir notificação no rodapé
-function Library:Notify(text, duration)
-	local message = Instance.new("TextLabel", Main)
-	message.Size = UDim2.new(1, -20, 0, 30)
-	message.Position = UDim2.new(0, 10, 1, -40)
-	message.Text = text
-	message.TextColor3 = Color3.new(1, 1, 1)
-	message.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-	message.BackgroundTransparency = 0.1
-	message.Font = Enum.Font.GothamMedium
-	message.TextSize = 14
-	message.ZIndex = 999
-	message.TextXAlignment = Enum.TextXAlignment.Center
-
-	local corner = Instance.new("UICorner", message)
-	corner.CornerRadius = UDim.new(0, 8)
-
-	TweenService:Create(message, TweenInfo.new(0.4), {
-		Position = UDim2.new(0, 10, 1, -80)
-	}):Play()
-
-	task.delay(duration or 3, function()
-		TweenService:Create(message, TweenInfo.new(0.4), {
-			Position = UDim2.new(0, 10, 1, 0)
-		}):Play()
-		task.wait(0.5)
-		message:Destroy()
-	end)
-end
-
--- Função para mudar o fundo do menu
-function Library:ChangeTheme(color)
-	Main.BackgroundColor3 = color or Color3.fromRGB(24, 24, 24)
-end
-
--- Função para mudar o título da UI
-function Library:SetTitle(newTitle)
-	for _, v in pairs(Main:GetDescendants()) do
-		if v:IsA("TextLabel") and v.Text == title then
-			v.Text = newTitle
-		end
-	end
-end
-
-            sliderBar.InputChanged:Connect(function(input)
-                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                    local mouseX = input.Position.X
-                    local barPos = sliderBar.AbsolutePosition.X
-                    local barSize = sliderBar.AbsoluteSize.X
-                    local relativeX = math.clamp(mouseX - barPos, 0, barSize)
-                    local percent = relativeX / barSize
-                    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
-                    local value = math.floor(min + (max - min) * percent)
-                    label.Text = text .. ": " .. tostring(value)
-                    if callback then callback(value) end
-                end
-            end)
-
-            UserInputService.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                    dragging = false
-                end
-            end)
-
-            return container
         end
 
         return tabObj
     end
+
+    -- Notificação automática ao abrir
+    task.defer(function()
+        Library:Notify("Bem-vindo ao painel, aproveite!", 4)
+    end)
+
+    -- Cria aba VIP automaticamente
+    local vip = Library:CreateTab("VIP")
+    vip:AddLabel("Área exclusiva para membros VIP")
+    vip:AddButton("Ativar VIP Mode", function()
+        Library:Notify("Modo VIP Ativado!", 3)
+    end)
 
     return Library
 end
