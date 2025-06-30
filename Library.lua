@@ -86,9 +86,8 @@ function Library:Create(title)
         PageHolder.Visible = not minimized
     end)
 
-    -- Dragging support for mobile and mouse
+    -- Drag
     local dragging, dragInput, dragStart, startPos
-
     local function update(input)
         local delta = input.Position - dragStart
         Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -99,7 +98,6 @@ function Library:Create(title)
             dragging = true
             dragStart = input.Position
             startPos = Main.Position
-
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
@@ -120,7 +118,7 @@ function Library:Create(title)
         end
     end)
 
-    -- Criação da tab com funções para adicionar elementos
+    -- Tab system
     function Library:CreateTab(name)
         local Button = Instance.new("TextButton", TabHolder)
         Button.Size = UDim2.new(1, -10, 0, 30)
@@ -131,9 +129,7 @@ function Library:Create(title)
         Button.Font = Enum.Font.Gotham
         Button.TextSize = 14
         Button.AutoButtonColor = false
-
-        local BtnCorner = Instance.new("UICorner", Button)
-        BtnCorner.CornerRadius = UDim.new(0, 6)
+        Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
 
         local Page = Instance.new("ScrollingFrame", PageHolder)
         Page.Size = UDim2.new(1, 0, 1, 0)
@@ -141,9 +137,7 @@ function Library:Create(title)
         Page.BackgroundTransparency = 1
         Page.ScrollBarThickness = 5
         Page.CanvasSize = UDim2.new(0, 0, 0, 600)
-
-        local layout = Instance.new("UIListLayout", Page)
-        layout.Padding = UDim.new(0, 8)
+        Instance.new("UIListLayout", Page).Padding = UDim.new(0, 8)
 
         Tabs[name] = Page
 
@@ -156,12 +150,8 @@ function Library:Create(title)
             Page.Visible = true
         end)
 
-        -- Ativar a primeira aba criada automaticamente
-        if #PageHolder:GetChildren() == 1 then
-            Page.Visible = true
-        end
+        if #PageHolder:GetChildren() == 1 then Page.Visible = true end
 
-        -- Função para adicionar Label
         local function AddLabel(text)
             local lbl = Instance.new("TextLabel", Page)
             lbl.Size = UDim2.new(1, -12, 0, 24)
@@ -173,24 +163,6 @@ function Library:Create(title)
             lbl.TextXAlignment = Enum.TextXAlignment.Left
         end
 
-        -- Função para adicionar Button simples
-        local function AddButton(text, callback)
-            local btn = Instance.new("TextButton", Page)
-            btn.Size = UDim2.new(1, -12, 0, 30)
-            btn.Text = text
-            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-            btn.TextColor3 = Color3.new(1, 1, 1)
-            btn.Font = Enum.Font.Gotham
-            btn.TextSize = 14
-            btn.AutoButtonColor = true
-
-            local btnCorner = Instance.new("UICorner", btn)
-            btnCorner.CornerRadius = UDim.new(0, 6)
-
-            btn.MouseButton1Click:Connect(callback)
-        end
-
-        -- Função para criar Slider estilizado
         local function AddSlider(labelText, min, max, default, callback)
             local container = Instance.new("Frame", Page)
             container.Size = UDim2.new(1, -12, 0, 40)
@@ -210,128 +182,77 @@ function Library:Create(title)
             sliderFrame.Size = UDim2.new(0.6, 0, 0.4, 0)
             sliderFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             sliderFrame.BorderSizePixel = 0
-
-            local sliderCorner = Instance.new("UICorner", sliderFrame)
-            sliderCorner.CornerRadius = UDim.new(0, 8)
+            Instance.new("UICorner", sliderFrame).CornerRadius = UDim.new(0, 8)
 
             local sliderBar = Instance.new("Frame", sliderFrame)
             sliderBar.BackgroundColor3 = Color3.fromRGB(100, 180, 255)
             sliderBar.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
             sliderBar.BorderSizePixel = 0
+            Instance.new("UICorner", sliderBar).CornerRadius = UDim.new(0, 8)
+            sliderBar.Name = "Bar"
 
-            local sliderBarCorner = Instance.new("UICorner", sliderBar)
-            sliderBarCorner.CornerRadius = UDim.new(0, 8)
-
-            -- Lógica do slider para interatividade
             local dragging = false
-            local sliderWidth = sliderFrame.AbsoluteSize.X
+            local function inputUpdate(input)
+                local pos = input.Position.X - sliderFrame.AbsolutePosition.X
+                pos = math.clamp(pos, 0, sliderFrame.AbsoluteSize.X)
+                sliderBar.Size = UDim2.new(pos / sliderFrame.AbsoluteSize.X, 0, 1, 0)
+                local value = min + (pos / sliderFrame.AbsoluteSize.X) * (max - min)
+                callback(value)
+            end
 
             sliderFrame.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
                     dragging = true
-                    local pos = input.Position.X - sliderFrame.AbsolutePosition.X
-                    pos = math.clamp(pos, 0, sliderWidth)
-                    sliderBar.Size = UDim2.new(pos / sliderWidth, 0, 1, 0)
-                    local value = min + (pos / sliderWidth) * (max - min)
-                    callback(value)
+                    inputUpdate(input)
                 end
             end)
-
             sliderFrame.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
                     dragging = false
                 end
             end)
-
             sliderFrame.InputChanged:Connect(function(input)
-                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-                    local pos = input.Position.X - sliderFrame.AbsolutePosition.X
-                    pos = math.clamp(pos, 0, sliderWidth)
-                    sliderBar.Size = UDim2.new(pos / sliderWidth, 0, 1, 0)
-                    local value = min + (pos / sliderWidth) * (max - min)
-                    callback(value)
+                if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    inputUpdate(input)
                 end
             end)
         end
 
-        -- Função para criar Toggle estilizado
-        local function AddToggle(labelText, default, callback)
-            local container = Instance.new("Frame", Page)
-            container.Size = UDim2.new(1, -12, 0, 30)
-            container.BackgroundTransparency = 1
-
-            local label = Instance.new("TextLabel", container)
-            label.Text = labelText
-            label.Size = UDim2.new(0.7, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.TextColor3 = Color3.fromRGB(220, 220, 220)
-            label.Font = Enum.Font.Gotham
-            label.TextSize = 14
-            label.TextXAlignment = Enum.TextXAlignment.Left
-
-            local toggleButton = Instance.new("TextButton", container)
-            toggleButton.Size = UDim2.new(0, 40, 0, 20)
-            toggleButton.Position = UDim2.new(1, -45, 0.15, 0)
-            toggleButton.BackgroundColor3 = default and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(70, 70, 70)
-            toggleButton.Text = ""
-            toggleButton.AutoButtonColor = true
-
-            local toggleCorner = Instance.new("UICorner", toggleButton)
-            toggleCorner.CornerRadius = UDim.new(0, 10)
-
-            toggleButton.MouseButton1Click:Connect(function()
-                default = not default
-                toggleButton.BackgroundColor3 = default and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(70, 70, 70)
-                callback(default)
-            end)
-        end
-
-        -- Função para criar Button OnOff estilizado
-        local function AddButtonOnOff(labelText, default, callback)
-            local container = Instance.new("Frame", Page)
-            container.Size = UDim2.new(1, -12, 0, 30)
-            container.BackgroundTransparency = 1
-
-            local label = Instance.new("TextLabel", container)
-            label.Text = labelText
-            label.Size = UDim2.new(0.7, 0, 1, 0)
-            label.BackgroundTransparency = 1
-            label.TextColor3 = Color3.fromRGB(220, 220, 220)
-            label.Font = Enum.Font.Gotham
-            label.TextSize = 14
-            label.TextXAlignment = Enum.TextXAlignment.Left
-
-            local btn = Instance.new("TextButton", container)
-            btn.Size = UDim2.new(0, 60, 0, 25)
-            btn.Position = UDim2.new(1, -70, 0.1, 0)
-            btn.BackgroundColor3 = default and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(70, 70, 70)
-            btn.Text = default and "ON" or "OFF"
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.Font = Enum.Font.GothamBold
+        local function AddButton(text, callback)
+            local btn = Instance.new("TextButton", Page)
+            btn.Size = UDim2.new(1, -12, 0, 30)
+            btn.Text = text
+            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+            btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.Font = Enum.Font.Gotham
             btn.TextSize = 14
             btn.AutoButtonColor = true
-
-            local btnCorner = Instance.new("UICorner", btn)
-            btnCorner.CornerRadius = UDim.new(0, 8)
-
-            btn.MouseButton1Click:Connect(function()
-                default = not default
-                btn.BackgroundColor3 = default and Color3.fromRGB(100, 180, 255) or Color3.fromRGB(70, 70, 70)
-                btn.Text = default and "ON" or "OFF"
-                callback(default)
-            end)
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+            btn.MouseButton1Click:Connect(callback)
         end
 
-        -- Expor as funções para uso externo
         return {
             AddLabel = AddLabel,
-            AddButton = AddButton,
             AddSlider = AddSlider,
-            AddToggle = AddToggle,
-            AddButtonOnOff = AddButtonOnOff,
-            Page = Page -- expor a página se precisar adicionar elementos diretamente
+            AddButton = AddButton,
+            Page = Page
         }
     end
+
+    -- ⚙️ Aba de configurações (falsa, efeito visual)
+    local config = {Red = 24, Green = 24, Blue = 24, Opacity = 1}
+    local configTab = Library:CreateTab("Configurações")
+    configTab.AddLabel("Cor do Menu (ARGB)")
+    local function applyConfig()
+        Main.BackgroundColor3 = Color3.fromRGB(config.Red, config.Green, config.Blue)
+        Main.BackgroundTransparency = 1 - config.Opacity
+    end
+    configTab.AddSlider("Vermelho", 0, 255, config.Red, function(v) config.Red = math.floor(v) applyConfig() end)
+    configTab.AddSlider("Verde", 0, 255, config.Green, function(v) config.Green = math.floor(v) applyConfig() end)
+    configTab.AddSlider("Azul", 0, 255, config.Blue, function(v) config.Blue = math.floor(v) applyConfig() end)
+    configTab.AddSlider("Opacidade", 0, 1, config.Opacity, function(v) config.Opacity = tonumber(string.format("%.2f", v)) applyConfig() end)
+    configTab.AddButton("Aplicar", applyConfig)
+    configTab.AddLabel("⚠️ Configuração não salva")
 
     return Library
 end
