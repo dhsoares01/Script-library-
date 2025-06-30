@@ -2,6 +2,7 @@ local Library = {}
 
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 function Library:Create(title)
 	local ScreenGui = Instance.new("ScreenGui", CoreGui)
@@ -15,7 +16,6 @@ function Library:Create(title)
 	Main.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
 	Main.BorderSizePixel = 0
 	Main.Active = true
-	Main.Draggable = true
 
 	local UICorner = Instance.new("UICorner", Main)
 	UICorner.CornerRadius = UDim.new(0, 8)
@@ -79,13 +79,45 @@ function Library:Create(title)
 
 	Minimize.MouseButton1Click:Connect(function()
 		minimized = not minimized
-
 		local goalSize = minimized and UDim2.new(0, 450, 0, 36) or UDim2.new(0, 450, 0, 340)
-		TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = goalSize}):Play()
+		TweenService:Create(Main, TweenInfo.new(0.3), {Size = goalSize}):Play()
 
-		-- Mostrar ou esconder TabHolder e PageHolder
 		TabHolder.Visible = not minimized
 		PageHolder.Visible = not minimized
+	end)
+
+	-- SUPORTE A MOBILE: Drag manual
+	local dragging, dragInput, dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+
+	Header.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = Main.Position
+
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	Header.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			update(input)
+		end
 	end)
 
 	function Library:CreateTab(name)
