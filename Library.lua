@@ -16,73 +16,87 @@ function Library:Create(title)
 	Main.BorderSizePixel = 0
 	Main.Active = true
 	Main.Draggable = true
-
-	local UICorner = Instance.new("UICorner", Main)
-	UICorner.CornerRadius = UDim.new(0, 10)
-
+	
+	-- Borda sutil com sombra leve (blur)
 	local Shadow = Instance.new("ImageLabel", Main)
 	Shadow.Name = "Shadow"
 	Shadow.AnchorPoint = Vector2.new(0.5, 0.5)
 	Shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-	Shadow.Size = UDim2.new(1, 30, 1, 30)
-	Shadow.Image = "rbxassetid://1316045217"
-	Shadow.ImageTransparency = 0.7
+	Shadow.Size = UDim2.new(1, 20, 1, 20)
+	Shadow.Image = "rbxassetid://4613698066" -- sombra mais suave, tipo blur
+	Shadow.ImageColor3 = Color3.new(0,0,0)
+	Shadow.ImageTransparency = 0.75
 	Shadow.BackgroundTransparency = 1
 	Shadow.ZIndex = 0
 
+	-- Borda arredondada
+	local UICornerMain = Instance.new("UICorner", Main)
+	UICornerMain.CornerRadius = UDim.new(0, 12)
+
+	-- Header (sem brilho, só cor sólida)
 	local Header = Instance.new("Frame", Main)
-	Header.Size = UDim2.new(1, 0, 0, 35)
-	Header.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	Header.Size = UDim2.new(1, 0, 0, 38)
+	Header.BackgroundColor3 = Color3.fromRGB(42, 42, 42)
 	Header.BorderSizePixel = 0
-	Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 10)
+	local HeaderCorner = Instance.new("UICorner", Header)
+	HeaderCorner.CornerRadius = UDim.new(0, 12)
 
 	local TitleLabel = Instance.new("TextLabel", Header)
 	TitleLabel.Text = title or "Floating UI"
-	TitleLabel.Size = UDim2.new(1, -60, 1, 0)
-	TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+	TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+	TitleLabel.Position = UDim2.new(0, 20, 0, 0)
 	TitleLabel.TextColor3 = Color3.new(1, 1, 1)
 	TitleLabel.BackgroundTransparency = 1
 	TitleLabel.Font = Enum.Font.GothamSemibold
-	TitleLabel.TextSize = 17
+	TitleLabel.TextSize = 18
 	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 	local Close = Instance.new("TextButton", Header)
 	Close.Text = "×"
-	Close.Size = UDim2.new(0, 30, 1, 0)
-	Close.Position = UDim2.new(1, -30, 0, 0)
-	Close.TextColor3 = Color3.new(1, 0.3, 0.3)
+	Close.Size = UDim2.new(0, 38, 1, 0)
+	Close.Position = UDim2.new(1, -40, 0, 0)
+	Close.TextColor3 = Color3.fromRGB(255, 75, 75)
 	Close.Font = Enum.Font.GothamBold
-	Close.TextSize = 20
+	Close.TextSize = 24
 	Close.BackgroundTransparency = 1
 	Close.ZIndex = 2
+	Close.AutoButtonColor = false
+	Close.MouseEnter:Connect(function() Close.TextColor3 = Color3.fromRGB(255, 120, 120) end)
+	Close.MouseLeave:Connect(function() Close.TextColor3 = Color3.fromRGB(255, 75, 75) end)
 	Close.MouseButton1Click:Connect(function()
 		ScreenGui:Destroy()
 	end)
 
 	local Minimize = Instance.new("TextButton", Header)
-	Minimize.Text = "–"
-	Minimize.Size = UDim2.new(0, 30, 1, 0)
-	Minimize.Position = UDim2.new(1, -60, 0, 0)
+	Minimize.Text = "—"
+	Minimize.Size = UDim2.new(0, 38, 1, 0)
+	Minimize.Position = UDim2.new(1, -80, 0, 0)
 	Minimize.TextColor3 = Color3.fromRGB(200, 200, 200)
 	Minimize.Font = Enum.Font.GothamBold
-	Minimize.TextSize = 20
+	Minimize.TextSize = 24
 	Minimize.BackgroundTransparency = 1
+	Minimize.ZIndex = 2
+	Minimize.AutoButtonColor = false
+	Minimize.MouseEnter:Connect(function() Minimize.TextColor3 = Color3.fromRGB(230, 230, 230) end)
+	Minimize.MouseLeave:Connect(function() Minimize.TextColor3 = Color3.fromRGB(200, 200, 200) end)
 
 	local TabHolder = Instance.new("Frame", Main)
-	TabHolder.Position = UDim2.new(0, 0, 0, 35)
-	TabHolder.Size = UDim2.new(0, 110, 1, -35)
-	TabHolder.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	Instance.new("UICorner", TabHolder).CornerRadius = UDim.new(0, 8)
+	TabHolder.Position = UDim2.new(0, 0, 0, 38)
+	TabHolder.Size = UDim2.new(0, 110, 1, -38)
+	TabHolder.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+	local TabHolderCorner = Instance.new("UICorner", TabHolder)
+	TabHolderCorner.CornerRadius = UDim.new(0, 10)
 
 	local PageHolder = Instance.new("Frame", Main)
-	PageHolder.Position = UDim2.new(0, 110, 0, 35)
-	PageHolder.Size = UDim2.new(1, -110, 1, -35)
-	PageHolder.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+	PageHolder.Position = UDim2.new(0, 110, 0, 38)
+	PageHolder.Size = UDim2.new(1, -110, 1, -38)
+	PageHolder.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	PageHolder.ClipsDescendants = true
-	Instance.new("UICorner", PageHolder).CornerRadius = UDim.new(0, 8)
+	local PageHolderCorner = Instance.new("UICorner", PageHolder)
+	PageHolderCorner.CornerRadius = UDim.new(0, 10)
 
 	local UIList = Instance.new("UIListLayout", TabHolder)
-	UIList.Padding = UDim.new(0, 5)
+	UIList.Padding = UDim.new(0, 8)
 	UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
 	local Tabs = {}
@@ -90,8 +104,8 @@ function Library:Create(title)
 
 	Minimize.MouseButton1Click:Connect(function()
 		minimized = not minimized
-		local meta = minimized and UDim2.new(0, 400, 0, 35) or UDim2.new(0, 400, 0, 320)
-		TweenService:Create(Main, TweenInfo.new(0.3), {Size = meta}):Play()
+		local size = minimized and UDim2.new(0, 400, 0, 38) or UDim2.new(0, 400, 0, 320)
+		TweenService:Create(Main, TweenInfo.new(0.3), {Size = size}):Play()
 		TabHolder.Visible = not minimized
 		PageHolder.Visible = not minimized
 	end)
@@ -103,22 +117,33 @@ function Library:Create(title)
 
 	function Library:CreateTab(name)
 		local Button = Instance.new("TextButton", TabHolder)
-		Button.Size = UDim2.new(1, 0, 0, 28)
+		Button.Size = UDim2.new(1, 0, 0, 32)
 		Button.Text = name
 		Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 		Button.TextColor3 = Color3.new(1, 1, 1)
 		Button.Font = Enum.Font.Gotham
-		Button.TextSize = 14
-		Instance.new("UICorner", Button).CornerRadius = UDim.new(0, 6)
+		Button.TextSize = 15
+		Button.AutoButtonColor = false
+		local btnCorner = Instance.new("UICorner", Button)
+		btnCorner.CornerRadius = UDim.new(0, 8)
+
+		-- efeito hover simples
+		Button.MouseEnter:Connect(function()
+			Button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		end)
+		Button.MouseLeave:Connect(function()
+			Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		end)
 
 		local Page = Instance.new("ScrollingFrame", PageHolder)
 		Page.Size = UDim2.new(1, 0, 1, 0)
 		Page.Visible = false
 		Page.BackgroundTransparency = 1
-		Page.ScrollBarThickness = 4
-		Page.CanvasSize = UDim2.new(0, 0, 0, 500)
+		Page.ScrollBarThickness = 5
+		Page.CanvasSize = UDim2.new(0, 0, 0, 0)
 		local layout = Instance.new("UIListLayout", Page)
-		layout.Padding = UDim.new(0, 5)
+		layout.Padding = UDim.new(0, 10)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
 
 		Tabs[name] = Page
 
@@ -131,10 +156,17 @@ function Library:Create(title)
 			Page.Visible = true
 		end)
 
+		-- Ativa o primeiro tab automaticamente
+		if #TabHolder:GetChildren() == 0 then
+			Button:CaptureFocus()
+			Button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+			Page.Visible = true
+		end
+
 		return {
 			AddLabel = function(_, text)
 				local lbl = Instance.new("TextLabel", Page)
-				lbl.Size = UDim2.new(1, -10, 0, 25)
+				lbl.Size = UDim2.new(1, -20, 0, 25)
 				lbl.BackgroundTransparency = 1
 				lbl.Text = text
 				lbl.TextColor3 = Color3.new(1, 1, 1)
@@ -145,30 +177,38 @@ function Library:Create(title)
 
 			AddButton = function(_, text, callback)
 				local btn = Instance.new("TextButton", Page)
-				btn.Size = UDim2.new(1, -10, 0, 30)
+				btn.Size = UDim2.new(1, -20, 0, 32)
 				btn.Text = text
 				btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 				btn.TextColor3 = Color3.new(1, 1, 1)
 				btn.Font = Enum.Font.Gotham
-				btn.TextSize = 14
-				Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+				btn.TextSize = 15
+				btn.AutoButtonColor = false
+				local btnCorner = Instance.new("UICorner", btn)
+				btnCorner.CornerRadius = UDim.new(0, 8)
+				btn.MouseEnter:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80) end)
+				btn.MouseLeave:Connect(function() btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60) end)
 				btn.MouseButton1Click:Connect(callback)
 			end,
 
 			AddToggle = function(_, text, default, callback)
 				local toggle = Instance.new("TextButton", Page)
-				toggle.Size = UDim2.new(1, -10, 0, 30)
-				toggle.Text = "[ ] " .. text
+				toggle.Size = UDim2.new(1, -20, 0, 32)
+				toggle.Text = (default and "[✔] " or "[ ] ") .. text
 				toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 				toggle.TextColor3 = Color3.new(1, 1, 1)
 				toggle.Font = Enum.Font.Gotham
-				toggle.TextSize = 14
-				Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 6)
+				toggle.TextSize = 15
+				toggle.AutoButtonColor = false
+				local toggleCorner = Instance.new("UICorner", toggle)
+				toggleCorner.CornerRadius = UDim.new(0, 8)
 				local state = default
 				local function updateText()
 					toggle.Text = (state and "[✔] " or "[ ] ") .. text
 				end
 				updateText()
+				toggle.MouseEnter:Connect(function() toggle.BackgroundColor3 = Color3.fromRGB(80, 80, 80) end)
+				toggle.MouseLeave:Connect(function() toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60) end)
 				toggle.MouseButton1Click:Connect(function()
 					state = not state
 					updateText()
@@ -178,7 +218,7 @@ function Library:Create(title)
 
 			AddSlider = function(_, text, min, max, default, callback)
 				local container = Instance.new("Frame", Page)
-				container.Size = UDim2.new(1, -10, 0, 40)
+				container.Size = UDim2.new(1, -20, 0, 40)
 				container.BackgroundTransparency = 1
 
 				local label = Instance.new("TextLabel", container)
@@ -191,16 +231,18 @@ function Library:Create(title)
 
 				local slider = Instance.new("Frame", container)
 				slider.Position = UDim2.new(0, 0, 0.5, 5)
-				slider.Size = UDim2.new(1, 0, 0, 20)
+				slider.Size = UDim2.new(1, 0, 0, 18)
 				slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-				Instance.new("UICorner", slider).CornerRadius = UDim.new(0, 10)
+				local sliderCorner = Instance.new("UICorner", slider)
+				sliderCorner.CornerRadius = UDim.new(0, 10)
 
 				local fill = Instance.new("Frame", slider)
 				fill.Name = "Fill"
 				fill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 				fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
 				fill.BorderSizePixel = 0
-				Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 10)
+				local fillCorner = Instance.new("UICorner", fill)
+				fillCorner.CornerRadius = UDim.new(0, 10)
 
 				local dragging = false
 
@@ -227,16 +269,15 @@ function Library:Create(title)
 				end)
 
 				slider.InputChanged:Connect(function(input)
-					if dragging and input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+					if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
 						updateInput(input)
 					end
 				end)
 			end,
 
-			-- SeekBar é praticamente igual ao slider, mas com visual diferente ou pode ter mais detalhes
 			AddSeekBar = function(_, text, min, max, default, callback)
 				local container = Instance.new("Frame", Page)
-				container.Size = UDim2.new(1, -10, 0, 50)
+				container.Size = UDim2.new(1, -20, 0, 50)
 				container.BackgroundTransparency = 1
 
 				local label = Instance.new("TextLabel", container)
@@ -252,14 +293,16 @@ function Library:Create(title)
 				bar.Position = UDim2.new(0, 0, 0, 25)
 				bar.Size = UDim2.new(1, 0, 0, 15)
 				bar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-				Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 8)
+				local barCorner = Instance.new("UICorner", bar)
+				barCorner.CornerRadius = UDim.new(0, 8)
 
 				local fill = Instance.new("Frame", bar)
 				fill.Name = "Fill"
 				fill.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
 				fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
 				fill.BorderSizePixel = 0
-				Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 8)
+				local fillCorner = Instance.new("UICorner", fill)
+				fillCorner.CornerRadius = UDim.new(0, 8)
 
 				local dragging = false
 
