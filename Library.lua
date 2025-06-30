@@ -30,7 +30,6 @@ function Library:Create(title)
     Header.Size = UDim2.new(1, 0, 0, 40)
     Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Header.BorderSizePixel = 0
-
     Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 12)
 
     local TitleLabel = Instance.new("TextLabel", Header)
@@ -70,7 +69,6 @@ function Library:Create(title)
     TabHolder.Size = UDim2.new(0, 120, 1, -40)
     TabHolder.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
     TabHolder.BorderSizePixel = 0
-
     Instance.new("UICorner", TabHolder).CornerRadius = UDim.new(0, 12)
 
     local PageHolder = Instance.new("Frame", Main)
@@ -79,7 +77,6 @@ function Library:Create(title)
     PageHolder.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     PageHolder.ClipsDescendants = true
     PageHolder.BorderSizePixel = 0
-
     Instance.new("UICorner", PageHolder).CornerRadius = UDim.new(0, 12)
 
     local UIList = Instance.new("UIListLayout", TabHolder)
@@ -131,31 +128,53 @@ function Library:Create(title)
     end)
 
     -- Funções extras da lib
+
     function Library:Notify(text, duration)
-        local message = Instance.new("TextLabel", Main)
-        message.Size = UDim2.new(1, -20, 0, 30)
-        message.Position = UDim2.new(0, 10, 1, -40)
-        message.Text = text
-        message.TextColor3 = Color3.new(1, 1, 1)
-        message.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-        message.BackgroundTransparency = 0.1
-        message.Font = Enum.Font.GothamMedium
-        message.TextSize = 14
-        message.ZIndex = 999
-        message.TextXAlignment = Enum.TextXAlignment.Center
-        Instance.new("UICorner", message).CornerRadius = UDim.new(0, 8)
+        duration = duration or 3
+        local alertFrame = Instance.new("Frame", CoreGui)
+        alertFrame.Size = UDim2.new(0, 300, 0, 50)
+        alertFrame.Position = UDim2.new(0.5, -150, 0, 20)
+        alertFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        alertFrame.BackgroundTransparency = 0.3
+        alertFrame.BorderSizePixel = 0
+        alertFrame.AnchorPoint = Vector2.new(0.5, 0)
+        alertFrame.ZIndex = 9999
+        alertFrame.ClipsDescendants = true
+        Instance.new("UICorner", alertFrame).CornerRadius = UDim.new(0, 10)
 
-        TweenService:Create(message, TweenInfo.new(0.4), {
-            Position = UDim2.new(0, 10, 1, -80)
-        }):Play()
+        local label = Instance.new("TextLabel", alertFrame)
+        label.Size = UDim2.new(1, -20, 1, 0)
+        label.Position = UDim2.new(0, 10, 0, 0)
+        label.BackgroundTransparency = 1
+        label.Text = text
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 18
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        label.ZIndex = 10000
 
-        task.delay(duration or 3, function()
-            TweenService:Create(message, TweenInfo.new(0.4), {
-                Position = UDim2.new(0, 10, 1, 0)
-            }):Play()
-            task.wait(0.5)
-            message:Destroy()
-        end)
+        alertFrame.Position = UDim2.new(0.5, -150, 0, -60)
+        alertFrame.BackgroundTransparency = 1
+        label.TextTransparency = 1
+
+        local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tweenIn = TweenService:Create(alertFrame, tweenInfo, {BackgroundTransparency = 0.3, Position = UDim2.new(0.5, -150, 0, 20)})
+        local labelTweenIn = TweenService:Create(label, tweenInfo, {TextTransparency = 0})
+
+        local tweenOut = TweenService:Create(alertFrame, tweenInfo, {BackgroundTransparency = 1, Position = UDim2.new(0.5, -150, 0, -60)})
+        local labelTweenOut = TweenService:Create(label, tweenInfo, {TextTransparency = 1})
+
+        tweenIn:Play()
+        labelTweenIn:Play()
+        tweenIn.Completed:Wait()
+
+        task.wait(duration)
+
+        tweenOut:Play()
+        labelTweenOut:Play()
+        tweenOut.Completed:Wait()
+        alertFrame:Destroy()
     end
 
     function Library:ChangeTheme(color)
@@ -241,11 +260,43 @@ function Library:Create(title)
         Library:Notify("Bem-vindo ao painel, aproveite!", 4)
     end)
 
-    -- Cria aba VIP automaticamente
-    local vip = Library:CreateTab("VIP")
-    vip:AddLabel("Área exclusiva para membros VIP")
-    vip:AddButton("Ativar VIP Mode", function()
-        Library:Notify("Modo VIP Ativado!", 3)
+    -- Cria aba Configurações
+    local config = Library:CreateTab("Configurações")
+
+    config:AddLabel("🎨 Escolha o tema do menu:")
+    config:AddButton("Tema Roxo Premium", function()
+        Library:ChangeTheme(Color3.fromRGB(120, 0, 255))
+        Library:Notify("Tema Roxo aplicado!", 3)
+    end)
+    config:AddButton("Tema Azul Moderno", function()
+        Library:ChangeTheme(Color3.fromRGB(0, 170, 255))
+        Library:Notify("Tema Azul aplicado!", 3)
+    end)
+    config:AddButton("Tema Vermelho Intenso", function()
+        Library:ChangeTheme(Color3.fromRGB(255, 50, 50))
+        Library:Notify("Tema Vermelho aplicado!", 3)
+    end)
+    config:AddButton("Tema Escuro Clássico", function()
+        Library:ChangeTheme(Color3.fromRGB(24, 24, 24))
+        Library:Notify("Tema Escuro aplicado!", 3)
+    end)
+
+    config:AddLabel("📝 Personalize o título do menu:")
+    config:AddButton("Título: Painel Pro", function()
+        Library:SetTitle("Painel Pro")
+        Library:Notify("Título alterado para 'Painel Pro'!", 3)
+    end)
+    config:AddButton("Título: Central de Controle", function()
+        Library:SetTitle("Central de Controle")
+        Library:Notify("Título alterado para 'Central de Controle'!", 3)
+    end)
+
+    config:AddLabel("🔄 Outras opções:")
+    config:AddButton("Redefinir Interface", function()
+        Library:Notify("Reiniciando interface...", 2)
+        task.wait(0.5)
+        ScreenGui:Destroy()
+        -- Você pode recriar a interface chamando Library:Create() novamente, se quiser
     end)
 
     return Library
