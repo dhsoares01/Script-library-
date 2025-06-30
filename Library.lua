@@ -148,7 +148,7 @@ function Library:Create(title)
         end
     end)
 
-    -- Notificação estilo XSX
+    -- Notification style XSX
     function Library:Notify(text, duration)
         duration = duration or 3
         local alertFrame = Instance.new("Frame", CoreGui)
@@ -242,44 +242,4 @@ function Library:Create(title)
         local layout = Instance.new("UIListLayout", Page)
         layout.Padding = UDim.new(0, 16)
 
-        Tabs[name] = Page
-
-        Button.MouseButton1Click:Connect(function()
-            for _, v in pairs(PageHolder:GetChildren()) do
-                if v:IsA("ScrollingFrame") then
-                    v.Visible = false
-                end
-            end
-            Page.Visible = true
-        end)
-
-        if #PageHolder:GetChildren() == 1 then
-            Page.Visible = true
-        end
-
-        local tabObj = {}
-
-        function tabObj:AddLabel(text)
-            local lbl = Instance.new("TextLabel", Page)
-            lbl.Size = UDim2.new(1, -32, 0, 28)
-            lbl.BackgroundTransparency = 1
-            lbl.Text = text
-            lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
-            lbl.Font = Enum.Font.GothamSemibold
-            lbl.TextSize = 16
-            lbl.TextXAlignment = Enum.TextXAlignment.Left
-            return lbl
-        end
-
-        function tabObj:AddButton(text, callback)
-            local btn = Instance.new("TextButton", Page)
-            btn.Size = UDim2.new(1, -32, 0, 44)
-            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-            btn.BackgroundTransparency = 0.1
-            btn.Text = text
-            btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-            btn.Font = Enum.Font.GothamSemibold
-            btn.TextSize = 18
-            btn.AutoButtonColor = true
-            local btnCorner = Instance.new("UICorner", btn)
-            btnCorner.CornerRadius = U
+        Tabs
