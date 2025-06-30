@@ -75,12 +75,17 @@ function Library:Create(title)
 	UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
 	local Tabs = {}
-
 	local minimized = false
+
 	Minimize.MouseButton1Click:Connect(function()
 		minimized = not minimized
-		local goal = minimized and UDim2.new(0, 450, 0, 36) or UDim2.new(0, 450, 0, 340)
-		TweenService:Create(Main, TweenInfo.new(0.3), {Size = goal}):Play()
+
+		local goalSize = minimized and UDim2.new(0, 450, 0, 36) or UDim2.new(0, 450, 0, 340)
+		TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = goalSize}):Play()
+
+		-- Mostrar ou esconder TabHolder e PageHolder
+		TabHolder.Visible = not minimized
+		PageHolder.Visible = not minimized
 	end)
 
 	function Library:CreateTab(name)
@@ -92,6 +97,7 @@ function Library:Create(title)
 		Button.TextColor3 = Color3.fromRGB(255, 255, 255)
 		Button.Font = Enum.Font.Gotham
 		Button.TextSize = 14
+		Button.AutoButtonColor = false
 
 		local BtnCorner = Instance.new("UICorner", Button)
 		BtnCorner.CornerRadius = UDim.new(0, 6)
@@ -137,6 +143,7 @@ function Library:Create(title)
 				btn.TextColor3 = Color3.new(1, 1, 1)
 				btn.Font = Enum.Font.Gotham
 				btn.TextSize = 14
+				btn.AutoButtonColor = true
 
 				local btnCorner = Instance.new("UICorner", btn)
 				btnCorner.CornerRadius = UDim.new(0, 6)
