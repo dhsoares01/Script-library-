@@ -315,6 +315,50 @@ function Library:Create(title)
                 end
             end)
 
+            -- Função para exibir notificação no rodapé
+function Library:Notify(text, duration)
+	local message = Instance.new("TextLabel", Main)
+	message.Size = UDim2.new(1, -20, 0, 30)
+	message.Position = UDim2.new(0, 10, 1, -40)
+	message.Text = text
+	message.TextColor3 = Color3.new(1, 1, 1)
+	message.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+	message.BackgroundTransparency = 0.1
+	message.Font = Enum.Font.GothamMedium
+	message.TextSize = 14
+	message.ZIndex = 999
+	message.TextXAlignment = Enum.TextXAlignment.Center
+
+	local corner = Instance.new("UICorner", message)
+	corner.CornerRadius = UDim.new(0, 8)
+
+	TweenService:Create(message, TweenInfo.new(0.4), {
+		Position = UDim2.new(0, 10, 1, -80)
+	}):Play()
+
+	task.delay(duration or 3, function()
+		TweenService:Create(message, TweenInfo.new(0.4), {
+			Position = UDim2.new(0, 10, 1, 0)
+		}):Play()
+		task.wait(0.5)
+		message:Destroy()
+	end)
+end
+
+-- Função para mudar o fundo do menu
+function Library:ChangeTheme(color)
+	Main.BackgroundColor3 = color or Color3.fromRGB(24, 24, 24)
+end
+
+-- Função para mudar o título da UI
+function Library:SetTitle(newTitle)
+	for _, v in pairs(Main:GetDescendants()) do
+		if v:IsA("TextLabel") and v.Text == title then
+			v.Text = newTitle
+		end
+	end
+end
+
             sliderBar.InputChanged:Connect(function(input)
                 if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                     local mouseX = input.Position.X
