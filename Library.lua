@@ -3,265 +3,342 @@ local Library = {}
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-
--- Função para converter HSV para RGB (Color3 do Roblox)
-local function HSVtoRGB(h, s, v)
-    if s == 0 then
-        return Color3.new(v, v, v)
-    end
-    h = h * 6
-    local i = math.floor(h)
-    local f = h - i
-    local p = v * (1 - s)
-    local q = v * (1 - s * f)
-    local t = v * (1 - s * (1 - f))
-    if i == 0 then
-        return Color3.new(v, t, p)
-    elseif i == 1 then
-        return Color3.new(q, v, p)
-    elseif i == 2 then
-        return Color3.new(p, v, t)
-    elseif i == 3 then
-        return Color3.new(p, q, v)
-    elseif i == 4 then
-        return Color3.new(t, p, v)
-    else
-        return Color3.new(v, p, q)
-    end
-end
+local RunService = game:GetService("RunService")
 
 function Library:Create(title)
     local ScreenGui = Instance.new("ScreenGui", CoreGui)
     ScreenGui.Name = "OrionLibrary_" .. tostring(math.random(1000, 9999))
-    ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.ResetOnSpawn = false
 
     local Main = Instance.new("Frame", ScreenGui)
-    Main.Size = UDim2.new(0.9, 0, 0.8, 0) -- 90% largura, 80% altura da tela
-    Main.Position = UDim2.new(0.5, 0, 0.5, 0)
-    Main.AnchorPoint = Vector2.new(0.5, 0.5)
+
+    -- Tornar responsivo para mobile, usar uma porcentagem da tela
+    local screenSize = workspace.CurrentCamera.ViewportSize
+    local width = math.clamp(screenSize.X * 0.9, 300, 450)
+    local height = math.clamp(screenSize.Y * 0.75, 300, 380)
+
+    Main.Size = UDim2.new(0, width, 0, height)
+    Main.Position = UDim2.new(0.5, -width/2, 0.5, -height/2)
     Main.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
     Main.BorderSizePixel = 0
     Main.Active = true
-    local UICorner = Instance.new("UICorner", Main)
-    UICorner.CornerRadius = UDim.new(0, 16)
 
-    -- Cabeçalho
+    local UICorner = Instance.new("UICorner", Main)
+    UICorner.CornerRadius = UDim.new(0, 12)
+
+    -- Header
     local Header = Instance.new("Frame", Main)
-    Header.Size = UDim2.new(1, 0, 0, 48) -- Altura fixa, largura total
+    Header.Size = UDim2.new(1, 0, 0, 40)
     Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Header.BorderSizePixel = 0
-    local headerCorner = Instance.new("UICorner", Header)
-    headerCorner.CornerRadius = UDim.new(0, 16)
 
-    local TitleLabel = Instance.new("TextLabel", Header)
-    TitleLabel.Text = title or "Orion UI"
-    TitleLabel.Size = UDim2.new(1, -64, 1, 0)
-    TitleLabel.Position = UDim2.new(0, 16, 0, 0)
-    TitleLabel.TextColor3 = Color3.new(1, 1, 1)
-    TitleLabel.BackgroundTransparency = 1
-    TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.TextSize = 20
-    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    TitleLabel.TextYAlignment = Enum.TextYAlignment.Center
+    local HeaderCorner = Instance.new("UICorner", Header)
+    HeaderCorner.CornerRadius = UDim.new(0, 12)
 
-    local CloseBtn = Instance.new("TextButton", Header)
-    CloseBtn.Text = "✕"
-    CloseBtn.Size = UDim2.new(0, 48, 0, 48)
-    CloseBtn.Position = UDim2.new(1, -48, 0, 0)
-    CloseBtn.TextColor3 = Color3.fromRGB(255, 85, 85)
-    CloseBtn.Font = Enum.Font.GothamBold
-    CloseBtn.TextSize = 28
-    CloseBtn.BackgroundTransparency = 1
-    CloseBtn.AutoButtonColor = false
-    CloseBtn.MouseEnter:Connect(function()
-        CloseBtn.TextColor3 = Color3.fromRGB(255, 60, 60)
-    end)
-    CloseBtn.MouseLeave:Connect(function()
-        CloseBtn.TextColor3 = Color3.fromRGB(255, 85, 85)
-    end)
-    CloseBtn.MouseButton1Click:Connect(function()
+    local Title = Instance.new("TextLabel", Header)
+    Title.Text = title or "Orion UI"
+    Title.Size = UDim2.new(1, -80, 1, 0)
+    Title.Position = UDim2.new(0, 15, 0, 0)
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.BackgroundTransparency = 1
+    Title.Font = Enum.Font.GothamMedium
+    Title.TextSize = 18
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    local Close = Instance.new("TextButton", Header)
+    Close.Text = "×"
+    Close.Size = UDim2.new(0, 40, 1, 0)
+    Close.Position = UDim2.new(1, -40, 0, 0)
+    Close.TextColor3 = Color3.fromRGB(255, 85, 85)
+    Close.Font = Enum.Font.GothamBold
+    Close.TextSize = 24
+    Close.BackgroundTransparency = 1
+    Close.ZIndex = 2
+    Close.MouseButton1Click:Connect(function()
         ScreenGui:Destroy()
     end)
 
-    -- Container do Color Picker
-    local PickerContainer = Instance.new("Frame", Main)
-    PickerContainer.Size = UDim2.new(0.9, 0, 0.8, -Header.Size.Y.Offset)
-    PickerContainer.Position = UDim2.new(0.5, 0, 1, -PickerContainer.Size.Y.Offset - 16)
-    PickerContainer.AnchorPoint = Vector2.new(0.5, 1)
-    PickerContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    PickerContainer.BorderSizePixel = 0
-    local cornerPicker = Instance.new("UICorner", PickerContainer)
-    cornerPicker.CornerRadius = UDim.new(0, 14)
+    local Minimize = Instance.new("TextButton", Header)
+    Minimize.Text = "–"
+    Minimize.Size = UDim2.new(0, 40, 1, 0)
+    Minimize.Position = UDim2.new(1, -80, 0, 0)
+    Minimize.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Minimize.Font = Enum.Font.GothamBold
+    Minimize.TextSize = 24
+    Minimize.BackgroundTransparency = 1
 
-    -- Área de Saturação/Valor (quadrado)
-    local SatValFrame = Instance.new("Frame", PickerContainer)
-    SatValFrame.Size = UDim2.new(0.75, 0, 1, 0)
-    SatValFrame.Position = UDim2.new(0, 12, 0, 0)
-    SatValFrame.BackgroundColor3 = Color3.new(1, 1, 1)
-    SatValFrame.BorderSizePixel = 0
-    local satValCorner = Instance.new("UICorner", SatValFrame)
-    satValCorner.CornerRadius = UDim.new(0, 10)
-    local SatValAspectRatio = Instance.new("UIAspectRatioConstraint", SatValFrame)
-    SatValAspectRatio.AspectRatio = 1
+    local TabHolder = Instance.new("Frame", Main)
+    TabHolder.Position = UDim2.new(0, 0, 0, 40)
+    TabHolder.Size = UDim2.new(0, 120, 1, -40)
+    TabHolder.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    TabHolder.BorderSizePixel = 0
 
-    -- Gradiente horizontal de saturação (branco a cor)
-    local satGradient = Instance.new("Frame", SatValFrame)
-    satGradient.Size = UDim2.new(1, 0, 1, 0)
-    satGradient.BackgroundColor3 = Color3.new(1, 1, 1)
-    satGradient.BorderSizePixel = 0
-    local saturationGradient = Instance.new("UIGradient", satGradient)
-    saturationGradient.Rotation = 0
+    local TabHolderCorner = Instance.new("UICorner", TabHolder)
+    TabHolderCorner.CornerRadius = UDim.new(0, 12)
 
-    -- Gradiente vertical de valor (transparente para preto)
-    local valGradient = Instance.new("Frame", SatValFrame)
-    valGradient.Size = UDim2.new(1, 0, 1, 0)
-    valGradient.BackgroundColor3 = Color3.new(0, 0, 0)
-    valGradient.BorderSizePixel = 0
-    local valUIGradient = Instance.new("UIGradient", valGradient)
-    valUIGradient.Rotation = 90
+    local PageHolder = Instance.new("Frame", Main)
+    PageHolder.Position = UDim2.new(0, 120, 0, 40)
+    PageHolder.Size = UDim2.new(1, -120, 1, -40)
+    PageHolder.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
+    PageHolder.ClipsDescendants = true
+    PageHolder.BorderSizePixel = 0
 
-    -- Barra vertical para matiz (Hue)
-    local HueFrame = Instance.new("Frame", PickerContainer)
-    HueFrame.Size = UDim2.new(0.15, 0, 1, 0)
-    HueFrame.Position = UDim2.new(1, -12, 0, 0)
-    HueFrame.AnchorPoint = Vector2.new(1, 0)
-    HueFrame.BackgroundColor3 = Color3.new(1, 1, 1)
-    HueFrame.BorderSizePixel = 0
-    local hueCorner = Instance.new("UICorner", HueFrame)
-    hueCorner.CornerRadius = UDim.new(0, 10)
+    local PageHolderCorner = Instance.new("UICorner", PageHolder)
+    PageHolderCorner.CornerRadius = UDim.new(0, 12)
 
-    local hueGradient = Instance.new("UIGradient", HueFrame)
-    hueGradient.Rotation = 270
-    hueGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(255, 0, 0)),
-        ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 255, 0)),
-        ColorSequenceKeypoint.new(0.33, Color3.fromRGB(0, 255, 0)),
-        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(0, 255, 255)),
-        ColorSequenceKeypoint.new(0.67, Color3.fromRGB(0, 0, 255)),
-        ColorSequenceKeypoint.new(0.83, Color3.fromRGB(255, 0, 255)),
-        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 0, 0)),
-    }
+    local UIList = Instance.new("UIListLayout", TabHolder)
+    UIList.Padding = UDim.new(0, 8)
+    UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
-    -- Indicador da saturação/valor (círculo)
-    local SatValSelector = Instance.new("Frame", SatValFrame)
-    SatValSelector.Size = UDim2.new(0, 32, 0, 32) -- maior para toque
-    SatValSelector.BackgroundColor3 = Color3.new(1, 1, 1)
-    SatValSelector.BorderColor3 = Color3.fromRGB(60, 60, 60)
-    SatValSelector.BorderSizePixel = 2
-    SatValSelector.AnchorPoint = Vector2.new(0.5, 0.5)
-    SatValSelector.ZIndex = 5
-    local selectorCorner = Instance.new("UICorner", SatValSelector)
-    selectorCorner.CornerRadius = UDim.new(1, 0)
+    local Tabs = {}
+    local minimized = false
 
-    -- Indicador da barra Hue (linha)
-    local HueSelector = Instance.new("Frame", HueFrame)
-    HueSelector.Size = UDim2.new(1, 0, 0, 10) -- linha mais espessa para toque
-    HueSelector.BackgroundColor3 = Color3.new(1, 1, 1)
-    HueSelector.BorderColor3 = Color3.fromRGB(60, 60, 60)
-    HueSelector.BorderSizePixel = 2
-    HueSelector.AnchorPoint = Vector2.new(0.5, 0)
-    HueSelector.Position = UDim2.new(0.5, 0, 0, 0)
-    HueSelector.ZIndex = 5
-    local hueSelectorCorner = Instance.new("UICorner", HueSelector)
-    hueSelectorCorner.CornerRadius = UDim.new(0, 5)
+    Minimize.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        local goalSize = minimized and UDim2.new(0, width, 0, 40) or UDim2.new(0, width, 0, height)
+        TweenService:Create(Main, TweenInfo.new(0.3), {Size = goalSize}):Play()
+        TabHolder.Visible = not minimized
+        PageHolder.Visible = not minimized
+    end)
 
-    -- Estado interno HSV
-    local hue = 0
-    local sat = 1
-    local val = 1
-
-    local function updateSatValSelector()
-        SatValSelector.Position = UDim2.new(sat, 0, 1 - val, 0)
+    -- Drag support (mouse + touch)
+    local dragging, dragInput, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 
-    local function updateHueSelector()
-        HueSelector.Position = UDim2.new(0.5, 0, hue, 0)
-    end
+    Header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
 
-    local function updateSatValGradient()
-        saturationGradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
-            ColorSequenceKeypoint.new(1, HSVtoRGB(hue, 1, 1))
-        }
-    end
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
 
-    -- Atualiza a cor do fundo principal para feedback visual
-    local function applyColor()
-        local c = HSVtoRGB(hue, sat, val)
-        Main.BackgroundColor3 = c
-    end
-
-    updateSatValGradient()
-    updateSatValSelector()
-    updateHueSelector()
-    applyColor()
-
-    -- Flags de arrastar
-    local draggingSatVal = false
-    local draggingHue = false
-
-    local function handleInputChanged(input, object, isSatVal)
+    Header.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            local relativePos = input.Position - object.AbsolutePosition
-            if isSatVal then
-                sat = math.clamp(relativePos.X / object.AbsoluteSize.X, 0, 1)
-                val = 1 - math.clamp(relativePos.Y / object.AbsoluteSize.Y, 0, 1)
-                updateSatValSelector()
-            else
-                hue = math.clamp(relativePos.Y / object.AbsoluteSize.Y, 0, 1)
-                updateSatValGradient()
-                updateHueSelector()
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+
+    -- Criar tabs
+    function Library:CreateTab(name)
+        local Button = Instance.new("TextButton", TabHolder)
+        Button.Size = UDim2.new(1, -16, 0, 36)
+        Button.Position = UDim2.new(0, 8, 0, 0)
+        Button.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
+        Button.Text = name
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.Font = Enum.Font.Gotham
+        Button.TextSize = 16
+        Button.AutoButtonColor = false
+
+        local BtnCorner = Instance.new("UICorner", Button)
+        BtnCorner.CornerRadius = UDim.new(0, 10)
+
+        local Page = Instance.new("ScrollingFrame", PageHolder)
+        Page.Size = UDim2.new(1, 0, 1, 0)
+        Page.Visible = false
+        Page.BackgroundTransparency = 1
+        Page.ScrollBarThickness = 8
+        Page.CanvasSize = UDim2.new(0, 0, 0, 600)
+        Page.VerticalScrollBarInset = Enum.ScrollBarInset.Always
+
+        local layout = Instance.new("UIListLayout", Page)
+        layout.Padding = UDim.new(0, 12)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        Tabs[name] = Page
+
+        Button.MouseButton1Click:Connect(function()
+            for _, v in pairs(PageHolder:GetChildren()) do
+                if v:IsA("ScrollingFrame") then
+                    v.Visible = false
+                end
             end
-            applyColor()
-        end
-    end
+            Page.Visible = true
+        end)
 
-    SatValFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingSatVal = true
-            UserInputService.MouseIconEnabled = false
-            handleInputChanged(input, SatValFrame, true)
+        -- Ativa primeira aba criada automaticamente
+        if #PageHolder:GetChildren() == 0 then
+            Button:CaptureFocus()
+            Page.Visible = true
         end
-    end)
 
-    SatValFrame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingSatVal = false
-            UserInputService.MouseIconEnabled = true
+        local tabObj = {}
+
+        function tabObj:AddLabel(text)
+            local lbl = Instance.new("TextLabel", Page)
+            lbl.Size = UDim2.new(1, -20, 0, 26)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = text
+            lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextSize = 14
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            return lbl
         end
-    end)
 
-    SatValFrame.InputChanged:Connect(function(input)
-        if draggingSatVal then
-            handleInputChanged(input, SatValFrame, true)
+        function tabObj:AddButton(text, callback)
+            local btn = Instance.new("TextButton", Page)
+            btn.Size = UDim2.new(1, -20, 0, 40)
+            btn.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+            btn.Text = text
+            btn.TextColor3 = Color3.new(1, 1, 1)
+            btn.Font = Enum.Font.GothamBold
+            btn.TextSize = 16
+            btn.AutoButtonColor = true
+
+            local btnCorner = Instance.new("UICorner", btn)
+            btnCorner.CornerRadius = UDim.new(0, 10)
+
+            btn.MouseButton1Click:Connect(callback)
+
+            -- Efeito hover mobile e desktop
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+            end)
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(55, 55, 55)}):Play()
+            end)
+
+            return btn
         end
-    end)
 
-    HueFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingHue = true
-            UserInputService.MouseIconEnabled = false
-            handleInputChanged(input, HueFrame, false)
+        function tabObj:AddToggle(text, default, callback)
+            local container = Instance.new("Frame", Page)
+            container.Size = UDim2.new(1, -20, 0, 36)
+            container.BackgroundTransparency = 1
+
+            local label = Instance.new("TextLabel", container)
+            label.Text = text
+            label.Font = Enum.Font.Gotham
+            label.TextSize = 14
+            label.TextColor3 = Color3.fromRGB(230, 230, 230)
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.new(1, -50, 1, 0)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.TextXAlignment = Enum.TextXAlignment.Left
+
+            local toggle = Instance.new("TextButton", container)
+            toggle.Size = UDim2.new(0, 40, 0, 20)
+            toggle.Position = UDim2.new(1, -40, 0.5, -10)
+            toggle.BackgroundColor3 = default and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(70, 70, 70)
+            toggle.AutoButtonColor = false
+            toggle.Text = ""
+            toggle.ClipsDescendants = true
+
+            local toggleCorner = Instance.new("UICorner", toggle)
+            toggleCorner.CornerRadius = UDim.new(0, 10)
+
+            local circle = Instance.new("Frame", toggle)
+            circle.Size = UDim2.new(0, 16, 0, 16)
+            circle.Position = default and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+            circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+
+            local circleCorner = Instance.new("UICorner", circle)
+            circleCorner.CornerRadius = UDim.new(1, 0)
+
+            local toggled = default
+
+            toggle.MouseButton1Click:Connect(function()
+                toggled = not toggled
+                toggle.BackgroundColor3 = toggled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(70, 70, 70)
+                circle:TweenPosition(toggled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+                if callback then
+                    callback(toggled)
+                end
+            end)
+
+            return container
         end
-    end)
 
-    HueFrame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            draggingHue = false
-            UserInputService.MouseIconEnabled = true
+        function tabObj:AddSlider(text, min, max, default, callback)
+            local container = Instance.new("Frame", Page)
+            container.Size = UDim2.new(1, -20, 0, 50)
+            container.BackgroundTransparency = 1
+
+            local label = Instance.new("TextLabel", container)
+            label.Text = text .. ": " .. tostring(default)
+            label.Font = Enum.Font.Gotham
+            label.TextSize = 14
+            label.TextColor3 = Color3.fromRGB(230, 230, 230)
+            label.BackgroundTransparency = 1
+            label.Size = UDim2.new(1, 0, 0, 20)
+            label.Position = UDim2.new(0, 0, 0, 0)
+            label.TextXAlignment = Enum.TextXAlignment.Left
+
+            local sliderBar = Instance.new("Frame", container)
+            sliderBar.Size = UDim2.new(1, 0, 0, 16)
+            sliderBar.Position = UDim2.new(0, 0, 0, 30)
+            sliderBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            sliderBar.ClipsDescendants = true
+
+            local sliderCorner = Instance.new("UICorner", sliderBar)
+            sliderCorner.CornerRadius = UDim.new(0, 10)
+
+            local sliderFill = Instance.new("Frame", sliderBar)
+            sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+            sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+
+            local fillCorner = Instance.new("UICorner", sliderFill)
+            fillCorner.CornerRadius = UDim.new(0, 10)
+
+            local dragging = false
+
+            sliderBar.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    local mouseX = input.Position.X
+                    local barPos = sliderBar.AbsolutePosition.X
+                    local barSize = sliderBar.AbsoluteSize.X
+                    local relativeX = math.clamp(mouseX - barPos, 0, barSize)
+                    local percent = relativeX / barSize
+                    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+                    local value = math.floor(min + (max - min) * percent)
+                    label.Text = text .. ": " .. tostring(value)
+                    if callback then callback(value) end
+                end
+            end)
+
+            sliderBar.InputChanged:Connect(function(input)
+                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    local mouseX = input.Position.X
+                    local barPos = sliderBar.AbsolutePosition.X
+                    local barSize = sliderBar.AbsoluteSize.X
+                    local relativeX = math.clamp(mouseX - barPos, 0, barSize)
+                    local percent = relativeX / barSize
+                    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+                    local value = math.floor(min + (max - min) * percent)
+                    label.Text = text .. ": " .. tostring(value)
+                    if callback then callback(value) end
+                end
+            end)
+
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = false
+                end
+            end)
+
+            return container
         end
-    end)
 
-    HueFrame.InputChanged:Connect(function(input)
-        if draggingHue then
-            handleInputChanged(input, HueFrame, false)
-        end
-    end)
-
-    -- Método público para obter a cor selecionada atual
-    function Library:GetSelectedColor()
-        return HSVtoRGB(hue, sat, val)
+        return tabObj
     end
 
     return Library
