@@ -3,7 +3,6 @@ local Library = {}
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 function Library:Create(title)
     local ScreenGui = Instance.new("ScreenGui", CoreGui)
@@ -170,13 +169,19 @@ function Library:Create(title)
         Page.Visible = false
         Page.BackgroundTransparency = 1
         Page.ScrollBarThickness = 8
-        Page.CanvasSize = UDim2.new(0, 0, 0, 600)
+        Page.CanvasSize = UDim2.new(0, 0, 0, 0)  -- canvasSize dinâmico
         Page.VerticalScrollBarInset = Enum.ScrollBarInset.Always
         Page.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
+        Page.BorderSizePixel = 0
 
         local layout = Instance.new("UIListLayout", Page)
         layout.Padding = UDim.new(0, 14)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        -- Atualiza CanvasSize quando o conteúdo mudar
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            Page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        end)
 
         Tabs[name] = Page
 
