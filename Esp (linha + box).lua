@@ -29,11 +29,13 @@ function ESPLibrary.CreateESPBox(obj, color)
         surfaceGui.Parent = obj
 
         local frame = Instance.new("Frame")
-        frame.BackgroundTransparency = 0.5
-        frame.BackgroundColor3 = color or Color3.new(0, 1, 0)
-        frame.BorderSizePixel = 2
-        frame.BorderColor3 = color or Color3.new(0, 1, 0)
+        frame.BackgroundTransparency = 0.7
+        frame.BackgroundColor3 = color or Color3.fromRGB(0, 200, 255)
+        frame.BorderSizePixel = 1
+        frame.BorderColor3 = Color3.fromRGB(255, 255, 255)
         frame.Size = UDim2.new(1, 0, 1, 0)
+        frame.AnchorPoint = Vector2.new(0.5, 0.5)
+        frame.Position = UDim2.new(0.5, 0, 0.5, 0)
         frame.Parent = surfaceGui
     end
 end
@@ -44,15 +46,14 @@ function ESPLibrary.CreateESPBeam(obj, tipo, color)
     local root = Instance.new("Attachment", obj)
     root.Name = "ESP_Attach"
 
-    -- Bolinha visível na frente da câmera
     local sphere = Instance.new("Part")
-    sphere.Size = Vector3.new(0.4, 0.4, 0.4)
+    sphere.Size = Vector3.new(0.35, 0.35, 0.35)
     sphere.Shape = Enum.PartType.Ball
     sphere.Material = Enum.Material.Neon
     sphere.Anchored = true
     sphere.CanCollide = false
-    sphere.Transparency = 0.3
-    sphere.Color = color or Color3.fromRGB(0, 255, 0)
+    sphere.Transparency = 0.5
+    sphere.Color = color or Color3.fromRGB(0, 200, 255)
     sphere.Name = "ESP_Sphere"
     sphere.Parent = workspace
 
@@ -62,24 +63,24 @@ function ESPLibrary.CreateESPBeam(obj, tipo, color)
     beam.Attachment0 = originAttach
     beam.Attachment1 = root
     beam.FaceCamera = true
-    beam.Width0 = 0.15
-    beam.Width1 = 0.15
-    beam.Color = ColorSequence.new(color or Color3.fromRGB(0, 255, 0))
+    beam.Width0 = 0.12
+    beam.Width1 = 0.12
+    beam.Color = ColorSequence.new(color or Color3.fromRGB(0, 200, 255))
     beam.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 0.2),
+        NumberSequenceKeypoint.new(0, 0.4),
         NumberSequenceKeypoint.new(0.5, 0),
-        NumberSequenceKeypoint.new(1, 0.2)
+        NumberSequenceKeypoint.new(1, 0.4)
     }
     beam.LightEmission = 1
-    beam.Texture = "rbxassetid://127587558"
-    beam.TextureLength = 5
-    beam.TextureSpeed = 1
+    beam.Texture = "rbxassetid://127587558" -- Estilo elegante
+    beam.TextureLength = 4
+    beam.TextureSpeed = 0.5
     beam.Parent = sphere
 
     local pulseTime = 0
     local updateConn = RunService.RenderStepped:Connect(function(dt)
-        pulseTime += dt * 2
-        local alpha = (math.sin(pulseTime) + 1) / 2 * 0.3 + 0.2
+        pulseTime += dt * 1.5
+        local alpha = (math.sin(pulseTime) + 1) / 2 * 0.25 + 0.3
         beam.Transparency = NumberSequence.new{
             NumberSequenceKeypoint.new(0, alpha),
             NumberSequenceKeypoint.new(0.5, 0),
