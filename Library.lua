@@ -169,7 +169,7 @@ function Library:Create(title)
         Page.Visible = false
         Page.BackgroundTransparency = 1
         Page.ScrollBarThickness = 8
-        Page.CanvasSize = UDim2.new(0, 0, 0, 0)  -- canvasSize dinâmico
+        Page.CanvasSize = UDim2.new(0, 0, 0, 0)
         Page.VerticalScrollBarInset = Enum.ScrollBarInset.Always
         Page.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
         Page.BorderSizePixel = 0
@@ -178,7 +178,6 @@ function Library:Create(title)
         layout.Padding = UDim.new(0, 14)
         layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-        -- Atualiza CanvasSize quando o conteúdo mudar
         layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             Page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
         end)
@@ -202,7 +201,6 @@ function Library:Create(title)
             TweenService:Create(Button, TweenInfo.new(0.25), {BackgroundColor3 = Color3.fromRGB(0, 170, 255)}):Play()
         end)
 
-        -- Ativa primeira aba criada automaticamente
         if #PageHolder:GetChildren() == 0 then
             Button:CaptureFocus()
             Page.Visible = true
@@ -314,18 +312,20 @@ function Library:Create(title)
             local sliderBar = Instance.new("Frame", container)
             sliderBar.Size = UDim2.new(1, 0, 0, 18)
             sliderBar.Position = UDim2.new(0, 0, 0, 30)
-            sliderBar.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
+            sliderBar.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
             sliderBar.ClipsDescendants = true
+            sliderBar.ZIndex = 6
 
             local sliderCorner = Instance.new("UICorner", sliderBar)
-            sliderCorner.CornerRadius = UDim.new(0, 12)
+            sliderCorner.CornerRadius = UDim.new(0, 14)
 
             local sliderFill = Instance.new("Frame", sliderBar)
             sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-            sliderFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+            sliderFill.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+            sliderFill.ZIndex = 7
 
             local fillCorner = Instance.new("UICorner", sliderFill)
-            fillCorner.CornerRadius = UDim.new(0, 12)
+            fillCorner.CornerRadius = UDim.new(0, 14)
 
             local dragging = false
 
