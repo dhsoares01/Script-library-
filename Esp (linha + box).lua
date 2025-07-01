@@ -6,8 +6,7 @@ local maxESP = 12
 local espDistanceMax = 100
 local drawingLines = {}
 
--- Cria a caixa ESP em um objeto BasePart
-function ESPLibrary.CreateESPBox(obj, cor)
+function ESPLibrary.CreateESPBox(obj, color)
     if obj:FindFirstChild("ESPBoxGui") then return end
 
     local faces = {
@@ -31,16 +30,15 @@ function ESPLibrary.CreateESPBox(obj, cor)
 
         local frame = Instance.new("Frame")
         frame.BackgroundTransparency = 0.5
-        frame.BackgroundColor3 = cor or Color3.new(0, 1, 0)
+        frame.BackgroundColor3 = color or Color3.new(0, 1, 0)
         frame.BorderSizePixel = 2
-        frame.BorderColor3 = cor or Color3.new(0, 1, 0)
+        frame.BorderColor3 = color or Color3.new(0, 1, 0)
         frame.Size = UDim2.new(1, 0, 1, 0)
         frame.Parent = surfaceGui
     end
 end
 
--- Cria a linha Beam que conecta o objeto à câmera
-function ESPLibrary.CreateESPBeam(obj, tipo, cor)
+function ESPLibrary.CreateESPBeam(obj, tipo, color)
     if obj:FindFirstChild("ESP_Attach") then return end
 
     local root = Instance.new("Attachment", obj)
@@ -62,7 +60,7 @@ function ESPLibrary.CreateESPBeam(obj, tipo, cor)
     beam.FaceCamera = true
     beam.Width0 = 0.15
     beam.Width1 = 0.15
-    beam.Color = ColorSequence.new(cor or Color3.fromRGB(0, 255, 0))
+    beam.Color = ColorSequence.new(color or Color3.fromRGB(0, 255, 0))
     beam.Transparency = NumberSequence.new{
         NumberSequenceKeypoint.new(0, 0.2),
         NumberSequenceKeypoint.new(0.5, 0),
@@ -76,7 +74,7 @@ function ESPLibrary.CreateESPBeam(obj, tipo, cor)
 
     local pulseTime = 0
     local updateConn = RunService.RenderStepped:Connect(function(dt)
-        pulseTime = pulseTime + dt * 2
+        pulseTime += dt * 2
         local alpha = (math.sin(pulseTime) + 1) / 2 * 0.3 + 0.2
         beam.Transparency = NumberSequence.new{
             NumberSequenceKeypoint.new(0, alpha),
@@ -98,7 +96,6 @@ function ESPLibrary.CreateESPBeam(obj, tipo, cor)
     }
 end
 
--- Remove a ESP do objeto
 function ESPLibrary.RemoveESP(tipo, obj)
     if drawingLines[tipo] and drawingLines[tipo][obj] then
         local esp = drawingLines[tipo][obj]
@@ -116,16 +113,15 @@ function ESPLibrary.RemoveESP(tipo, obj)
     end
 end
 
--- Atualiza todas ESPs de um tipo para um conjunto de objetos
-function ESPLibrary.UpdateAll(tipo, objs, cor)
+function ESPLibrary.UpdateAll(tipo, objs, color)
     local cameraPos = camera.CFrame.Position
-    local objsValidos, objSet = {}, {}
+    local validObjs, objSet = {}, {}
 
     for _, obj in pairs(objs) do
         if obj and obj:IsDescendantOf(workspace) and obj:IsA("BasePart") then
             local dist = (obj.Position - cameraPos).Magnitude
             if dist <= espDistanceMax then
-                table.insert(objsValidos, {obj = obj, dist = dist})
+                table.insert(validObjs, {obj = obj, dist = dist})
                 objSet[obj] = true
             else
                 ESPLibrary.RemoveESP(tipo, obj)
@@ -135,15 +131,15 @@ function ESPLibrary.UpdateAll(tipo, objs, cor)
         end
     end
 
-    table.sort(objsValidos, function(a, b) return a.dist < b.dist end)
+    table.sort(validObjs, function(a, b) return a.dist < b.dist end)
 
-    for i, info in pairs(objsValidos) do
+    for i, info in pairs(validObjs) do
         local obj = info.obj
         if i <= maxESP then
             if not (drawingLines[tipo] and drawingLines[tipo][obj]) then
-                ESPLibrary.CreateESPBeam(obj, tipo, cor)
+                ESPLibrary.CreateESPBeam(obj, tipo, color)
             end
-            ESPLibrary.CreateESPBox(obj, cor)
+            ESPLibrary.CreateESPBox(obj, color)
         else
             ESPLibrary.RemoveESP(tipo, obj)
         end
@@ -155,6 +151,15 @@ function ESPLibrary.UpdateAll(tipo, objs, cor)
                 ESPLibrary.RemoveESP(tipo, obj)
             end
         end
+    end
+end
+
+function ESPLibrary.RemoveAll(tipo)
+    if drawingLines[tipo] then
+        for obj, _ in pairs(drawingLines[tipo]) do
+            ESPLibrary.RemoveESP(tipo, obj)
+        end
+        drawingLines[tipo] = {}
     end
 end
 
