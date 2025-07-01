@@ -1,16 +1,20 @@
--- ESPDesign.lua
+-- ESP.lua
 local ESP = {}
 ESP.__index = ESP
 
 local RunService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
 
+local maxDist = 200
+
+-- Guarda os objetos de ESP com suas cores
+local espObjects = {} -- [obj] = cor
+
+-- Guarda linhas e boxes
 local drawingLines = {}
 local espBoxes = {}
-local espObjects = {}
-local conexao = nil
 
-local maxDist = 200
+local conexao = nil
 
 local function criarLinha2D(obj, cor)
     local linha = Drawing.new("Line")
@@ -67,37 +71,10 @@ local function atualizarLinha2D(obj)
     end
 end
 
-function ESP:Ativar(objList, cor)
-    if conexao then conexao:Disconnect() end
-
-    -- Registrar objetos para ESP
-    for _, obj in pairs(objList) do
-        if obj and obj:IsA("BasePart") then
-            espObjects[obj] = cor
-            if not drawingLines[obj] then
-                criarLinha2D(obj, cor)
-            end
-            if not espBoxes[obj] then
-                criarESPBox(obj, cor)
-            end
-        end
-    end
-
-    conexao = RunService.RenderStepped:Connect(function()
-        -- Atualizar ESP pra todos objetos registrados
-        for obj, cor in pairs(espObjects) do
-            if obj and obj.Parent then
-                atualizarLinha2D(obj)
-            else
-                removerObjeto(obj)
-            end
-        end
-    end)
-end
-
 function ESP:AtualizarLista(novaLista, cor)
-    -- Adicionar novos objetos
     local novaSet = {}
+
+    -- Adicionar e manter existentes
     for _, obj in pairs(novaLista) do
         if obj and obj:IsA("BasePart") then
             novaSet[obj] = true
@@ -108,7 +85,8 @@ function ESP:AtualizarLista(novaLista, cor)
             end
         end
     end
-    -- Remover que sumiram
+
+    -- Remover objetos que sumiram
     for obj, _ in pairs(espObjects) do
         if not novaSet[obj] then
             removerObjeto(obj)
@@ -125,6 +103,15 @@ function ESP:Desativar()
         removerObjeto(obj)
     end
     espObjects = {}
+end
+
+function ESP:Ativar()
+    if conexao then return end
+    conexao = RunService.RenderStepped:Connect(function()
+        for obj, _ in pairs(espObjects) do
+            atualizarLinha2D(obj)
+        end
+    end)
 end
 
 return ESP
