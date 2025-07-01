@@ -2,7 +2,21 @@ local lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares0
 local ui = lib:Create("Menu Personalizado")
 
 local tab = ui:CreateTab("Principal")
-tab:AddLabel("Bem-vindo, Lucas!")
+
+-- Label
+tab:AddLabel("Lobray DH SOARES")
+
+-- Botão
 tab:AddButton("Clique aqui", function()
     print("Botão foi clicado!")
+end)
+
+-- Toggle
+tab:AddToggle("Click (on/off)", false, function(state)
+    print("Modo escuro:", state and "ativado" or "desativado")
+end)
+
+-- Slider
+tab:AddSlider("Slider ", 0, 100, 50, function(value)
+    print("Volume:", value)
 end)
