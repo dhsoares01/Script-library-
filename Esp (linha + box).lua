@@ -1,46 +1,43 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
 local ESP3D = {}
 ESP3D.__index = ESP3D
 
--- Cria linha 3D entre dois pontos (Part fino e transparente)
-local function createLinePart()
-    local part = Instance.new("Part")
-    part.Anchored = true
-    part.CanCollide = false
-    part.Transparency = 0.5
-    part.Material = Enum.Material.Neon
-    part.Shape = Enum.PartType.Block
-    part.Size = Vector3.new(0.1, 0.1, 1) -- comprimento vai ser escalado dinamicamente
-    part.CastShadow = false
-    part.Name = "ESPLINE"
-    return part
+-- Cria Frame 2D para box da ESP (usando Drawing API para desempenho e estilo 2D)
+local function create2DBox()
+    local box = {}
+    box.Outline = Drawing.new("Square")
+    box.Outline.Visible = false
+    box.Outline.Color = Color3.new(0,1,0)
+    box.Outline.Thickness = 2
+    box.Outline.Filled = false
+
+    box.Fill = Drawing.new("Square")
+    box.Fill.Visible = false
+    box.Fill.Color = Color3.new(0,1,0)
+    box.Fill.Transparency = 0.15
+    box.Fill.Filled = true
+
+    return box
 end
 
--- Cria BillboardGui para texto flutuante
-local function createBillboard(textColor)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.AlwaysOnTop = true
-    billboard.ExtentsOffset = Vector3.new(0, 2, 0)
+-- Cria linha 2D do jogador até a base da tela
+local function createLine()
+    local line = Drawing.new("Line")
+    line.Visible = false
+    line.Color = Color3.new(0,1,0)
+    line.Thickness = 2
+    return line
+end
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1,0,1,0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextColor3 = textColor or Color3.new(1,1,1)
-    textLabel.TextStrokeTransparency = 0.5
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.Text = ""
-    textLabel.Parent = billboard
-
-    billboard.Name = "ESPBillboard"
-    billboard.Parent = nil -- será setado depois
-    billboard.TextLabel = textLabel
-
-    return billboard
+-- Projeta um ponto 3D para 2D na tela, retorna nil se estiver fora da tela ou atrás da câmera
+local function worldToScreen(point)
+    local screenPoint, onScreen = Camera:WorldToViewportPoint(point)
+    if not onScreen or screenPoint.Z < 0 then return nil end
+    return Vector2.new(screenPoint.X, screenPoint.Y)
 end
 
 function ESP3D.new(settings)
@@ -53,6 +50,7 @@ function ESP3D.new(settings)
         LineColor = Color3.fromRGB(0,255,0),
         BoxColor = Color3.fromRGB(0,255,0),
         TextColor = Color3.fromRGB(255,255,255),
+        Font = Enum.Font.SourceSansBold,
     }
     if settings then
         for k,v in pairs(settings) do
@@ -62,45 +60,41 @@ function ESP3D.new(settings)
 
     self.espObjects = {}
 
+    local TextService = game:GetService("TextService")
+
     local function createEspForObject(obj)
-        -- SelectionBox para box 3D
-        local box = Instance.new("SelectionBox")
-        box.Adornee = obj
-        box.LineThickness = 0.01
-        box.Color3 = self.Settings.BoxColor
-        box.Parent = obj
+        local esp = {}
 
-        -- Linha 3D entre jogador e objeto
-        local line = createLinePart()
-        line.Color = self.Settings.LineColor
-        line.Parent = workspace
+        esp.Box = create2DBox()
+        esp.Line = createLine()
 
-        -- BillboardGui para texto
-        local billboard = createBillboard(self.Settings.TextColor)
-        billboard.Parent = obj
+        -- Label de texto usando Drawing
+        esp.Text = Drawing.new("Text")
+        esp.Text.Visible = false
+        esp.Text.Color = self.Settings.TextColor
+        esp.Text.Size = 14
+        esp.Text.Center = true
+        esp.Text.Outline = true
+        esp.Text.OutlineColor = Color3.new(0,0,0)
+        esp.Text.Font = 3 -- Fonte padrão do Drawing
 
-        return {
-            Object = obj,
-            Box = box,
-            Line = line,
-            Billboard = billboard,
-        }
+        esp.Object = obj
+        return esp
     end
 
-    -- Inicializa ESP para cada objeto
     for _, obj in pairs(self.Settings.Objects) do
         if obj and obj:IsA("BasePart") then
             self.espObjects[obj] = createEspForObject(obj)
         end
     end
 
-    -- Atualiza tudo a cada frame
     self._conn = RunService.RenderStepped:Connect(function()
         if not self.Settings.Enabled then
             for _, esp in pairs(self.espObjects) do
-                esp.Box.Visible = false
-                esp.Line.Transparency = 1
-                esp.Billboard.Enabled = false
+                esp.Box.Outline.Visible = false
+                esp.Box.Fill.Visible = false
+                esp.Line.Visible = false
+                esp.Text.Visible = false
             end
             return
         end
@@ -108,8 +102,9 @@ function ESP3D.new(settings)
         local character = LocalPlayer.Character
         local rootPart = character and character:FindFirstChild("HumanoidRootPart")
         if not rootPart then return end
-
         local playerPos = rootPart.Position
+
+        local screenHeight = Camera.ViewportSize.Y
 
         for obj, esp in pairs(self.espObjects) do
             if obj and obj.Parent then
@@ -117,33 +112,97 @@ function ESP3D.new(settings)
                 local dist = (playerPos - objPos).Magnitude
 
                 if dist <= self.Settings.MaxDistance then
-                    -- Ativa ESP
-                    esp.Box.Visible = true
-                    esp.Box.Color3 = self.Settings.BoxColor
+                    -- Pega os vértices do BasePart para calcular box 2D (aproximação)
+                    local corners = {}
+                    local size = obj.Size / 2
 
-                    -- Atualiza linha 3D
-                    local direction = (objPos - playerPos)
-                    local midPoint = playerPos + direction/2
-                    esp.Line.Size = Vector3.new(0.05, 0.05, direction.Magnitude)
-                    esp.Line.CFrame = CFrame.new(midPoint, objPos) * CFrame.new(0,0,-direction.Magnitude/2)
-                    esp.Line.Transparency = 0 -- visível
-                    esp.Line.Color = self.Settings.LineColor
+                    local cf = obj.CFrame
+                    local points = {
+                        cf * Vector3.new(-size.X, size.Y, -size.Z),
+                        cf * Vector3.new(size.X, size.Y, -size.Z),
+                        cf * Vector3.new(size.X, size.Y, size.Z),
+                        cf * Vector3.new(-size.X, size.Y, size.Z),
 
-                    -- Atualiza texto
-                    esp.Billboard.Enabled = true
-                    esp.Billboard.TextLabel.Text = tostring(obj.Name) .. " [" .. math.floor(dist) .. "m]"
-                    esp.Billboard.TextLabel.TextColor3 = self.Settings.TextColor
+                        cf * Vector3.new(-size.X, -size.Y, -size.Z),
+                        cf * Vector3.new(size.X, -size.Y, -size.Z),
+                        cf * Vector3.new(size.X, -size.Y, size.Z),
+                        cf * Vector3.new(-size.X, -size.Y, size.Z),
+                    }
+
+                    local screenPoints = {}
+                    for i, v in ipairs(points) do
+                        local screenPos = worldToScreen(v)
+                        if screenPos then
+                            table.insert(screenPoints, screenPos)
+                        end
+                    end
+
+                    if #screenPoints < 1 then
+                        -- Objeto está fora da tela, oculta
+                        esp.Box.Outline.Visible = false
+                        esp.Box.Fill.Visible = false
+                        esp.Line.Visible = false
+                        esp.Text.Visible = false
+                    else
+                        -- Calcula box 2D que engloba todos pontos
+                        local minX, minY = math.huge, math.huge
+                        local maxX, maxY = -math.huge, -math.huge
+
+                        for _, pt in pairs(screenPoints) do
+                            if pt.X < minX then minX = pt.X end
+                            if pt.Y < minY then minY = pt.Y end
+                            if pt.X > maxX then maxX = pt.X end
+                            if pt.Y > maxY then maxY = pt.Y end
+                        end
+
+                        local boxPos = Vector2.new(minX, minY)
+                        local boxSize = Vector2.new(maxX - minX, maxY - minY)
+
+                        -- Atualiza box
+                        esp.Box.Outline.Visible = true
+                        esp.Box.Fill.Visible = true
+                        esp.Box.Outline.Position = boxPos
+                        esp.Box.Outline.Size = boxSize
+                        esp.Box.Outline.Color = self.Settings.BoxColor
+
+                        esp.Box.Fill.Position = boxPos
+                        esp.Box.Fill.Size = boxSize
+                        esp.Box.Fill.Color = self.Settings.BoxColor
+                        esp.Box.Fill.Transparency = 0.15
+
+                        -- Atualiza linha da base do objeto até a base da tela (linha vertical abaixo do box)
+                        -- Pega a posição 3D da base do objeto (pés)
+                        local bottomPos3D = cf * Vector3.new(0, -size.Y, 0)
+                        local bottomScreen = worldToScreen(bottomPos3D)
+
+                        if bottomScreen then
+                            esp.Line.Visible = true
+                            esp.Line.Color = self.Settings.LineColor
+                            esp.Line.From = bottomScreen
+                            esp.Line.To = Vector2.new(bottomScreen.X, screenHeight) -- Vai até o rodapé da tela
+                        else
+                            esp.Line.Visible = false
+                        end
+
+                        -- Atualiza texto acima do box
+                        esp.Text.Visible = true
+                        esp.Text.Text = obj.Name .. " [" .. math.floor(dist) .. "m]"
+                        esp.Text.Position = Vector2.new(boxPos.X + boxSize.X / 2, boxPos.Y - 16)
+                        esp.Text.Color = self.Settings.TextColor
+                    end
                 else
                     -- Desativa ESP
-                    esp.Box.Visible = false
-                    esp.Line.Transparency = 1
-                    esp.Billboard.Enabled = false
+                    esp.Box.Outline.Visible = false
+                    esp.Box.Fill.Visible = false
+                    esp.Line.Visible = false
+                    esp.Text.Visible = false
                 end
             else
                 -- Objeto inválido, remove ESP
-                esp.Box:Destroy()
-                esp.Line:Destroy()
-                esp.Billboard:Destroy()
+                esp.Box.Outline:Remove()
+                esp.Box.Fill:Remove()
+                esp.Line:Remove()
+                esp.Text:Remove()
                 self.espObjects[obj] = nil
             end
         end
@@ -158,9 +217,10 @@ function ESP3D:Destroy()
         self._conn = nil
     end
     for _, esp in pairs(self.espObjects) do
-        if esp.Box then esp.Box:Destroy() end
-        if esp.Line then esp.Line:Destroy() end
-        if esp.Billboard then esp.Billboard:Destroy() end
+        esp.Box.Outline:Remove()
+        esp.Box.Fill:Remove()
+        esp.Line:Remove()
+        esp.Text:Remove()
     end
     self.espObjects = {}
 end
