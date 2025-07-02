@@ -7,12 +7,10 @@ ESP.__index = ESP
 function ESP.new()
     local self = setmetatable({}, ESP)
 
+    -- Config padrão
     self.Settings = {
         Enabled = true,
         MaxDistance = 150,
-        FOVEnabled = true,
-        FOVAngle = 90, -- em graus
-
         ReferenceObjects = {},
 
         LineESP = { Enabled = true, Color = Color3.fromRGB(255, 0, 0) },
@@ -28,7 +26,7 @@ end
 
 function ESP:UpdateConfig(config)
     local function merge(t1, t2)
-        for k, v in pairs(t2) do
+        for k,v in pairs(t2) do
             if type(v) == "table" and type(t1[k]) == "table" then
                 merge(t1[k], v)
             else
@@ -60,6 +58,7 @@ end
 
 function ESP:Start()
     if self._renderConnection then return end
+
     self._renderConnection = RunService:BindToRenderStep("ESP_Render", Enum.RenderPriority.Camera.Value + 1, function()
         if not self.Settings.Enabled then
             self:Clear()
@@ -70,25 +69,8 @@ function ESP:Start()
             if obj and obj.Parent then
                 local pos = obj.Position or (obj:IsA("BasePart") and obj.Position)
                 if pos then
-                    local camPos = Camera.CFrame.Position
-                    local dist = (camPos - pos).Magnitude
-
-                    -- Verifica FOV
-                    local direction = (pos - camPos).Unit
-                    local camLook = Camera.CFrame.LookVector
-                    local angle = math.deg(math.acos(camLook:Dot(direction)))
-
-                    if self.Settings.FOVEnabled and angle > self.Settings.FOVAngle / 2 then
-                        -- Fora do FOV
-                        if self.Drawings[obj] then
-                            for _, d in pairs(self.Drawings[obj]) do
-                                d.Visible = false
-                            end
-                        end
-                        continue
-                    end
-
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+                    local dist = (Camera.CFrame.Position - pos).Magnitude
+                    local onScreenVector, onScreen = Camera:WorldToViewportPoint(pos)
 
                     if not self.Drawings[obj] then
                         self.Drawings[obj] = {
@@ -106,33 +88,82 @@ function ESP:Start()
                     local draws = self.Drawings[obj]
 
                     if dist <= self.Settings.MaxDistance and onScreen then
+                        -- Verifica FOV do jogador (horizontal)
+                        local cameraDirection = Camera.CFrame.LookVector
+                        local directionToObj = (pos - Camera.CFrame.Position).Unit
+                        local dot = cameraDirection:Dot(directionToObj)
+                        local angle = math.deg(math.acos(dot))
+
+                        if angle > (Camera.FieldOfView / 2) then
+                            draws.Line.Visible = false
+                            draws.Box.Visible = false
+                            draws.Text.Visible = false
+                            continue
+                        end
+
+                        -- Linha
                         if self.Settings.LineESP.Enabled then
                             draws.Line.Visible = true
                             draws.Line.Color = self.Settings.LineESP.Color
                             draws.Line.Thickness = 1.5
                             draws.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                            draws.Line.To = Vector2.new(screenPos.X, screenPos.Y)
+                            draws.Line.To = Vector2.new(onScreenVector.X, onScreenVector.Y)
                         else
                             draws.Line.Visible = false
                         end
 
+                        -- Box ajustada pelo FOV
                         if self.Settings.BoxESP.Enabled then
                             draws.Box.Visible = true
                             draws.Box.Color = self.Settings.BoxESP.Color
                             draws.Box.Thickness = 1.5
-                            local sizeX = 50 / (dist / 10)
-                            local sizeY = 100 / (dist / 10)
-                            draws.Box.Size = Vector2.new(sizeX, sizeY)
-                            draws.Box.Position = Vector2.new(screenPos.X - sizeX / 2, screenPos.Y - sizeY / 2)
+
+                            local cf, size = obj:GetBoundingBox()
+                            local corners = {}
+                            for x = -0.5, 0.5, 1 do
+                                for y = -0.5, 0.5, 1 do
+                                    for z = -0.5, 0.5, 1 do
+                                        table.insert(corners, (cf * CFrame.new(x * size.X, y * size.Y, z * size.Z)).Position)
+                                    end
+                                end
+                            end
+
+                            local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+                            local visible = false
+                            for _, corner in pairs(corners) do
+                                local screenPos, isVisible = Camera:WorldToViewportPoint(corner)
+                                if isVisible then
+                                    visible = true
+                                    minX = math.min(minX, screenPos.X)
+                                    minY = math.min(minY, screenPos.Y)
+                                    maxX = math.max(maxX, screenPos.X)
+                                    maxY = math.max(maxY, screenPos.Y)
+                                end
+                            end
+
+                            if visible then
+                                -- Ajuste do box pelo FOV
+                                local fovFactor = 70 / Camera.FieldOfView
+                                local boxWidth = (maxX - minX) * fovFactor
+                                local boxHeight = (maxY - minY) * fovFactor
+                                local boxPosX = ((minX + maxX) / 2) - (boxWidth / 2)
+                                local boxPosY = ((minY + maxY) / 2) - (boxHeight / 2)
+
+                                draws.Box.Position = Vector2.new(boxPosX, boxPosY)
+                                draws.Box.Size = Vector2.new(boxWidth, boxHeight)
+                            else
+                                draws.Box.Visible = false
+                            end
                         else
                             draws.Box.Visible = false
                         end
 
+                        -- Texto
                         if self.Settings.TextESP.Enabled then
                             draws.Text.Visible = true
                             draws.Text.Color = self.Settings.TextESP.Color
                             draws.Text.Text = string.format("%s\n%.0f studs", obj.Name or "Obj", dist)
-                            draws.Text.Position = Vector2.new(screenPos.X, screenPos.Y - 60)
+                            draws.Text.Position = Vector2.new(onScreenVector.X, onScreenVector.Y - 60)
                         else
                             draws.Text.Visible = false
                         end
@@ -145,7 +176,9 @@ function ESP:Start()
             else
                 if self.Drawings[obj] then
                     for _, d in pairs(self.Drawings[obj]) do
-                        if d and d.Remove then d:Remove() end
+                        if d and d.Remove then
+                            d:Remove()
+                        end
                     end
                     self.Drawings[obj] = nil
                 end
