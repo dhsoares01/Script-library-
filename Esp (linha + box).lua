@@ -11,7 +11,7 @@ function ESP.new()
     self.Settings = {
         Enabled = true,
         MaxDistance = 150,
-        ReferenceObjects = {}, -- lista de objetos para espionar
+        ReferenceObjects = {},
 
         LineESP = { Enabled = true, Color = Color3.fromRGB(255, 0, 0) },
         BoxESP = { Enabled = true, Color = Color3.fromRGB(0, 255, 0) },
@@ -19,13 +19,11 @@ function ESP.new()
     }
 
     self.Drawings = {}
-
     self._renderConnection = nil
 
     return self
 end
 
--- Atualiza configurações (mescla recursivamente tabelas)
 function ESP:UpdateConfig(config)
     local function merge(t1, t2)
         for k,v in pairs(t2) do
@@ -39,7 +37,6 @@ function ESP:UpdateConfig(config)
     merge(self.Settings, config)
 end
 
--- Limpa todos desenhos
 function ESP:Clear()
     for obj, draws in pairs(self.Drawings) do
         for _, d in pairs(draws) do
@@ -51,7 +48,6 @@ function ESP:Clear()
     self.Drawings = {}
 end
 
--- Para o loop de render
 function ESP:Stop()
     if self._renderConnection then
         self._renderConnection:Disconnect()
@@ -60,16 +56,15 @@ function ESP:Stop()
     self:Clear()
 end
 
--- Inicia o loop de renderização
 function ESP:Start()
     if self._renderConnection then return end
+
     self._renderConnection = RunService:BindToRenderStep("ESP_Render", Enum.RenderPriority.Camera.Value + 1, function()
         if not self.Settings.Enabled then
             self:Clear()
             return
         end
 
-        -- Varre cada objeto referenciado
         for _, obj in pairs(self.Settings.ReferenceObjects) do
             if obj and obj.Parent then
                 local pos = obj.Position or (obj:IsA("BasePart") and obj.Position) or nil
@@ -77,7 +72,6 @@ function ESP:Start()
                     local dist = (Camera.CFrame.Position - pos).Magnitude
                     local onScreenVector, onScreen = Camera:WorldToViewportPoint(pos)
 
-                    -- Cria desenhos se não existirem
                     if not self.Drawings[obj] then
                         self.Drawings[obj] = {
                             Line = Drawing.new("Line"),
@@ -105,15 +99,41 @@ function ESP:Start()
                             draws.Line.Visible = false
                         end
 
-                        -- Box
+                        -- Box precisa
                         if self.Settings.BoxESP.Enabled then
                             draws.Box.Visible = true
                             draws.Box.Color = self.Settings.BoxESP.Color
                             draws.Box.Thickness = 1.5
-                            local sizeX = 50 / (dist / 10)
-                            local sizeY = 100 / (dist / 10)
-                            draws.Box.Size = Vector2.new(sizeX, sizeY)
-                            draws.Box.Position = Vector2.new(onScreenVector.X - sizeX / 2, onScreenVector.Y - sizeY / 2)
+
+                            local cf, size = obj:GetBoundingBox()
+                            local corners = {}
+                            for x = -0.5, 0.5, 1 do
+                                for y = -0.5, 0.5, 1 do
+                                    for z = -0.5, 0.5, 1 do
+                                        table.insert(corners, (cf * CFrame.new(x * size.X, y * size.Y, z * size.Z)).Position)
+                                    end
+                                end
+                            end
+
+                            local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+                            local visible = false
+                            for _, corner in pairs(corners) do
+                                local screenPos, isVisible = Camera:WorldToViewportPoint(corner)
+                                if isVisible then
+                                    visible = true
+                                    minX = math.min(minX, screenPos.X)
+                                    minY = math.min(minY, screenPos.Y)
+                                    maxX = math.max(maxX, screenPos.X)
+                                    maxY = math.max(maxY, screenPos.Y)
+                                end
+                            end
+
+                            if visible then
+                                draws.Box.Position = Vector2.new(minX, minY)
+                                draws.Box.Size = Vector2.new(maxX - minX, maxY - minY)
+                            else
+                                draws.Box.Visible = false
+                            end
                         else
                             draws.Box.Visible = false
                         end
@@ -134,7 +154,6 @@ function ESP:Start()
                     end
                 end
             else
-                -- Objeto inválido, remove desenhos
                 if self.Drawings[obj] then
                     for _, d in pairs(self.Drawings[obj]) do
                         if d and d.Remove then
