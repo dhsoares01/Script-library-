@@ -369,17 +369,18 @@ function Library:Create(title)
                 end
             end)
 
-            -- Dentro de tabObj:AddSlider
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        update(input)
+            UserInputService.InputChanged:Connect(function(input)
+                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    update(input)
+                end
+            end)
+
+            return container
+        end
+
+        return tabObj
     end
-end)
 
-return container          -- Fim da função AddSlider
-end                      -- Fim da função CreateTab
-
-return tabObj            -- Retorna o objeto com métodos da tab
-end                      -- Fim da função Library:Create(title)
-
-return Library           -- Retorna o módulo Library para ser usado fora
+    return Library
+end
+    
