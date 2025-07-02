@@ -4,160 +4,187 @@ ObjectESP.__index = ObjectESP
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 
-function ObjectESP.new(objects, config)
+function ObjectESP.new(configPerObject)
 	local self = setmetatable({}, ObjectESP)
 
-	self.Objects = objects
-	self.Config = {
-		Line2D = config.Line2D or false,
-		Line3D = config.Line3D or false,
-		Box2D = config.Box2D or false,
-		Box3D = config.Box3D or false,
-		Name2D = config.Name2D or false,
-		Name3D = config.Name3D or false,
-		Distance2D = config.Distance2D or false,
-		Distance3D = config.Distance3D or false,
-		Color = config.Color or Color3.new(1, 1, 1)
-	}
+	self.Objects = configPerObject or {}
+	self.Drawings = {}
+	self.GuiFolder = Instance.new("Folder", game.CoreGui)
+	self.GuiFolder.Name = "ESP3D_Guis"
 
-	self.Connections = {}
-	self:Start()
+	RunService.RenderStepped:Connect(function()
+		for obj, cfg in pairs(self.Objects) do
+			if obj and obj:IsA("BasePart") then
+				local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
+				local distance = (Camera.CFrame.Position - obj.Position).Magnitude
+
+				-- CRIA DRAWINGS SE NECESSÁRIO
+				self:CreateDrawings(obj, cfg)
+
+				-- LINE 2D
+				if cfg.Line2D then
+					local line = self.Drawings[obj].Line2D
+					line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+					line.To = Vector2.new(pos.X, pos.Y)
+					line.Visible = onScreen
+				end
+
+				-- BOX 2D
+				if cfg.Box2D then
+					local size = obj.Size * 1.5
+					local corner = Camera:WorldToViewportPoint(obj.Position + Vector3.new(size.X, size.Y, 0))
+					local topLeft = Vector2.new(pos.X - (corner.X - pos.X), pos.Y - (corner.Y - pos.Y))
+					local bottomRight = Vector2.new(pos.X + (corner.X - pos.X), pos.Y + (corner.Y - pos.Y))
+
+					local box = self.Drawings[obj].Box2D
+					box.Position = topLeft
+					box.Size = bottomRight - topLeft
+					box.Visible = onScreen
+				end
+
+				-- NAME 2D
+				if cfg.Name2D then
+					local text = self.Drawings[obj].Name2D
+					text.Position = Vector2.new(pos.X, pos.Y - 20)
+					text.Text = obj.Name
+					text.Visible = onScreen
+				end
+
+				-- DISTANCE 2D
+				if cfg.Distance2D then
+					local text = self.Drawings[obj].Distance2D
+					text.Position = Vector2.new(pos.X, pos.Y + 15)
+					text.Text = string.format("%.1fm", distance)
+					text.Visible = onScreen
+				end
+
+				-- LINE 3D
+				if cfg.Line3D then
+					local a = self.Drawings[obj].Line3D
+					a.Adornee = obj
+					a.Visible = true
+				end
+
+				-- BOX 3D
+				if cfg.Box3D then
+					local b = self.Drawings[obj].Box3D
+					b.Adornee = obj
+					b.Size = obj.Size
+					b.Visible = true
+				end
+
+				-- NAME 3D
+				if cfg.Name3D then
+					local txt = self.Drawings[obj].Name3D
+					txt.Adornee = obj
+					txt.TextLabel.Text = obj.Name
+					txt.Enabled = true
+				end
+
+				-- DISTANCE 3D
+				if cfg.Distance3D then
+					local txt = self.Drawings[obj].Distance3D
+					txt.Adornee = obj
+					txt.TextLabel.Text = string.format("%.1fm", distance)
+					txt.Enabled = true
+				end
+			end
+		end
+	end)
+
 	return self
 end
 
-function ObjectESP:Start()
-	self.Connections.Render = RunService.RenderStepped:Connect(function()
-		self:RenderAll()
-	end)
-end
+function ObjectESP:CreateDrawings(obj, cfg)
+	if self.Drawings[obj] then return end
+	self.Drawings[obj] = {}
 
-function ObjectESP:RenderAll()
-	for _, object in pairs(self.Objects) do
-		if object and object:IsA("BasePart") then
-			local pos, onScreen = Camera:WorldToViewportPoint(object.Position)
-
-			-- 2D Line
-			if self.Config.Line2D and onScreen then
-				self:DrawLine2D(Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y), Vector2.new(pos.X, pos.Y), self.Config.Color)
-			end
-
-			-- 3D Line
-			if self.Config.Line3D then
-				self:DrawLine3D(Camera.CFrame.Position, object.Position, self.Config.Color)
-			end
-
-			-- 2D Box
-			if self.Config.Box2D and onScreen then
-				self:DrawBox2D(pos, 50, 50, self.Config.Color)
-			end
-
-			-- 3D Box
-			if self.Config.Box3D then
-				self:DrawBox3D(object, self.Config.Color)
-			end
-
-			-- 2D Name
-			if self.Config.Name2D and onScreen then
-				self:DrawText2D(object.Name, Vector2.new(pos.X, pos.Y - 20), self.Config.Color)
-			end
-
-			-- 3D Name
-			if self.Config.Name3D then
-				self:DrawBillboard(object, object.Name, self.Config.Color)
-			end
-
-			-- 2D Distance
-			if self.Config.Distance2D and onScreen then
-				local dist = (Camera.CFrame.Position - object.Position).Magnitude
-				self:DrawText2D(string.format("%.1f", dist), Vector2.new(pos.X, pos.Y + 10), self.Config.Color)
-			end
-
-			-- 3D Distance
-			if self.Config.Distance3D then
-				local dist = (Camera.CFrame.Position - object.Position).Magnitude
-				self:DrawBillboard(object, string.format("%.1f", dist), self.Config.Color)
-			end
-		end
+	-- 2D
+	if cfg.Line2D then
+		local line = Drawing.new("Line")
+		line.Thickness = 1
+		line.Color = cfg.Color or Color3.new(1, 1, 1)
+		line.Visible = false
+		self.Drawings[obj].Line2D = line
 	end
-end
+	if cfg.Box2D then
+		local box = Drawing.new("Square")
+		box.Color = cfg.Color or Color3.new(1, 1, 1)
+		box.Thickness = 1
+		box.Filled = false
+		box.Visible = false
+		self.Drawings[obj].Box2D = box
+	end
+	if cfg.Name2D then
+		local text = Drawing.new("Text")
+		text.Size = 14
+		text.Center = true
+		text.Outline = true
+		text.Color = cfg.Color or Color3.new(1, 1, 1)
+		text.Visible = false
+		self.Drawings[obj].Name2D = text
+	end
+	if cfg.Distance2D then
+		local text = Drawing.new("Text")
+		text.Size = 13
+		text.Center = true
+		text.Outline = true
+		text.Color = cfg.Color or Color3.new(1, 1, 1)
+		text.Visible = false
+		self.Drawings[obj].Distance2D = text
+	end
 
-function ObjectESP:DrawLine2D(from, to, color)
-	local line = Drawing.new("Line")
-	line.From = from
-	line.To = to
-	line.Color = color
-	line.Thickness = 1.5
-	line.Transparency = 1
-	line.Visible = true
-	game:GetService("Debris"):AddItem(line, 0.03)
-end
+	-- 3D
+	if cfg.Line3D then
+		local adorn = Instance.new("Beam", obj)
+		adorn.Attachment0 = Instance.new("Attachment", obj)
+		adorn.Attachment1 = Instance.new("Attachment", Camera)
+		adorn.Width0 = 0.1
+		adorn.Width1 = 0.1
+		adorn.Color = ColorSequence.new(cfg.Color or Color3.new(1,1,1))
+		adorn.FaceCamera = true
+		adorn.Enabled = true
+		self.Drawings[obj].Line3D = adorn
+	end
 
-function ObjectESP:DrawLine3D(from, to, color)
-	local part = Instance.new("Part", workspace)
-	part.Anchored = true
-	part.CanCollide = false
-	part.Transparency = 0.5
-	part.Color = color
-	part.Size = Vector3.new(0.05, 0.05, (from - to).Magnitude)
-	part.CFrame = CFrame.new(from, to) * CFrame.new(0, 0, -part.Size.Z / 2)
-	game:GetService("Debris"):AddItem(part, 0.03)
-end
+	if cfg.Box3D then
+		local box = Instance.new("BoxHandleAdornment")
+		box.Size = obj.Size
+		box.Adornee = obj
+		box.AlwaysOnTop = true
+		box.ZIndex = 0
+		box.Color3 = cfg.Color or Color3.new(1,1,1)
+		box.Transparency = 0.2
+		box.Parent = self.GuiFolder
+		self.Drawings[obj].Box3D = box
+	end
 
-function ObjectESP:DrawBox2D(center, width, height, color)
-	local box = Drawing.new("Square")
-	box.Position = center - Vector2.new(width/2, height/2)
-	box.Size = Vector2.new(width, height)
-	box.Color = color
-	box.Thickness = 1.5
-	box.Transparency = 1
-	box.Visible = true
-	game:GetService("Debris"):AddItem(box, 0.03)
-end
+	if cfg.Name3D then
+		local gui = Instance.new("BillboardGui", self.GuiFolder)
+		gui.Size = UDim2.new(0, 100, 0, 20)
+		gui.StudsOffset = Vector3.new(0, 3, 0)
+		gui.AlwaysOnTop = true
+		local text = Instance.new("TextLabel", gui)
+		text.Size = UDim2.new(1, 0, 1, 0)
+		text.TextScaled = true
+		text.BackgroundTransparency = 1
+		text.TextColor3 = cfg.Color or Color3.new(1, 1, 1)
+		gui.TextLabel = text
+		self.Drawings[obj].Name3D = gui
+	end
 
-function ObjectESP:DrawBox3D(part, color)
-	local box = Instance.new("BoxHandleAdornment")
-	box.Adornee = part
-	box.AlwaysOnTop = true
-	box.ZIndex = 5
-	box.Size = part.Size
-	box.Transparency = 0.5
-	box.Color3 = color
-	box.Parent = part
-	game:GetService("Debris"):AddItem(box, 0.03)
-end
-
-function ObjectESP:DrawText2D(text, pos, color)
-	local txt = Drawing.new("Text")
-	txt.Text = text
-	txt.Position = pos
-	txt.Color = color
-	txt.Size = 13
-	txt.Center = true
-	txt.Outline = true
-	txt.Transparency = 1
-	txt.Visible = true
-	game:GetService("Debris"):AddItem(txt, 0.03)
-end
-
-function ObjectESP:DrawBillboard(part, text, color)
-	local bill = Instance.new("BillboardGui", part)
-	bill.Size = UDim2.new(0, 100, 0, 20)
-	bill.Adornee = part
-	bill.AlwaysOnTop = true
-
-	local label = Instance.new("TextLabel", bill)
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.TextColor3 = color
-	label.TextScaled = true
-	label.Text = text
-	label.Font = Enum.Font.ArialBold
-	game:GetService("Debris"):AddItem(bill, 0.03)
-end
-
-function ObjectESP:Destroy()
-	if self.Connections.Render then
-		self.Connections.Render:Disconnect()
+	if cfg.Distance3D then
+		local gui = Instance.new("BillboardGui", self.GuiFolder)
+		gui.Size = UDim2.new(0, 100, 0, 20)
+		gui.StudsOffset = Vector3.new(0, 2, 0)
+		gui.AlwaysOnTop = true
+		local text = Instance.new("TextLabel", gui)
+		text.Size = UDim2.new(1, 0, 1, 0)
+		text.TextScaled = true
+		text.BackgroundTransparency = 1
+		text.TextColor3 = cfg.Color or Color3.new(1, 1, 1)
+		gui.TextLabel = text
+		self.Drawings[obj].Distance3D = gui
 	end
 end
 
