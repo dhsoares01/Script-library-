@@ -25,7 +25,7 @@ function Library:Create(title)
     local UICorner = Instance.new("UICorner", Main)
     UICorner.CornerRadius = UDim.new(0, 16)
 
-    -- Header
+    --- Header ---
     local Header = Instance.new("Frame", Main)
     Header.Size = UDim2.new(1, 0, 0, 45)
     Header.BackgroundColor3 = Color3.fromRGB(38, 38, 47)
@@ -116,7 +116,7 @@ function Library:Create(title)
         PageHolder.Visible = not minimized
     end)
 
-    -- Drag support (mouse + touch)
+    --- Drag support (mouse + touch) ---
     local dragging, dragInput, dragStart, startPos
     local function update(input)
         local delta = input.Position - dragStart
@@ -129,29 +129,29 @@ function Library:Create(title)
             dragStart = input.Position
             startPos = Main.Position
 
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
+            -- Instead of input.Changed, use UserInputService.InputEnded for robustness
+            -- and connect to a single input ended event for the current drag.
+            -- Disconnect the event after it fires to prevent memory leaks if dragging stops.
+            local inputEndedConnection = UserInputService.InputEnded:Connect(function(inputEnded)
+                if inputEnded == input then
                     dragging = false
+                    inputEndedConnection:Disconnect()
                 end
             end)
         end
     end)
 
-    Header.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-
     UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            if dragging then
+                update(input)
+            end
         end
     end)
 
-    -- Criar tabs
+    --- Create tabs ---
     function Library:CreateTab(name)
-        local Button = Instance.new("TextButton", TabHolder)
+        local Button = Instance.new("TextButton")
         Button.Size = UDim2.new(1, -20, 0, 40)
         Button.Position = UDim2.new(0, 10, 0, 0)
         Button.BackgroundColor3 = Color3.fromRGB(49, 49, 60)
@@ -160,11 +160,12 @@ function Library:Create(title)
         Button.Font = Enum.Font.GothamSemibold
         Button.TextSize = 17
         Button.AutoButtonColor = false
+        Button.Parent = TabHolder -- Set parent here
 
         local BtnCorner = Instance.new("UICorner", Button)
         BtnCorner.CornerRadius = UDim.new(0, 12)
 
-        local Page = Instance.new("ScrollingFrame", PageHolder)
+        local Page = Instance.new("ScrollingFrame")
         Page.Size = UDim2.new(1, 0, 1, 0)
         Page.Visible = false
         Page.BackgroundTransparency = 1
@@ -173,6 +174,7 @@ function Library:Create(title)
         Page.VerticalScrollBarInset = Enum.ScrollBarInset.Always
         Page.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
         Page.BorderSizePixel = 0
+        Page.Parent = PageHolder -- Set parent here
 
         local layout = Instance.new("UIListLayout", Page)
         layout.Padding = UDim.new(0, 14)
@@ -202,7 +204,7 @@ function Library:Create(title)
         end)
 
         if #PageHolder:GetChildren() == 0 then
-            Button:CaptureFocus()
+            -- Button:CaptureFocus() -- CaptureFocus is not a common or necessary practice here for initial selection
             Page.Visible = true
             Button.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
         end
@@ -284,14 +286,21 @@ function Library:Create(title)
 
             toggle.MouseButton1Click:Connect(function()
                 toggled = not toggled
-                toggle.BackgroundColor3 = toggled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(80, 80, 80)
+                TweenService:Create(toggle, TweenInfo.new(0.2), {BackgroundColor3 = toggled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(80, 80, 80)}):Play()
                 circle:TweenPosition(toggled and UDim2.new(1, -24, 0.5, -10) or UDim2.new(0, 4, 0.5, -10), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
                 if callback then
                     callback(toggled)
                 end
             end)
 
-            return container
+            -- Function to manually set the toggle state, useful for loading configurations
+            function container:SetToggleState(state)
+                toggled = state
+                toggle.BackgroundColor3 = toggled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(80, 80, 80)
+                circle.Position = toggled and UDim2.new(1, -24, 0.5, -10) or UDim2.new(0, 4, 0.5, -10)
+            end
+
+            return container, function() return toggled end
         end
 
         function tabObj:AddSlider(text, min, max, default, callback)
@@ -328,16 +337,17 @@ function Library:Create(title)
             fillCorner.CornerRadius = UDim.new(0, 14)
 
             local dragging = false
+            local currentValue = default
 
             local function updateSlider(inputX)
                 local barPos = sliderBar.AbsolutePosition.X
                 local barSize = sliderBar.AbsoluteSize.X
                 local relativeX = math.clamp(inputX - barPos, 0, barSize)
                 local percent = relativeX / barSize
-                sliderFill.Size = UDim2.new(percent, 0, 1, 0)
-                local value = math.floor(min + (max - min) * percent)
-                label.Text = text .. ": " .. tostring(value)
-                if callback then callback(value) end
+                currentValue = math.floor(min + (max - min) * percent)
+                sliderFill.Size = UDim2.new((currentValue - min) / (max - min), 0, 1, 0)
+                label.Text = text .. ": " .. tostring(currentValue)
+                if callback then callback(currentValue) end
             end
 
             sliderBar.InputBegan:Connect(function(input)
@@ -347,7 +357,7 @@ function Library:Create(title)
                 end
             end)
 
-            sliderBar.InputChanged:Connect(function(input)
+            UserInputService.InputChanged:Connect(function(input)
                 if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                     updateSlider(input.Position.X)
                 end
@@ -359,48 +369,70 @@ function Library:Create(title)
                 end
             end)
 
-            return container
+            -- Function to manually set the slider value, useful for loading configurations
+            function container:SetSliderValue(value)
+                currentValue = math.clamp(value, min, max)
+                sliderFill.Size = UDim2.new((currentValue - min) / (max - min), 0, 1, 0)
+                label.Text = text .. ": " .. tostring(currentValue)
+            end
+
+            return container, function() return currentValue end
         end
 
         return tabObj
     end
 
-    -- ... (todo o seu código acima permanece o mesmo)
+    --- Create config tab with save and load ---
+    local configTab = Library:CreateTab("Configuração")
+
+    -- Define configData outside the function to persist it across calls/reloads
+    local configData = getgenv().MyConfig or {}
+    local uiElements = {} -- To store references to UI elements for updating
+
+    local function saveConfig()
+        getgenv().MyConfig = configData
+        print("Configurações salvas!")
+    end
+
+    local function loadConfig()
+        configData = getgenv().MyConfig or {}
+        print("Configurações carregadas!")
+
+        -- Update UI elements based on loaded config
+        if uiElements.featureToggle and configData.featureEnabled ~= nil then
+            uiElements.featureToggle:SetToggleState(configData.featureEnabled)
+        end
+        if uiElements.volumeSlider and configData.volume ~= nil then
+            uiElements.volumeSlider:SetSliderValue(configData.volume)
+        end
+    end
+
+    configTab:AddLabel("Configurações do Usuário")
+
+    -- Example toggle with save/load
+    local toggleContainer, getToggleState = configTab:AddToggle("Ativar recurso", configData.featureEnabled or false, function(state)
+        configData.featureEnabled = state
+    end)
+    uiElements.featureToggle = toggleContainer -- Store reference
+
+    -- Example slider with save/load
+    local sliderContainer, getSliderValue = configTab:AddSlider("Volume", 0, 100, configData.volume or 50, function(value)
+        configData.volume = value
+    end)
+    uiElements.volumeSlider = sliderContainer -- Store reference
+
+    local saveButton = configTab:AddButton("Salvar Configurações", function()
+        saveConfig()
+    end)
+
+    local loadButton = configTab:AddButton("Carregar Configurações", function()
+        loadConfig()
+    end)
+
+    -- Initial load of config when the UI is created
+    loadConfig()
 
     return Library
 end
-
--- Adição: salvamento de configurações em getgenv()
-local savedSettings = getgenv().UserSettings or {}
-
-function Library:SaveSetting(key, value)
-    savedSettings[key] = value
-    getgenv().UserSettings = savedSettings
-end
-
-function Library:GetSetting(key, default)
-    return savedSettings[key] ~= nil and savedSettings[key] or default
-end
-
--- Cria a aba obrigatória "Configuração"
-task.defer(function()
-    local configTab = Library:CreateTab("Configuração")
-
-    configTab:AddLabel("Preferências do Usuário")
-
-    configTab:AddToggle("Modo Escuro", Library:GetSetting("darkMode", true), function(state)
-        Library:SaveSetting("darkMode", state)
-    end)
-
-    configTab:AddSlider("Volume Geral", 0, 100, Library:GetSetting("volume", 50), function(value)
-        Library:SaveSetting("volume", value)
-    end)
-
-    configTab:AddButton("Resetar Configurações", function()
-        getgenv().UserSettings = {}
-        savedSettings = {}
-        warn("Configurações resetadas.")
-    end)
-end)
 
 return Library
