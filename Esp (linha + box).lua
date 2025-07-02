@@ -13,39 +13,55 @@ function ObjectESP.new(configPerObject)
 	self.GuiFolder.Name = "ESP3D_Guis"
 
 	RunService.RenderStepped:Connect(function()
+		local fovPadrao = 70
+		local currentFOV = Camera.FieldOfView
+		local scale = 1
+		if currentFOV > fovPadrao then
+			scale = fovPadrao / currentFOV
+		end
+		local centerX = Camera.ViewportSize.X / 2
+		local centerY = Camera.ViewportSize.Y / 2
+
 		for obj, cfg in pairs(self.Objects) do
 			if obj and obj:IsA("BasePart") then
 				local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
 				local distance = (Camera.CFrame.Position - obj.Position).Magnitude
 
-				-- CRIA DRAWINGS SE NECESSÁRIO
+				-- Ajusta posição 2D considerando o FOV
+				local adjustedX = centerX + (pos.X - centerX) * scale
+				local adjustedY = centerY + (pos.Y - centerY) * scale
+
 				self:CreateDrawings(obj, cfg)
 
 				-- LINE 2D
 				if cfg.Line2D then
 					local line = self.Drawings[obj].Line2D
-					line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
-					line.To = Vector2.new(pos.X, pos.Y)
+					line.From = Vector2.new(centerX, Camera.ViewportSize.Y)
+					line.To = Vector2.new(adjustedX, adjustedY)
 					line.Visible = onScreen
 				end
 
 				-- BOX 2D
 				if cfg.Box2D then
 					local size = obj.Size * 1.5
-					local corner = Camera:WorldToViewportPoint(obj.Position + Vector3.new(size.X, size.Y, 0))
-					local topLeft = Vector2.new(pos.X - (corner.X - pos.X), pos.Y - (corner.Y - pos.Y))
-					local bottomRight = Vector2.new(pos.X + (corner.X - pos.X), pos.Y + (corner.Y - pos.Y))
+					local cornerPos, cornerOnScreen = Camera:WorldToViewportPoint(obj.Position + Vector3.new(size.X, size.Y, 0))
+
+					local adjustedCornerX = centerX + (cornerPos.X - centerX) * scale
+					local adjustedCornerY = centerY + (cornerPos.Y - centerY) * scale
+
+					local topLeft = Vector2.new(adjustedX - (adjustedCornerX - adjustedX), adjustedY - (adjustedCornerY - adjustedY))
+					local bottomRight = Vector2.new(adjustedX + (adjustedCornerX - adjustedX), adjustedY + (adjustedCornerY - adjustedY))
 
 					local box = self.Drawings[obj].Box2D
 					box.Position = topLeft
 					box.Size = bottomRight - topLeft
-					box.Visible = onScreen
+					box.Visible = onScreen and cornerOnScreen
 				end
 
 				-- NAME 2D
 				if cfg.Name2D then
 					local text = self.Drawings[obj].Name2D
-					text.Position = Vector2.new(pos.X, pos.Y - 20)
+					text.Position = Vector2.new(adjustedX, adjustedY - 20)
 					text.Text = obj.Name
 					text.Visible = onScreen
 				end
@@ -53,7 +69,7 @@ function ObjectESP.new(configPerObject)
 				-- DISTANCE 2D
 				if cfg.Distance2D then
 					local text = self.Drawings[obj].Distance2D
-					text.Position = Vector2.new(pos.X, pos.Y + 15)
+					text.Position = Vector2.new(adjustedX, adjustedY + 15)
 					text.Text = string.format("%.1fm", distance)
 					text.Visible = onScreen
 				end
