@@ -365,7 +365,42 @@ function Library:Create(title)
         return tabObj
     end
 
+    -- ... (todo o seu código acima permanece o mesmo)
+
     return Library
 end
+
+-- Adição: salvamento de configurações em getgenv()
+local savedSettings = getgenv().UserSettings or {}
+
+function Library:SaveSetting(key, value)
+    savedSettings[key] = value
+    getgenv().UserSettings = savedSettings
+end
+
+function Library:GetSetting(key, default)
+    return savedSettings[key] ~= nil and savedSettings[key] or default
+end
+
+-- Cria a aba obrigatória "Configuração"
+task.defer(function()
+    local configTab = Library:CreateTab("Configuração")
+
+    configTab:AddLabel("Preferências do Usuário")
+
+    configTab:AddToggle("Modo Escuro", Library:GetSetting("darkMode", true), function(state)
+        Library:SaveSetting("darkMode", state)
+    end)
+
+    configTab:AddSlider("Volume Geral", 0, 100, Library:GetSetting("volume", 50), function(value)
+        Library:SaveSetting("volume", value)
+    end)
+
+    configTab:AddButton("Resetar Configurações", function()
+        getgenv().UserSettings = {}
+        savedSettings = {}
+        warn("Configurações resetadas.")
+    end)
+end)
 
 return Library
