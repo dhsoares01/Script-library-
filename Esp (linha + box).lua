@@ -108,7 +108,7 @@ function ESPLibrary.CreateESPBeam(obj, tipo, color)
     }
 end
 
--- ESP 2D (linha + box)
+-- ESP 2D (linha + box) com FOV ajustado
 function ESPLibrary.CreateESP2D(obj, tipo, color)
     if not obj:IsA("BasePart") then return end
     drawingLines[tipo] = drawingLines[tipo] or {}
@@ -142,12 +142,19 @@ function ESPLibrary.CreateESP2D(obj, tipo, color)
             return
         end
 
-        local size = obj.Size
-        local screenSize = (camera:WorldToViewportPoint(obj.Position + Vector3.new(0, size.Y / 2, 0)) - camera:WorldToViewportPoint(obj.Position - Vector3.new(0, size.Y / 2, 0))).Y
-        local width = screenSize * (size.X / size.Y)
+        local fovScale = 70 / camera.FieldOfView
 
-        box.Size = Vector2.new(width, screenSize)
-        box.Position = Vector2.new(rootPos.X - width / 2, rootPos.Y - screenSize / 2)
+        local size = obj.Size
+        local top = camera:WorldToViewportPoint(obj.Position + Vector3.new(0, size.Y / 2, 0))
+        local bottom = camera:WorldToViewportPoint(obj.Position - Vector3.new(0, size.Y / 2, 0))
+        local height = (top - bottom).Y * fovScale
+        local width = height * (size.X / size.Y)
+
+        local boxX = rootPos.X - (width / 2)
+        local boxY = rootPos.Y - (height / 2)
+
+        box.Size = Vector2.new(width, height)
+        box.Position = Vector2.new(boxX, boxY)
         box.Visible = true
 
         local viewCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
@@ -163,7 +170,7 @@ function ESPLibrary.CreateESP2D(obj, tipo, color)
     }
 end
 
--- Remove todos os tipos de ESP
+-- Remove ESP individual
 function ESPLibrary.RemoveESP(tipo, obj)
     if drawingLines[tipo] and drawingLines[tipo][obj] then
         local esp = drawingLines[tipo][obj]
@@ -183,7 +190,7 @@ function ESPLibrary.RemoveESP(tipo, obj)
     end
 end
 
--- Atualiza tudo por tipo
+-- Atualiza todos os objetos de um tipo
 function ESPLibrary.UpdateAll(tipo, objs, color)
     local cameraPos = camera.CFrame.Position
     local validObjs, objSet = {}, {}
@@ -223,7 +230,7 @@ function ESPLibrary.UpdateAll(tipo, objs, color)
     end
 end
 
--- Limpa todos
+-- Remove todos os objetos de um tipo
 function ESPLibrary.RemoveAll(tipo)
     if drawingLines[tipo] then
         for obj in pairs(drawingLines[tipo]) do
