@@ -23,16 +23,19 @@ function ESP.new(config)
     self.Camera = workspace.CurrentCamera
     self.RunService = game:GetService("RunService")
 
-    -- Função para adicionar objeto pra espionar
+    -- Guarda os drawings para cada objeto
+    self.ESPData = {}
+
+    -- Função para adicionar objeto para espionar
     function self:AddObject(obj)
         if obj and not table.find(self.TrackedObjects, obj) then
             table.insert(self.TrackedObjects, obj)
         end
     end
 
-    -- Função para remover objeto da lista
+    -- Função para remover objeto da lista e limpar drawings
     function self:RemoveObject(obj)
-        for i, v in pairs(self.TrackedObjects) do
+        for i, v in ipairs(self.TrackedObjects) do
             if v == obj then
                 table.remove(self.TrackedObjects, i)
                 break
@@ -89,12 +92,10 @@ function ESP.new(config)
         return text
     end
 
-    -- Guarda os drawings para cada objeto
-    self.ESPData = {}
-
-    -- Atualiza a ESP toda frame
+    -- Atualiza a ESP a cada frame
     self.Connection = self.RunService.RenderStepped:Connect(function()
         if not self.Enabled then return end
+
         local cam = self.Camera
         local lp = self.LocalPlayer
         if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then return end
@@ -102,11 +103,10 @@ function ESP.new(config)
 
         -- Filtra objetos válidos e remove inválidos imediatamente
         local validObjects = {}
-        for i, obj in pairs(self.TrackedObjects) do
+        for _, obj in ipairs(self.TrackedObjects) do
             if obj and obj.Parent then
                 table.insert(validObjects, obj)
             else
-                -- Remove desenhos do objeto inválido
                 if self.ESPData[obj] then
                     for _, v in pairs(self.ESPData[obj]) do
                         v:Remove()
@@ -117,8 +117,8 @@ function ESP.new(config)
         end
         self.TrackedObjects = validObjects
 
-        -- Agora atualiza ESP dos objetos válidos
-        for i, obj in pairs(self.TrackedObjects) do
+        -- Atualiza ESP dos objetos válidos
+        for _, obj in ipairs(self.TrackedObjects) do
             local rootPosObj = nil
             if obj:IsA("BasePart") then
                 rootPosObj = obj.Position
@@ -127,13 +127,13 @@ function ESP.new(config)
                 if hrp then
                     rootPosObj = hrp.Position
                 else
-                    local suc, cframe = pcall(function() return obj:GetBoundingBox() end)
+                    local suc, cframe, size = pcall(function() return obj:GetBoundingBox() end)
                     if suc and cframe then
                         rootPosObj = cframe.Position
                     end
                 end
             else
-                local suc, cframe = pcall(function() return obj:GetBoundingBox() end)
+                local suc, cframe, size = pcall(function() return obj:GetBoundingBox() end)
                 if suc and cframe then
                     rootPosObj = cframe.Position
                 end
@@ -145,25 +145,26 @@ function ESP.new(config)
                         v.Visible = false
                     end
                 end
-                continue
+                -- 'continue' não existe no Lua, então pulamos com 'goto'
+                goto continue_loop
             end
 
             local dist = (rootPos - rootPosObj).Magnitude
 
-            local onScreen, screenPos = pcall(function()
+            local success, screenPos3D = pcall(function()
                 return cam:WorldToViewportPoint(rootPosObj)
             end)
 
-            if not onScreen or screenPos.Z < 0 then
+            if not success or screenPos3D.Z < 0 then
                 if self.ESPData[obj] then
                     for _, v in pairs(self.ESPData[obj]) do
                         v.Visible = false
                     end
                 end
-                continue
+                goto continue_loop
             end
 
-            screenPos = Vector2.new(screenPos.X, screenPos.Y)
+            local screenPos = Vector2.new(screenPos3D.X, screenPos3D.Y)
 
             -- Cria drawings se não existir para o objeto
             if not self.ESPData[obj] then
@@ -180,7 +181,7 @@ function ESP.new(config)
                 if self.Box3DESP then
                     self.ESPData[obj].box3d = {}
                     for _=1,12 do
-                        self.ESPData[obj].box3d[#self.ESPData[obj].box3d+1] = createLine()
+                        table.insert(self.ESPData[obj].box3d, createLine())
                     end
                 end
 
@@ -211,9 +212,9 @@ function ESP.new(config)
 
             -- Box 2D ESP
             if self.Box2DESP and data.box2d then
-                local size = Vector2.new(50, 70) -- exemplo fixo, pode ajustar
+                local size = Vector2.new(50, 70) -- exemplo fixo, ajuste conforme precisar
                 data.box2d.Size = size
-                data.box2d.Position = screenPos - (size/2)
+                data.box2d.Position = screenPos - (size / 2)
                 data.box2d.Visible = true
             elseif data.box2d then
                 data.box2d.Visible = false
@@ -239,7 +240,7 @@ function ESP.new(config)
                         cframe * Vector3.new(-extents.X, extents.Y, extents.Z),
                     }
 
-                    for i, v in pairs(points) do
+                    for i, v in ipairs(points) do
                         local onscreen2, pos2 = pcall(function()
                             return cam:WorldToViewportPoint(v)
                         end)
@@ -256,7 +257,7 @@ function ESP.new(config)
                         {1,5},{2,6},{3,7},{4,8}
                     }
 
-                    for i,line in pairs(data.box3d) do
+                    for i, line in ipairs(data.box3d) do
                         local idx = linesIdx[i]
                         local p1 = points[idx[1]]
                         local p2 = points[idx[2]]
@@ -291,17 +292,15 @@ function ESP.new(config)
                         cframe * Vector3.new(-extents.X, extents.Y, extents.Z),
                     }
 
-                    local screenPoints = {}
                     local minX, maxX = math.huge, -math.huge
                     local minY, maxY = math.huge, -math.huge
 
-                    for _, corner in pairs(corners3d) do
+                    for _, corner in ipairs(corners3d) do
                         local onscreen4, pos4 = pcall(function()
                             return cam:WorldToViewportPoint(corner)
                         end)
                         if onscreen4 and pos4.Z > 0 then
                             local sp = Vector2.new(pos4.X, pos4.Y)
-                            screenPoints[#screenPoints+1] = sp
                             if sp.X < minX then minX = sp.X end
                             if sp.X > maxX then maxX = sp.X end
                             if sp.Y < minY then minY = sp.Y end
@@ -309,7 +308,7 @@ function ESP.new(config)
                         end
                     end
 
-                    if #screenPoints > 0 then
+                    if minX ~= math.huge and minY ~= math.huge and maxX ~= -math.huge and maxY ~= -math.huge then
                         data.objectBox.Position = Vector2.new(minX, minY)
                         data.objectBox.Size = Vector2.new(maxX - minX, maxY - minY)
                         data.objectBox.Visible = true
@@ -340,6 +339,8 @@ function ESP.new(config)
             elseif data.distance then
                 data.distance.Visible = false
             end
+
+            ::continue_loop::
         end
     end)
 
