@@ -1,226 +1,168 @@
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
-local ESP = {}
-ESP.__index = ESP
+local ESP3D = {}
+ESP3D.__index = ESP3D
 
-function ESP.new()
-    local self = setmetatable({}, ESP)
+-- Cria linha 3D entre dois pontos (Part fino e transparente)
+local function createLinePart()
+    local part = Instance.new("Part")
+    part.Anchored = true
+    part.CanCollide = false
+    part.Transparency = 0.5
+    part.Material = Enum.Material.Neon
+    part.Shape = Enum.PartType.Block
+    part.Size = Vector3.new(0.1, 0.1, 1) -- comprimento vai ser escalado dinamicamente
+    part.CastShadow = false
+    part.Name = "ESPLINE"
+    return part
+end
+
+-- Cria BillboardGui para texto flutuante
+local function createBillboard(textColor)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(0, 150, 0, 50)
+    billboard.AlwaysOnTop = true
+    billboard.ExtentsOffset = Vector3.new(0, 2, 0)
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1,0,1,0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextColor3 = textColor or Color3.new(1,1,1)
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.TextScaled = true
+    textLabel.Font = Enum.Font.SourceSansBold
+    textLabel.Text = ""
+    textLabel.Parent = billboard
+
+    billboard.Name = "ESPBillboard"
+    billboard.Parent = nil -- será setado depois
+    billboard.TextLabel = textLabel
+
+    return billboard
+end
+
+function ESP3D.new(settings)
+    local self = setmetatable({}, ESP3D)
 
     self.Settings = {
         Enabled = true,
-        MaxDistance = 150,
-        ReferenceObjects = {},
-
-        LineESP = { Enabled = true, Color = Color3.fromRGB(255, 0, 0) },
-        BoxESP = { Enabled = true, Color = Color3.fromRGB(0, 255, 0) },
-        TextESP = { Enabled = true, Color = Color3.fromRGB(255, 255, 255) }
+        Objects = {}, -- lista de BaseParts
+        MaxDistance = 250,
+        LineColor = Color3.fromRGB(0,255,0),
+        BoxColor = Color3.fromRGB(0,255,0),
+        TextColor = Color3.fromRGB(255,255,255),
     }
+    if settings then
+        for k,v in pairs(settings) do
+            self.Settings[k] = v
+        end
+    end
 
-    self.Drawings = {}
-    self._renderConnection = nil
-    self.MaxBoxLines = 12
+    self.espObjects = {}
+
+    local function createEspForObject(obj)
+        -- SelectionBox para box 3D
+        local box = Instance.new("SelectionBox")
+        box.Adornee = obj
+        box.LineThickness = 0.01
+        box.Color3 = self.Settings.BoxColor
+        box.Parent = obj
+
+        -- Linha 3D entre jogador e objeto
+        local line = createLinePart()
+        line.Color = self.Settings.LineColor
+        line.Parent = workspace
+
+        -- BillboardGui para texto
+        local billboard = createBillboard(self.Settings.TextColor)
+        billboard.Parent = obj
+
+        return {
+            Object = obj,
+            Box = box,
+            Line = line,
+            Billboard = billboard,
+        }
+    end
+
+    -- Inicializa ESP para cada objeto
+    for _, obj in pairs(self.Settings.Objects) do
+        if obj and obj:IsA("BasePart") then
+            self.espObjects[obj] = createEspForObject(obj)
+        end
+    end
+
+    -- Atualiza tudo a cada frame
+    self._conn = RunService.RenderStepped:Connect(function()
+        if not self.Settings.Enabled then
+            for _, esp in pairs(self.espObjects) do
+                esp.Box.Visible = false
+                esp.Line.Transparency = 1
+                esp.Billboard.Enabled = false
+            end
+            return
+        end
+
+        local character = LocalPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+
+        local playerPos = rootPart.Position
+
+        for obj, esp in pairs(self.espObjects) do
+            if obj and obj.Parent then
+                local objPos = obj.Position
+                local dist = (playerPos - objPos).Magnitude
+
+                if dist <= self.Settings.MaxDistance then
+                    -- Ativa ESP
+                    esp.Box.Visible = true
+                    esp.Box.Color3 = self.Settings.BoxColor
+
+                    -- Atualiza linha 3D
+                    local direction = (objPos - playerPos)
+                    local midPoint = playerPos + direction/2
+                    esp.Line.Size = Vector3.new(0.05, 0.05, direction.Magnitude)
+                    esp.Line.CFrame = CFrame.new(midPoint, objPos) * CFrame.new(0,0,-direction.Magnitude/2)
+                    esp.Line.Transparency = 0 -- visível
+                    esp.Line.Color = self.Settings.LineColor
+
+                    -- Atualiza texto
+                    esp.Billboard.Enabled = true
+                    esp.Billboard.TextLabel.Text = tostring(obj.Name) .. " [" .. math.floor(dist) .. "m]"
+                    esp.Billboard.TextLabel.TextColor3 = self.Settings.TextColor
+                else
+                    -- Desativa ESP
+                    esp.Box.Visible = false
+                    esp.Line.Transparency = 1
+                    esp.Billboard.Enabled = false
+                end
+            else
+                -- Objeto inválido, remove ESP
+                esp.Box:Destroy()
+                esp.Line:Destroy()
+                esp.Billboard:Destroy()
+                self.espObjects[obj] = nil
+            end
+        end
+    end)
 
     return self
 end
 
-function ESP:UpdateConfig(config)
-    local function merge(t1, t2)
-        for k,v in pairs(t2) do
-            if type(v) == "table" and type(t1[k]) == "table" then
-                merge(t1[k], v)
-            else
-                t1[k] = v
-            end
-        end
+function ESP3D:Destroy()
+    if self._conn then
+        self._conn:Disconnect()
+        self._conn = nil
     end
-    merge(self.Settings, config)
-end
-
-function ESP:Clear()
-    for obj, draws in pairs(self.Drawings) do
-        for _, d in pairs(draws) do
-            if d and d.Remove then
-                d:Remove()
-            end
-        end
+    for _, esp in pairs(self.espObjects) do
+        if esp.Box then esp.Box:Destroy() end
+        if esp.Line then esp.Line:Destroy() end
+        if esp.Billboard then esp.Billboard:Destroy() end
     end
-    self.Drawings = {}
+    self.espObjects = {}
 end
 
-function ESP:Stop()
-    if self._renderConnection then
-        self._renderConnection:Disconnect()
-        self._renderConnection = nil
-    end
-    self:Clear()
-end
-
-function ESP:Start()
-    if self._renderConnection then return end
-
-    self._renderConnection = RunService:BindToRenderStep("ESP_Render", Enum.RenderPriority.Camera.Value + 1, function()
-        if not self.Settings.Enabled then
-            self:Clear()
-            return
-        end
-
-        for _, obj in pairs(self.Settings.ReferenceObjects) do
-            if obj and obj.Parent then
-                local pos = obj.Position or (obj:IsA("BasePart") and obj.Position)
-                if pos then
-                    local dist = (Camera.CFrame.Position - pos).Magnitude
-                    local onScreenVector, onScreen = Camera:WorldToViewportPoint(pos)
-
-                    if not self.Drawings[obj] then
-                        local lines = {}
-                        for i = 1, self.MaxBoxLines do
-                            local line = Drawing.new("Line")
-                            line.Visible = false
-                            line.Color = self.Settings.BoxESP.Color
-                            line.Thickness = 1.5
-                            table.insert(lines, line)
-                        end
-
-                        local lineToCenter = Drawing.new("Line")
-                        lineToCenter.Visible = false
-                        lineToCenter.Color = self.Settings.LineESP.Color
-                        lineToCenter.Thickness = 1.5
-
-                        local text = Drawing.new("Text")
-                        text.Center = true
-                        text.Outline = true
-                        text.Size = 13
-                        text.Font = 2
-                        text.Visible = false
-
-                        self.Drawings[obj] = {
-                            Lines = lines,
-                            LineToCenter = lineToCenter,
-                            Text = text
-                        }
-                    end
-
-                    local draws = self.Drawings[obj]
-
-                    if dist <= self.Settings.MaxDistance and onScreen then
-                        -- Verifica FOV horizontal
-                        local cameraDirection = Camera.CFrame.LookVector
-                        local directionToObj = (pos - Camera.CFrame.Position).Unit
-                        local dot = cameraDirection:Dot(directionToObj)
-                        local angle = math.deg(math.acos(dot))
-
-                        if angle > (Camera.FieldOfView / 2) then
-                            for _, line in ipairs(draws.Lines) do
-                                line.Visible = false
-                            end
-                            draws.LineToCenter.Visible = false
-                            draws.Text.Visible = false
-                            continue
-                        end
-
-                        -- Linha até o centro
-                        if self.Settings.LineESP.Enabled then
-                            draws.LineToCenter.Visible = true
-                            draws.LineToCenter.Color = self.Settings.LineESP.Color
-                            draws.LineToCenter.Thickness = 1.5
-                            draws.LineToCenter.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                            draws.LineToCenter.To = Vector2.new(onScreenVector.X, onScreenVector.Y)
-                        else
-                            draws.LineToCenter.Visible = false
-                        end
-
-                        -- Caixa 3D
-                        if self.Settings.BoxESP.Enabled then
-                            local cf, size = obj:GetBoundingBox()
-                            local corners = {}
-                            for x = -0.5, 0.5, 1 do
-                                for y = -0.5, 0.5, 1 do
-                                    for z = -0.5, 0.5, 1 do
-                                        table.insert(corners, (cf * CFrame.new(x * size.X, y * size.Y, z * size.Z)).Position)
-                                    end
-                                end
-                            end
-
-                            local screenCorners = {}
-                            local visibleCount = 0
-                            for i, corner in ipairs(corners) do
-                                local screenPos, isVisible = Camera:WorldToViewportPoint(corner)
-                                screenCorners[i] = {pos = Vector2.new(screenPos.X, screenPos.Y), onScreen = isVisible}
-                                if isVisible then visibleCount = visibleCount + 1 end
-                            end
-
-                            if visibleCount > 0 then
-                                local function setLine(i, startIndex, endIndex)
-                                    local startCorner = screenCorners[startIndex]
-                                    local endCorner = screenCorners[endIndex]
-                                    local line = draws.Lines[i]
-                                    if startCorner.onScreen and endCorner.onScreen then
-                                        line.Visible = true
-                                        line.From = startCorner.pos
-                                        line.To = endCorner.pos
-                                        line.Color = self.Settings.BoxESP.Color
-                                        line.Thickness = 1.5
-                                    else
-                                        line.Visible = false
-                                    end
-                                end
-
-                                -- Liga os 12 arestas da caixa 3D
-                                setLine(1, 1, 2)
-                                setLine(2, 2, 4)
-                                setLine(3, 4, 3)
-                                setLine(4, 3, 1)
-
-                                setLine(5, 5, 6)
-                                setLine(6, 6, 8)
-                                setLine(7, 8, 7)
-                                setLine(8, 7, 5)
-
-                                setLine(9, 1, 5)
-                                setLine(10, 2, 6)
-                                setLine(11, 3, 7)
-                                setLine(12, 4, 8)
-                            else
-                                for _, line in ipairs(draws.Lines) do
-                                    line.Visible = false
-                                end
-                            end
-                        else
-                            for _, line in ipairs(draws.Lines) do
-                                line.Visible = false
-                            end
-                        end
-
-                        -- Texto
-                        if self.Settings.TextESP.Enabled then
-                            draws.Text.Visible = true
-                            draws.Text.Color = self.Settings.TextESP.Color
-                            draws.Text.Text = string.format("%s\n%.0f studs", obj.Name or "Obj", dist)
-                            draws.Text.Position = Vector2.new(onScreenVector.X, onScreenVector.Y - 60)
-                        else
-                            draws.Text.Visible = false
-                        end
-                    else
-                        for _, line in ipairs(draws.Lines) do
-                            line.Visible = false
-                        end
-                        draws.LineToCenter.Visible = false
-                        draws.Text.Visible = false
-                    end
-                else
-                    if self.Drawings[obj] then
-                        for _, d in pairs(self.Drawings[obj]) do
-                            if d and d.Remove then
-                                d:Remove()
-                            end
-                        end
-                        self.Drawings[obj] = nil
-                    end
-                end
-            end
-        end
-    end)
-end
-
-return ESP
+return ESP3D
