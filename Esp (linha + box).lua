@@ -6,40 +6,49 @@ local maxESP = 12
 local espDistanceMax = 100
 local drawingLines = {}
 
+-- Cores padrão
+local DEFAULT_COLOR = Color3.fromRGB(0, 200, 255)
+local BORDER_COLOR = Color3.fromRGB(255, 255, 255)
+
+-- Função para criar uma moldura 2D profissional nas faces
 function ESPLibrary.CreateESPBox(obj, color)
     if obj:FindFirstChild("ESPBoxGui") then return end
 
     local faces = {
-        Enum.NormalId.Top,
-        Enum.NormalId.Bottom,
-        Enum.NormalId.Left,
-        Enum.NormalId.Right,
-        Enum.NormalId.Front,
-        Enum.NormalId.Back,
+        Enum.NormalId.Top, Enum.NormalId.Bottom,
+        Enum.NormalId.Left, Enum.NormalId.Right,
+        Enum.NormalId.Front, Enum.NormalId.Back,
     }
 
-    for _, face in pairs(faces) do
+    for _, face in ipairs(faces) do
         local surfaceGui = Instance.new("SurfaceGui")
         surfaceGui.Name = "ESPBoxGui"
         surfaceGui.Adornee = obj
-        surfaceGui.AlwaysOnTop = true
         surfaceGui.Face = face
+        surfaceGui.AlwaysOnTop = true
         surfaceGui.LightInfluence = 0
         surfaceGui.ResetOnSpawn = false
+        surfaceGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         surfaceGui.Parent = obj
 
         local frame = Instance.new("Frame")
-        frame.BackgroundTransparency = 0.7
-        frame.BackgroundColor3 = color or Color3.fromRGB(0, 200, 255)
-        frame.BorderSizePixel = 1
-        frame.BorderColor3 = Color3.fromRGB(255, 255, 255)
         frame.Size = UDim2.new(1, 0, 1, 0)
+        frame.BackgroundTransparency = 0.5
+        frame.BackgroundColor3 = color or DEFAULT_COLOR
+        frame.BorderColor3 = BORDER_COLOR
+        frame.BorderSizePixel = 1
         frame.AnchorPoint = Vector2.new(0.5, 0.5)
         frame.Position = UDim2.new(0.5, 0, 0.5, 0)
         frame.Parent = surfaceGui
+
+        -- Estética mais moderna
+        local uicorner = Instance.new("UICorner")
+        uicorner.CornerRadius = UDim.new(0, 3)
+        uicorner.Parent = frame
     end
 end
 
+-- Cria linha e ponto com beam e esfera
 function ESPLibrary.CreateESPBeam(obj, tipo, color)
     if obj:FindFirstChild("ESP_Attach") then return end
 
@@ -52,8 +61,8 @@ function ESPLibrary.CreateESPBeam(obj, tipo, color)
     sphere.Material = Enum.Material.Neon
     sphere.Anchored = true
     sphere.CanCollide = false
-    sphere.Transparency = 0.5
-    sphere.Color = color or Color3.fromRGB(0, 200, 255)
+    sphere.Transparency = 0.35
+    sphere.Color = color or DEFAULT_COLOR
     sphere.Name = "ESP_Sphere"
     sphere.Parent = workspace
 
@@ -63,33 +72,32 @@ function ESPLibrary.CreateESPBeam(obj, tipo, color)
     beam.Attachment0 = originAttach
     beam.Attachment1 = root
     beam.FaceCamera = true
-    beam.Width0 = 0.12
-    beam.Width1 = 0.12
-    beam.Color = ColorSequence.new(color or Color3.fromRGB(0, 200, 255))
+    beam.Width0 = 0.08
+    beam.Width1 = 0.08
+    beam.Color = ColorSequence.new(color or DEFAULT_COLOR)
     beam.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 0.4),
+        NumberSequenceKeypoint.new(0, 0.3),
         NumberSequenceKeypoint.new(0.5, 0),
-        NumberSequenceKeypoint.new(1, 0.4)
+        NumberSequenceKeypoint.new(1, 0.3)
     }
     beam.LightEmission = 1
-    beam.Texture = "rbxassetid://127587558" -- Estilo elegante
-    beam.TextureLength = 4
-    beam.TextureSpeed = 0.5
+    beam.Texture = "rbxassetid://127587558"
+    beam.TextureLength = 2.5
+    beam.TextureSpeed = 0.6
     beam.Parent = sphere
 
     local pulseTime = 0
     local updateConn = RunService.RenderStepped:Connect(function(dt)
         pulseTime += dt * 1.5
-        local alpha = (math.sin(pulseTime) + 1) / 2 * 0.25 + 0.3
+        local alpha = (math.sin(pulseTime) + 1) / 2 * 0.2 + 0.3
         beam.Transparency = NumberSequence.new{
             NumberSequenceKeypoint.new(0, alpha),
             NumberSequenceKeypoint.new(0.5, 0),
             NumberSequenceKeypoint.new(1, alpha)
         }
 
-        local camCFrame = camera.CFrame
-        local pos = camCFrame.Position + camCFrame.LookVector * 2 + Vector3.new(0, -1.5, 0)
-        sphere.Position = pos
+        local cam = camera.CFrame
+        sphere.Position = cam.Position + cam.LookVector * 2 + Vector3.new(0, -1.5, 0)
     end)
 
     drawingLines[tipo] = drawingLines[tipo] or {}
@@ -111,7 +119,7 @@ function ESPLibrary.RemoveESP(tipo, obj)
         drawingLines[tipo][obj] = nil
     end
 
-    for _, child in pairs(obj:GetChildren()) do
+    for _, child in ipairs(obj:GetChildren()) do
         if child.Name == "ESPBoxGui" or child.Name == "ESP_Attach" then
             child:Destroy()
         end
@@ -122,7 +130,7 @@ function ESPLibrary.UpdateAll(tipo, objs, color)
     local cameraPos = camera.CFrame.Position
     local validObjs, objSet = {}, {}
 
-    for _, obj in pairs(objs) do
+    for _, obj in ipairs(objs) do
         if obj and obj:IsDescendantOf(workspace) and obj:IsA("BasePart") then
             local dist = (obj.Position - cameraPos).Magnitude
             if dist <= espDistanceMax then
@@ -138,7 +146,7 @@ function ESPLibrary.UpdateAll(tipo, objs, color)
 
     table.sort(validObjs, function(a, b) return a.dist < b.dist end)
 
-    for i, info in pairs(validObjs) do
+    for i, info in ipairs(validObjs) do
         local obj = info.obj
         if i <= maxESP then
             if not (drawingLines[tipo] and drawingLines[tipo][obj]) then
@@ -161,7 +169,7 @@ end
 
 function ESPLibrary.RemoveAll(tipo)
     if drawingLines[tipo] then
-        for obj, _ in pairs(drawingLines[tipo]) do
+        for obj in pairs(drawingLines[tipo]) do
             ESPLibrary.RemoveESP(tipo, obj)
         end
         drawingLines[tipo] = {}
