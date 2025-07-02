@@ -10,7 +10,7 @@ local drawingLines = {}
 local DEFAULT_COLOR = Color3.fromRGB(0, 200, 255)
 local BORDER_COLOR = Color3.fromRGB(255, 255, 255)
 
--- Função para criar uma moldura 2D profissional nas faces
+-- ESP 3D Box com SurfaceGui
 function ESPLibrary.CreateESPBox(obj, color)
     if obj:FindFirstChild("ESPBoxGui") then return end
 
@@ -41,14 +41,13 @@ function ESPLibrary.CreateESPBox(obj, color)
         frame.Position = UDim2.new(0.5, 0, 0.5, 0)
         frame.Parent = surfaceGui
 
-        -- Estética mais moderna
         local uicorner = Instance.new("UICorner")
         uicorner.CornerRadius = UDim.new(0, 3)
         uicorner.Parent = frame
     end
 end
 
--- Cria linha e ponto com beam e esfera
+-- ESP linha com Beam 3D
 function ESPLibrary.CreateESPBeam(obj, tipo, color)
     if obj:FindFirstChild("ESP_Attach") then return end
 
@@ -109,11 +108,69 @@ function ESPLibrary.CreateESPBeam(obj, tipo, color)
     }
 end
 
+-- ESP 2D (linha + box)
+function ESPLibrary.CreateESP2D(obj, tipo, color)
+    if not obj:IsA("BasePart") then return end
+    drawingLines[tipo] = drawingLines[tipo] or {}
+
+    if drawingLines[tipo][obj] then return end
+
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Color = color or DEFAULT_COLOR
+    line.Visible = true
+
+    local box = Drawing.new("Square")
+    box.Thickness = 1.5
+    box.Color = color or DEFAULT_COLOR
+    box.Filled = false
+    box.Visible = true
+
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        if not obj or not obj:IsDescendantOf(workspace) then
+            line:Remove()
+            box:Remove()
+            conn:Disconnect()
+            return
+        end
+
+        local rootPos, onScreen = camera:WorldToViewportPoint(obj.Position)
+        if not onScreen then
+            line.Visible = false
+            box.Visible = false
+            return
+        end
+
+        local size = obj.Size
+        local screenSize = (camera:WorldToViewportPoint(obj.Position + Vector3.new(0, size.Y / 2, 0)) - camera:WorldToViewportPoint(obj.Position - Vector3.new(0, size.Y / 2, 0))).Y
+        local width = screenSize * (size.X / size.Y)
+
+        box.Size = Vector2.new(width, screenSize)
+        box.Position = Vector2.new(rootPos.X - width / 2, rootPos.Y - screenSize / 2)
+        box.Visible = true
+
+        local viewCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+        line.From = viewCenter
+        line.To = Vector2.new(rootPos.X, rootPos.Y)
+        line.Visible = true
+    end)
+
+    drawingLines[tipo][obj] = {
+        box = box,
+        line = line,
+        updateConn = conn
+    }
+end
+
+-- Remove todos os tipos de ESP
 function ESPLibrary.RemoveESP(tipo, obj)
     if drawingLines[tipo] and drawingLines[tipo][obj] then
         local esp = drawingLines[tipo][obj]
         if esp.beam then esp.beam:Destroy() end
         if esp.originPart then esp.originPart:Destroy() end
+        if esp.box and typeof(esp.box.Remove) == "function" then esp.box:Remove() end
+        if esp.line and typeof(esp.line.Remove) == "function" then esp.line:Remove() end
         if esp.updateConn then esp.updateConn:Disconnect() end
         if esp.rootAttach then esp.rootAttach:Destroy() end
         drawingLines[tipo][obj] = nil
@@ -126,6 +183,7 @@ function ESPLibrary.RemoveESP(tipo, obj)
     end
 end
 
+-- Atualiza tudo por tipo
 function ESPLibrary.UpdateAll(tipo, objs, color)
     local cameraPos = camera.CFrame.Position
     local validObjs, objSet = {}, {}
@@ -149,9 +207,7 @@ function ESPLibrary.UpdateAll(tipo, objs, color)
     for i, info in ipairs(validObjs) do
         local obj = info.obj
         if i <= maxESP then
-            if not (drawingLines[tipo] and drawingLines[tipo][obj]) then
-                ESPLibrary.CreateESPBeam(obj, tipo, color)
-            end
+            ESPLibrary.CreateESP2D(obj, tipo, color)
             ESPLibrary.CreateESPBox(obj, color)
         else
             ESPLibrary.RemoveESP(tipo, obj)
@@ -167,6 +223,7 @@ function ESPLibrary.UpdateAll(tipo, objs, color)
     end
 end
 
+-- Limpa todos
 function ESPLibrary.RemoveAll(tipo)
     if drawingLines[tipo] then
         for obj in pairs(drawingLines[tipo]) do
