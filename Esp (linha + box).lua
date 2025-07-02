@@ -7,7 +7,6 @@ ESP.__index = ESP
 function ESP.new()
     local self = setmetatable({}, ESP)
 
-    -- Config padrão
     self.Settings = {
         Enabled = true,
         MaxDistance = 150,
@@ -20,6 +19,7 @@ function ESP.new()
 
     self.Drawings = {}
     self._renderConnection = nil
+    self.MaxBoxLines = 12
 
     return self
 end
@@ -73,51 +73,65 @@ function ESP:Start()
                     local onScreenVector, onScreen = Camera:WorldToViewportPoint(pos)
 
                     if not self.Drawings[obj] then
+                        local lines = {}
+                        for i = 1, self.MaxBoxLines do
+                            local line = Drawing.new("Line")
+                            line.Visible = false
+                            line.Color = self.Settings.BoxESP.Color
+                            line.Thickness = 1.5
+                            table.insert(lines, line)
+                        end
+
+                        local lineToCenter = Drawing.new("Line")
+                        lineToCenter.Visible = false
+                        lineToCenter.Color = self.Settings.LineESP.Color
+                        lineToCenter.Thickness = 1.5
+
+                        local text = Drawing.new("Text")
+                        text.Center = true
+                        text.Outline = true
+                        text.Size = 13
+                        text.Font = 2
+                        text.Visible = false
+
                         self.Drawings[obj] = {
-                            Line = Drawing.new("Line"),
-                            Box = Drawing.new("Square"),
-                            Text = Drawing.new("Text")
+                            Lines = lines,
+                            LineToCenter = lineToCenter,
+                            Text = text
                         }
-                        local txt = self.Drawings[obj].Text
-                        txt.Center = true
-                        txt.Outline = true
-                        txt.Size = 13
-                        txt.Font = 2
                     end
 
                     local draws = self.Drawings[obj]
 
                     if dist <= self.Settings.MaxDistance and onScreen then
-                        -- Verifica FOV do jogador (horizontal)
+                        -- Verifica FOV horizontal
                         local cameraDirection = Camera.CFrame.LookVector
                         local directionToObj = (pos - Camera.CFrame.Position).Unit
                         local dot = cameraDirection:Dot(directionToObj)
                         local angle = math.deg(math.acos(dot))
 
                         if angle > (Camera.FieldOfView / 2) then
-                            draws.Line.Visible = false
-                            draws.Box.Visible = false
+                            for _, line in ipairs(draws.Lines) do
+                                line.Visible = false
+                            end
+                            draws.LineToCenter.Visible = false
                             draws.Text.Visible = false
                             continue
                         end
 
-                        -- Linha
+                        -- Linha até o centro
                         if self.Settings.LineESP.Enabled then
-                            draws.Line.Visible = true
-                            draws.Line.Color = self.Settings.LineESP.Color
-                            draws.Line.Thickness = 1.5
-                            draws.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                            draws.Line.To = Vector2.new(onScreenVector.X, onScreenVector.Y)
+                            draws.LineToCenter.Visible = true
+                            draws.LineToCenter.Color = self.Settings.LineESP.Color
+                            draws.LineToCenter.Thickness = 1.5
+                            draws.LineToCenter.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                            draws.LineToCenter.To = Vector2.new(onScreenVector.X, onScreenVector.Y)
                         else
-                            draws.Line.Visible = false
+                            draws.LineToCenter.Visible = false
                         end
 
-                        -- Box ajustada pelo FOV
+                        -- Caixa 3D
                         if self.Settings.BoxESP.Enabled then
-                            draws.Box.Visible = true
-                            draws.Box.Color = self.Settings.BoxESP.Color
-                            draws.Box.Thickness = 1.5
-
                             local cf, size = obj:GetBoundingBox()
                             local corners = {}
                             for x = -0.5, 0.5, 1 do
@@ -128,34 +142,54 @@ function ESP:Start()
                                 end
                             end
 
-                            local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
-                            local visible = false
-                            for _, corner in pairs(corners) do
+                            local screenCorners = {}
+                            local visibleCount = 0
+                            for i, corner in ipairs(corners) do
                                 local screenPos, isVisible = Camera:WorldToViewportPoint(corner)
-                                if isVisible then
-                                    visible = true
-                                    minX = math.min(minX, screenPos.X)
-                                    minY = math.min(minY, screenPos.Y)
-                                    maxX = math.max(maxX, screenPos.X)
-                                    maxY = math.max(maxY, screenPos.Y)
+                                screenCorners[i] = {pos = Vector2.new(screenPos.X, screenPos.Y), onScreen = isVisible}
+                                if isVisible then visibleCount = visibleCount + 1 end
+                            end
+
+                            if visibleCount > 0 then
+                                local function setLine(i, startIndex, endIndex)
+                                    local startCorner = screenCorners[startIndex]
+                                    local endCorner = screenCorners[endIndex]
+                                    local line = draws.Lines[i]
+                                    if startCorner.onScreen and endCorner.onScreen then
+                                        line.Visible = true
+                                        line.From = startCorner.pos
+                                        line.To = endCorner.pos
+                                        line.Color = self.Settings.BoxESP.Color
+                                        line.Thickness = 1.5
+                                    else
+                                        line.Visible = false
+                                    end
+                                end
+
+                                -- Liga os 12 arestas da caixa 3D
+                                setLine(1, 1, 2)
+                                setLine(2, 2, 4)
+                                setLine(3, 4, 3)
+                                setLine(4, 3, 1)
+
+                                setLine(5, 5, 6)
+                                setLine(6, 6, 8)
+                                setLine(7, 8, 7)
+                                setLine(8, 7, 5)
+
+                                setLine(9, 1, 5)
+                                setLine(10, 2, 6)
+                                setLine(11, 3, 7)
+                                setLine(12, 4, 8)
+                            else
+                                for _, line in ipairs(draws.Lines) do
+                                    line.Visible = false
                                 end
                             end
-
-                            if visible then
-                                -- Ajuste do box pelo FOV
-                                local fovFactor = 70 / Camera.FieldOfView
-                                local boxWidth = (maxX - minX) * fovFactor
-                                local boxHeight = (maxY - minY) * fovFactor
-                                local boxPosX = ((minX + maxX) / 2) - (boxWidth / 2)
-                                local boxPosY = ((minY + maxY) / 2) - (boxHeight / 2)
-
-                                draws.Box.Position = Vector2.new(boxPosX, boxPosY)
-                                draws.Box.Size = Vector2.new(boxWidth, boxHeight)
-                            else
-                                draws.Box.Visible = false
-                            end
                         else
-                            draws.Box.Visible = false
+                            for _, line in ipairs(draws.Lines) do
+                                line.Visible = false
+                            end
                         end
 
                         -- Texto
@@ -168,19 +202,21 @@ function ESP:Start()
                             draws.Text.Visible = false
                         end
                     else
-                        draws.Line.Visible = false
-                        draws.Box.Visible = false
+                        for _, line in ipairs(draws.Lines) do
+                            line.Visible = false
+                        end
+                        draws.LineToCenter.Visible = false
                         draws.Text.Visible = false
                     end
-                end
-            else
-                if self.Drawings[obj] then
-                    for _, d in pairs(self.Drawings[obj]) do
-                        if d and d.Remove then
-                            d:Remove()
+                else
+                    if self.Drawings[obj] then
+                        for _, d in pairs(self.Drawings[obj]) do
+                            if d and d.Remove then
+                                d:Remove()
+                            end
                         end
+                        self.Drawings[obj] = nil
                     end
-                    self.Drawings[obj] = nil
                 end
             end
         end
