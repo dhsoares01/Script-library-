@@ -38,14 +38,26 @@ function ESP.new(config)
                 break
             end
         end
+        if self.ESPData[obj] then
+            for _, v in pairs(self.ESPData[obj]) do
+                v:Remove()
+            end
+            self.ESPData[obj] = nil
+        end
     end
 
-    -- Função para limpar lista
+    -- Função para limpar lista e remover drawings
     function self:ClearObjects()
+        for obj, data in pairs(self.ESPData) do
+            for _, drawing in pairs(data) do
+                drawing:Remove()
+            end
+        end
+        self.ESPData = {}
         self.TrackedObjects = {}
     end
 
-    -- Função pra criar uma Drawing Line
+    -- Funções de criação de Drawing objects
     local function createLine()
         local line = Drawing.new("Line")
         line.Color = Color3.new(1, 1, 1)
@@ -55,7 +67,6 @@ function ESP.new(config)
         return line
     end
 
-    -- Função pra criar uma Drawing Rectangle
     local function createBox()
         local box = Drawing.new("Square")
         box.Color = Color3.new(1, 1, 1)
@@ -66,7 +77,6 @@ function ESP.new(config)
         return box
     end
 
-    -- Função pra criar texto
     local function createText()
         local text = Drawing.new("Text")
         text.Color = Color3.new(1, 1, 1)
@@ -90,21 +100,26 @@ function ESP.new(config)
         if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then return end
         local rootPos = lp.Character.HumanoidRootPart.Position
 
+        -- Filtra objetos válidos e remove inválidos imediatamente
+        local validObjects = {}
         for i, obj in pairs(self.TrackedObjects) do
-            if not obj or not obj.Parent then
-                -- Remove objetos inválidos da lista e ESP
-                self:RemoveObject(obj)
+            if obj and obj.Parent then
+                table.insert(validObjects, obj)
+            else
+                -- Remove desenhos do objeto inválido
                 if self.ESPData[obj] then
                     for _, v in pairs(self.ESPData[obj]) do
                         v:Remove()
                     end
                     self.ESPData[obj] = nil
                 end
-                continue
             end
+        end
+        self.TrackedObjects = validObjects
 
+        -- Agora atualiza ESP dos objetos válidos
+        for i, obj in pairs(self.TrackedObjects) do
             local rootPosObj = nil
-            -- tenta pegar o ponto central do objeto para calcular distância e posição
             if obj:IsA("BasePart") then
                 rootPosObj = obj.Position
             elseif obj:IsA("Model") then
@@ -112,20 +127,19 @@ function ESP.new(config)
                 if hrp then
                     rootPosObj = hrp.Position
                 else
-                    -- pega o bounding center
-                    local cframe, size = obj:GetBoundingBox()
-                    rootPosObj = cframe.Position
+                    local suc, cframe = pcall(function() return obj:GetBoundingBox() end)
+                    if suc and cframe then
+                        rootPosObj = cframe.Position
+                    end
                 end
             else
-                -- se não for BasePart nem Model, tenta pegar bounding box se possível
-                local success, cframe, size = pcall(function() return obj:GetBoundingBox() end)
-                if success and cframe then
+                local suc, cframe = pcall(function() return obj:GetBoundingBox() end)
+                if suc and cframe then
                     rootPosObj = cframe.Position
                 end
             end
 
             if not rootPosObj then
-                -- objeto sem posição, ignora
                 if self.ESPData[obj] then
                     for _, v in pairs(self.ESPData[obj]) do
                         v.Visible = false
@@ -141,7 +155,6 @@ function ESP.new(config)
             end)
 
             if not onScreen or screenPos.Z < 0 then
-                -- objeto atrás da câmera, invisível
                 if self.ESPData[obj] then
                     for _, v in pairs(self.ESPData[obj]) do
                         v.Visible = false
@@ -152,7 +165,7 @@ function ESP.new(config)
 
             screenPos = Vector2.new(screenPos.X, screenPos.Y)
 
-            -- Cria drawings se não tiver para o objeto
+            -- Cria drawings se não existir para o objeto
             if not self.ESPData[obj] then
                 self.ESPData[obj] = {}
 
@@ -165,8 +178,8 @@ function ESP.new(config)
                 end
 
                 if self.Box3DESP then
-                    self.ESPData[obj].box3d = {} -- guardar linhas das arestas
-                    for _=1,12 do -- 12 linhas para uma caixa 3d
+                    self.ESPData[obj].box3d = {}
+                    for _=1,12 do
                         self.ESPData[obj].box3d[#self.ESPData[obj].box3d+1] = createLine()
                     end
                 end
@@ -187,7 +200,7 @@ function ESP.new(config)
 
             local data = self.ESPData[obj]
 
-            -- Atualiza Line ESP
+            -- Line ESP
             if self.LineESP and data.line then
                 data.line.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y)
                 data.line.To = screenPos
@@ -196,9 +209,9 @@ function ESP.new(config)
                 data.line.Visible = false
             end
 
-            -- Atualiza Box 2D ESP
+            -- Box 2D ESP
             if self.Box2DESP and data.box2d then
-                local size = Vector2.new(50, 70) -- tamanho fixo para exemplo
+                local size = Vector2.new(50, 70) -- exemplo fixo, pode ajustar
                 data.box2d.Size = size
                 data.box2d.Position = screenPos - (size/2)
                 data.box2d.Visible = true
@@ -206,10 +219,8 @@ function ESP.new(config)
                 data.box2d.Visible = false
             end
 
-            -- Atualiza Box 3D ESP
+            -- Box 3D ESP
             if self.Box3DESP and data.box3d then
-                -- Calcula as 8 posições do bounding box do objeto em 3D para tela
-                local corners = {}
                 local success2, cframe, size = pcall(function() return obj:GetBoundingBox() end)
                 if not success2 or not cframe then
                     for _, line in pairs(data.box3d) do
@@ -239,11 +250,10 @@ function ESP.new(config)
                         end
                     end
 
-                    -- Define as linhas do box3d (12 arestas)
                     local linesIdx = {
-                        {1,2},{2,3},{3,4},{4,1}, -- base baixo
-                        {5,6},{6,7},{7,8},{8,5}, -- base topo
-                        {1,5},{2,6},{3,7},{4,8}  -- liga base e topo
+                        {1,2},{2,3},{3,4},{4,1},
+                        {5,6},{6,7},{7,8},{8,5},
+                        {1,5},{2,6},{3,7},{4,8}
                     }
 
                     for i,line in pairs(data.box3d) do
@@ -265,7 +275,7 @@ function ESP.new(config)
                 end
             end
 
-            -- Atualiza Object ESP (caixa que cobre o objeto em 2d)
+            -- Object ESP (caixa 2D que cobre o objeto todo)
             if self.ObjectESP and data.objectBox then
                 local success3, cframe, size = pcall(function() return obj:GetBoundingBox() end)
                 if success3 and cframe then
@@ -313,17 +323,16 @@ function ESP.new(config)
                 data.objectBox.Visible = false
             end
 
-            -- Atualiza Nome ESP
+            -- Nome ESP
             if self.NameESP and data.name then
-                local nameStr = tostring(obj.Name)
-                data.name.Text = nameStr
+                data.name.Text = tostring(obj.Name)
                 data.name.Position = screenPos + Vector2.new(0, -40)
                 data.name.Visible = true
             elseif data.name then
                 data.name.Visible = false
             end
 
-            -- Atualiza Distância ESP
+            -- Distância ESP
             if self.DistanceESP and data.distance then
                 data.distance.Text = string.format("[%.1f]", dist)
                 data.distance.Position = screenPos + Vector2.new(0, -25)
@@ -354,6 +363,4 @@ function ESP:Destroy()
     self.TrackedObjects = {}
 end
 
-
--- retorna a library pronta
 return ESP
