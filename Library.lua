@@ -1,10 +1,11 @@
+-- ESPLibrary.lua
 local ESP = {}
 ESP.__index = ESP
 
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 
--- Configurações padrão
+-- Configurações globais
 ESP.Config = {
     LineEnabled = true,
     BoxEnabled = true,
@@ -16,18 +17,16 @@ ESP.Config = {
     MaxDistance = 1000,
 }
 
--- Função para criar objetos Drawing
 local function createDrawing(type)
-    local d = Drawing.new(type)
-    d.Visible = false
-    return d
+    local drawing = Drawing.new(type)
+    drawing.Visible = false
+    return drawing
 end
 
--- Cria ESP para um objeto (obj pode ser qualquer Instância com posição e boundingbox)
-function ESP.newForObject(obj, displayName)
+function ESP.newObjectESP(object, displayName)
     local self = setmetatable({}, ESP)
-    self.Object = obj
-    self.NameText = displayName or obj.Name
+    self.Object = object
+    self.DisplayName = displayName or object.Name
 
     self.Line = createDrawing("Line")
     self.Box = createDrawing("Square")
@@ -37,7 +36,6 @@ function ESP.newForObject(obj, displayName)
     return self
 end
 
--- Atualiza posição do ESP para o objeto
 function ESP:update()
     if not self.Object or not self.Object.Parent then
         self:hideAll()
@@ -53,7 +51,6 @@ function ESP:update()
     end
 
     local center = (minVec + maxVec) / 2
-
     local screenPos, visible = Camera:WorldToViewportPoint(center)
     if not visible then
         self:hideAll()
@@ -66,7 +63,7 @@ function ESP:update()
         return
     end
 
-    -- Linha: da base da tela até o objeto
+    -- Linha
     if ESP.Config.LineEnabled then
         self.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
         self.Line.To = Vector2.new(screenPos.X, screenPos.Y)
@@ -76,7 +73,7 @@ function ESP:update()
         self.Line.Visible = false
     end
 
-    -- Caixa em volta
+    -- Caixa
     if ESP.Config.BoxEnabled then
         local corners = {
             Vector3.new(minVec.X, maxVec.Y, minVec.Z),
@@ -89,17 +86,15 @@ function ESP:update()
             Vector3.new(minVec.X, minVec.Y, maxVec.Z),
         }
 
-        local screenPoints = {}
+        local screenCorners = {}
         for i, corner in pairs(corners) do
             local sp, vis = Camera:WorldToViewportPoint(corner)
-            screenPoints[i] = Vector2.new(sp.X, sp.Y)
+            screenCorners[i] = Vector2.new(sp.X, sp.Y)
         end
 
-        local minX = math.huge
-        local maxX = -math.huge
-        local minY = math.huge
-        local maxY = -math.huge
-        for _, point in pairs(screenPoints) do
+        local minX, maxX = math.huge, -math.huge
+        local minY, maxY = math.huge, -math.huge
+        for _, point in pairs(screenCorners) do
             minX = math.min(minX, point.X)
             maxX = math.max(maxX, point.X)
             minY = math.min(minY, point.Y)
@@ -117,7 +112,7 @@ function ESP:update()
 
     -- Nome
     if ESP.Config.NameEnabled then
-        self.Name.Text = self.NameText
+        self.Name.Text = self.DisplayName
         self.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 15)
         self.Name.Center = true
         self.Name.Color = ESP.Config.TextColor
@@ -154,19 +149,18 @@ function ESP:remove()
     self.Distance:Remove()
 end
 
--- Gerenciador de múltiplos ESPs
 local ESPManager = {}
 ESPManager.__index = ESPManager
 
 function ESPManager.new()
     local self = setmetatable({}, ESPManager)
-    self.ESPObjects = {}
+    self.ObjectsESP = {}
 
     RunService.RenderStepped:Connect(function()
-        for obj, esp in pairs(self.ESPObjects) do
+        for obj, esp in pairs(self.ObjectsESP) do
             if not obj or not obj.Parent then
                 esp:remove()
-                self.ESPObjects[obj] = nil
+                self.ObjectsESP[obj] = nil
             else
                 esp:update()
             end
@@ -177,23 +171,23 @@ function ESPManager.new()
 end
 
 function ESPManager:addObject(obj, displayName)
-    if not self.ESPObjects[obj] then
-        self.ESPObjects[obj] = ESP.newForObject(obj, displayName)
+    if not self.ObjectsESP[obj] then
+        self.ObjectsESP[obj] = ESP.newObjectESP(obj, displayName)
     end
 end
 
 function ESPManager:removeObject(obj)
-    if self.ESPObjects[obj] then
-        self.ESPObjects[obj]:remove()
-        self.ESPObjects[obj] = nil
+    if self.ObjectsESP[obj] then
+        self.ObjectsESP[obj]:remove()
+        self.ObjectsESP[obj] = nil
     end
 end
 
 function ESPManager:clear()
-    for _, esp in pairs(self.ESPObjects) do
+    for _, esp in pairs(self.ObjectsESP) do
         esp:remove()
     end
-    self.ESPObjects = {}
+    self.ObjectsESP = {}
 end
 
 return ESPManager
