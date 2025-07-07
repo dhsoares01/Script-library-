@@ -1,3 +1,4 @@
+
 -- UILib.lua
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -20,6 +21,14 @@ function UILib:Create(title)
 	window.BorderSizePixel = 0
 	window.AnchorPoint = Vector2.new(0.5, 0.5)
 	Instance.new("UICorner", window).CornerRadius = UDim.new(0, 6)
+	window.Visible = true  -- menu já aberto
+
+	-- Remove qualquer floating preto indesejado que possa existir (caso tenha)
+	for _, child in pairs(gui:GetChildren()) do
+		if child:IsA("Frame") and child ~= window then
+			child:Destroy()
+		end
+	end
 
 	-- Função arrastar adaptada para mouse e toque (mobile)
 	local function makeDraggable(frame)
@@ -91,26 +100,9 @@ function UILib:Create(title)
 	minimizeBtn.Font = Enum.Font.GothamBold
 	minimizeBtn.TextSize = 14
 
-	local floatBtn = Instance.new("TextButton", gui)
-	floatBtn.Visible = false
-	floatBtn.Text = "Abrir Menu"
-	floatBtn.Size = UDim2.new(0, 120, 0, 35)
-	floatBtn.Position = UDim2.new(0.5, -60, 0.5, -17)
-	floatBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-	floatBtn.TextColor3 = Color3.new(1, 1, 1)
-	floatBtn.Font = Enum.Font.Gotham
-	floatBtn.TextSize = 14
-	Instance.new("UICorner", floatBtn).CornerRadius = UDim.new(0, 6)
-
-	-- Minimizar/Fechar
+	-- Minimizar só oculta a janela, sem mostrar floatBtn
 	minimizeBtn.MouseButton1Click:Connect(function()
 		window.Visible = false
-		floatBtn.Visible = true
-	end)
-
-	floatBtn.MouseButton1Click:Connect(function()
-		window.Visible = true
-		floatBtn.Visible = false
 	end)
 
 	closeBtn.MouseButton1Click:Connect(function()
@@ -215,78 +207,32 @@ function UILib:Create(title)
 			drop.TextSize = 14
 			drop.Text = text .. " ▼"
 
-			local open = false
-			drop.MouseButton1Click:Connect(function()
-				open = not open
-				for _, v in ipairs(page:GetChildren()) do
-					if v:IsA("TextButton") and v.Name == "Option" then
-						v:Destroy()
-					end
-				end
-				if open then
-					for _, opt in ipairs(options) do
-						local optBtn = Instance.new("TextButton", page)
-						optBtn.Name = "Option"
-						optBtn.Size = UDim2.new(1, -10, 0, 25)
-						optBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-						optBtn.TextColor3 = Color3.new(1, 1, 1)
-						optBtn.Font = Enum.Font.Gotham
-						optBtn.TextSize = 13
-						optBtn.Text = " - " .. opt
+			local dropdownFrame = Instance.new("Frame", page)
+			dropdownFrame.Size = UDim2.new(1, -10, 0, #options * 30)
+			dropdownFrame.Position = UDim2.new(0, 5, 0, 30)
+			dropdownFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+			dropdownFrame.Visible = false
+			Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 4)
 
-						optBtn.MouseButton1Click:Connect(function()
-							drop.Text = text .. ": " .. opt
-							open = false
-							for _, v in ipairs(page:GetChildren()) do
-								if v:IsA("TextButton") and v.Name == "Option" then
-									v:Destroy()
-								end
-							end
-							if callback then callback(opt) end
-						end)
-					end
-				end
-			end)
-		end
+			for i, option in ipairs(options) do
+				local optionBtn = Instance.new("TextButton", dropdownFrame)
+				optionBtn.Size = UDim2.new(1, 0, 0, 30)
+				optionBtn.Position = UDim2.new(0, 0, 0, (i-1)*30)
+				optionBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+				optionBtn.TextColor3 = Color3.new(1, 1, 1)
+				optionBtn.Font = Enum.Font.Gotham
+				optionBtn.TextSize = 14
+				optionBtn.Text = option
 
-		function elements:AddSlider(text, min, max, callback)
-			local holder = Instance.new("Frame", page)
-			holder.Size = UDim2.new(1, -10, 0, 50)
-			holder.BackgroundTransparency = 1
-
-			local label = Instance.new("TextLabel", holder)
-			label.Text = text .. ": " .. min
-			label.Size = UDim2.new(1, 0, 0, 20)
-			label.TextColor3 = Color3.new(1, 1, 1)
-			label.Font = Enum.Font.Gotham
-			label.TextSize = 14
-			label.BackgroundTransparency = 1
-
-			local slider = Instance.new("TextButton", holder)
-			slider.Size = UDim2.new(1, 0, 0, 20)
-			slider.Position = UDim2.new(0, 0, 0, 25)
-			slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-			slider.Text = ""
-
-			local fill = Instance.new("Frame", slider)
-			fill.BackgroundColor3 = Color3.fromRGB(120, 120, 255)
-			fill.Size = UDim2.new(0, 0, 1, 0)
-			fill.BorderSizePixel = 0
-
-			slider.MouseButton1Down:Connect(function()
-				local conn
-				conn = game:GetService("RunService").RenderStepped:Connect(function()
-					local mouse = UserInputService:GetMouseLocation().X
-					local absPos = slider.AbsolutePosition.X
-					local absSize = slider.AbsoluteSize.X
-					local percent = math.clamp((mouse - absPos) / absSize, 0, 1)
-					fill.Size = UDim2.new(percent, 0, 1, 0)
-					local value = math.floor(min + (max - min) * percent)
-					label.Text = text .. ": " .. tostring(value)
-					if callback then callback(value) end
+				optionBtn.MouseButton1Click:Connect(function()
+					drop.Text = option .. " ▼"
+					dropdownFrame.Visible = false
+					if callback then callback(option) end
 				end)
-				UserInputService.InputEnded:Wait()
-				conn:Disconnect()
+			end
+
+			drop.MouseButton1Click:Connect(function()
+				dropdownFrame.Visible = not dropdownFrame.Visible
 			end)
 		end
 
