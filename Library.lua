@@ -21,13 +21,13 @@ function UILib:Create(title)
 	window.AnchorPoint = Vector2.new(0.5, 0.5)
 	Instance.new("UICorner", window).CornerRadius = UDim.new(0, 6)
 
-	-- Função arrastar
+	-- Função arrastar adaptada para mouse e toque (mobile)
 	local function makeDraggable(frame)
 		local dragging = false
 		local dragInput, dragStart, startPos
 
 		frame.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 				dragging = true
 				dragStart = input.Position
 				startPos = frame.Position
@@ -41,7 +41,7 @@ function UILib:Create(title)
 		end)
 
 		frame.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement then
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 				dragInput = input
 			end
 		end)
@@ -49,7 +49,10 @@ function UILib:Create(title)
 		UserInputService.InputChanged:Connect(function(input)
 			if input == dragInput and dragging then
 				local delta = input.Position - dragStart
-				frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+				-- Mantém a janela dentro da tela
+				local newX = math.clamp(startPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - frame.AbsoluteSize.X)
+				local newY = math.clamp(startPos.Y.Offset + delta.Y, 0, workspace.CurrentCamera.ViewportSize.Y - frame.AbsoluteSize.Y)
+				frame.Position = UDim2.new(startPos.X.Scale, newX, startPos.Y.Scale, newY)
 			end
 		end)
 	end
