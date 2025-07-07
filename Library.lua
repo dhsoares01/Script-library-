@@ -12,34 +12,36 @@ local function create(class, props)
 	return inst
 end
 
--- Variáveis internas
-local dragging, dragInput, dragStart, startPos
-
+-- Função de arrastar otimizada para toque e mouse
 local function makeDraggable(frame)
+	local dragging = false
+	local dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+								   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+
 	frame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			dragStart = input.Position
 			startPos = frame.Position
 
-			input.Changed:Connect(function()
+			local connection
+			connection = input.Changed:Connect(function()
 				if input.UserInputState == Enum.UserInputState.End then
 					dragging = false
+					connection:Disconnect()
 				end
 			end)
 		end
 	end)
 
-	frame.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
-			dragInput = input
-		end
-	end)
-
 	UserInputService.InputChanged:Connect(function(input)
-		if input == dragInput and dragging then
-			local delta = input.Position - dragStart
-			frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			update(input)
 		end
 	end)
 end
@@ -54,8 +56,8 @@ function Library:CreateWindow(title)
 
 	local main = create("Frame", {
 		Size = UDim2.new(0, 300, 0, 400),
-		Position = UDim2.new(0.5, -150, 0.5, -200),
-		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, -150, 0.5, -200), -- Centralizado
+		AnchorPoint = Vector2.new(0.5, 0.5), -- Centralização precisa
 		BackgroundColor3 = Color3.fromRGB(30, 30, 30),
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
@@ -108,12 +110,6 @@ function Library:CreateWindow(title)
 		Parent = header
 	})
 
-	local content = create("UIListLayout", {
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 5),
-		Parent = main
-	})
-
 	local container = create("Frame", {
 		Size = UDim2.new(1, 0, 1, -30),
 		Position = UDim2.new(0, 0, 0, 30),
@@ -122,20 +118,15 @@ function Library:CreateWindow(title)
 		Parent = main
 	})
 
-	local layout = create("UIListLayout", {
+	create("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Padding = UDim.new(0, 5),
 		Parent = container
 	})
 
 	local function toggleMenu()
-		if container.Visible then
-			container.Visible = false
-			minimizeBtn.Text = "□"
-		else
-			container.Visible = true
-			minimizeBtn.Text = "–"
-		end
+		container.Visible = not container.Visible
+		minimizeBtn.Text = container.Visible and "–" or "□"
 	end
 
 	minimizeBtn.MouseButton1Click:Connect(toggleMenu)
@@ -143,9 +134,10 @@ function Library:CreateWindow(title)
 		screenGui:Destroy()
 	end)
 
+	-- Torna o menu arrastável com touch/mouse
 	makeDraggable(header)
 
-	-- APIs para adicionar elementos
+	-- APIs públicas
 	local api = {}
 
 	function api:CreateToggle(text, callback)
