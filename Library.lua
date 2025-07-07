@@ -1,301 +1,202 @@
-local Library = {}
+-- ESP.lua
+-- Biblioteca simples de ESP para Roblox
+-- Permite criar ESP com linha, caixa, nome, distância e cor customizável
+-- Alvo via objeto BasePart (ex: HumanoidRootPart)
 
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
+local ESP = {}
+ESP.__index = ESP
 
--- Função utilitária
-local function create(class, props)
-	local inst = Instance.new(class)
-	for i, v in pairs(props) do
-		inst[i] = v
-	end
-	return inst
+-- Serviços usados
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Camera = workspace.CurrentCamera
+
+-- Configurações padrão
+ESP.Settings = {
+    Enabled = true,
+    ShowLine = true,
+    ShowBox = true,
+    ShowName = true,
+    ShowDistance = true,
+    ESPColor = Color3.fromRGB(0, 255, 0),
+}
+
+-- Tabela para armazenar dados ESP por BasePart alvo
+ESP.Objects = {}
+
+-- Função para criar um objeto Drawing.Line
+local function CreateLine()
+    local line = Drawing.new("Line")
+    line.Visible = false
+    line.Color = ESP.Settings.ESPColor
+    line.Thickness = 1.5
+    return line
 end
 
--- Função de arrastar otimizada para toque e mouse
-local function makeDraggable(frame)
-	local dragging = false
-	local dragStart, startPos
-
-	local function update(input)
-		local delta = input.Position - dragStart
-		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-								   startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-
-	frame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = frame.Position
-
-			local connection
-			connection = input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-					connection:Disconnect()
-				end
-			end)
-		end
-	end)
-
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			update(input)
-		end
-	end)
+-- Função para criar um objeto Drawing.Square (caixa)
+local function CreateBox()
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = ESP.Settings.ESPColor
+    box.Thickness = 2
+    box.Filled = false
+    return box
 end
 
--- Cria a janela principal
-function Library:CreateWindow(title)
-	local screenGui = create("ScreenGui", {
-		Name = "CustomLibrary",
-		ResetOnSpawn = false,
-		Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-	})
-
-	local main = create("Frame", {
-		Size = UDim2.new(0, 300, 0, 400),
-		Position = UDim2.new(0.5, -150, 0.5, -200), -- Centralizado
-		AnchorPoint = Vector2.new(0.5, 0.5), -- Centralização precisa
-		BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-		BorderSizePixel = 0,
-		ClipsDescendants = true,
-		Parent = screenGui
-	})
-	main.BackgroundTransparency = 0.1
-	main.AutomaticSize = Enum.AutomaticSize.Y
-	main.Name = "MainUI"
-	main.Active = true
-	main.Draggable = false
-
-	local header = create("Frame", {
-		Size = UDim2.new(1, 0, 0, 30),
-		BackgroundColor3 = Color3.fromRGB(45, 45, 45),
-		BorderSizePixel = 0,
-		Parent = main
-	})
-
-	local titleLabel = create("TextLabel", {
-		Size = UDim2.new(1, -60, 1, 0),
-		Position = UDim2.new(0, 10, 0, 0),
-		Text = title or "Menu",
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		Font = Enum.Font.GothamBold,
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		BackgroundTransparency = 1,
-		Parent = header
-	})
-
-	local minimizeBtn = create("TextButton", {
-		Size = UDim2.new(0, 30, 1, 0),
-		Position = UDim2.new(1, -60, 0, 0),
-		Text = "–",
-		TextColor3 = Color3.new(1, 1, 1),
-		Font = Enum.Font.Gotham,
-		TextSize = 16,
-		BackgroundTransparency = 1,
-		Parent = header
-	})
-
-	local closeBtn = create("TextButton", {
-		Size = UDim2.new(0, 30, 1, 0),
-		Position = UDim2.new(1, -30, 0, 0),
-		Text = "×",
-		TextColor3 = Color3.new(1, 1, 1),
-		Font = Enum.Font.Gotham,
-		TextSize = 16,
-		BackgroundTransparency = 1,
-		Parent = header
-	})
-
-	local container = create("Frame", {
-		Size = UDim2.new(1, 0, 1, -30),
-		Position = UDim2.new(0, 0, 0, 30),
-		BackgroundTransparency = 1,
-		Name = "ContentContainer",
-		Parent = main
-	})
-
-	create("UIListLayout", {
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 5),
-		Parent = container
-	})
-
-	local function toggleMenu()
-		container.Visible = not container.Visible
-		minimizeBtn.Text = container.Visible and "–" or "□"
-	end
-
-	minimizeBtn.MouseButton1Click:Connect(toggleMenu)
-	closeBtn.MouseButton1Click:Connect(function()
-		screenGui:Destroy()
-	end)
-
-	-- Torna o menu arrastável com touch/mouse
-	makeDraggable(header)
-
-	-- APIs públicas
-	local api = {}
-
-	function api:CreateToggle(text, callback)
-		local toggle = create("TextButton", {
-			Size = UDim2.new(1, -10, 0, 30),
-			Text = "[ ] " .. text,
-			BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-			TextColor3 = Color3.new(1,1,1),
-			Font = Enum.Font.Gotham,
-			TextSize = 14,
-			Parent = container
-		})
-
-		local state = false
-		toggle.MouseButton1Click:Connect(function()
-			state = not state
-			toggle.Text = (state and "[✔] " or "[ ] ") .. text
-			if callback then callback(state) end
-		end)
-	end
-
-	function api:CreateSlider(text, min, max, callback)
-		local frame = create("Frame", {
-			Size = UDim2.new(1, -10, 0, 50),
-			BackgroundTransparency = 1,
-			Parent = container
-		})
-
-		local label = create("TextLabel", {
-			Size = UDim2.new(1, 0, 0, 20),
-			Text = text,
-			Font = Enum.Font.Gotham,
-			TextColor3 = Color3.new(1,1,1),
-			TextSize = 14,
-			BackgroundTransparency = 1,
-			Parent = frame
-		})
-
-		local slider = create("TextButton", {
-			Size = UDim2.new(1, 0, 0, 20),
-			Position = UDim2.new(0, 0, 0, 25),
-			BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-			Text = "",
-			Parent = frame
-		})
-
-		local fill = create("Frame", {
-			Size = UDim2.new(0, 0, 1, 0),
-			BackgroundColor3 = Color3.fromRGB(120, 120, 255),
-			BorderSizePixel = 0,
-			Parent = slider
-		})
-
-		local dragging = false
-		local function update(input)
-			local pos = math.clamp((input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
-			fill.Size = UDim2.new(pos, 0, 1, 0)
-			local value = math.floor(min + (max - min) * pos)
-			if callback then callback(value) end
-		end
-
-		slider.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-			end
-		end)
-
-		UserInputService.InputChanged:Connect(function(input)
-			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-				update(input)
-			end
-		end)
-
-		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
-			end
-		end)
-	end
-
-	function api:CreateButton(text, callback)
-		local btn = create("TextButton", {
-			Size = UDim2.new(1, -10, 0, 30),
-			Text = text,
-			BackgroundColor3 = Color3.fromRGB(80, 80, 80),
-			TextColor3 = Color3.new(1,1,1),
-			Font = Enum.Font.GothamBold,
-			TextSize = 14,
-			Parent = container
-		})
-		btn.MouseButton1Click:Connect(function()
-			if callback then callback() end
-		end)
-	end
-
-	function api:CreateDropdown(text, options, callback)
-		local open = false
-		local button = create("TextButton", {
-			Size = UDim2.new(1, -10, 0, 30),
-			Text = "▸ " .. text,
-			BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-			TextColor3 = Color3.new(1,1,1),
-			Font = Enum.Font.Gotham,
-			TextSize = 14,
-			Parent = container
-		})
-
-		local optionHolder = create("Frame", {
-			Size = UDim2.new(1, -20, 0, #options * 25),
-			BackgroundTransparency = 1,
-			Visible = false,
-			Parent = container
-		})
-		create("UIListLayout", {Parent = optionHolder})
-
-		for _, opt in pairs(options) do
-			local optBtn = create("TextButton", {
-				Size = UDim2.new(1, 0, 0, 25),
-				Text = opt,
-				Font = Enum.Font.Gotham,
-				TextSize = 14,
-				TextColor3 = Color3.new(1,1,1),
-				BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-				Parent = optionHolder
-			})
-
-			optBtn.MouseButton1Click:Connect(function()
-				if callback then callback(opt) end
-				optionHolder.Visible = false
-				button.Text = "▸ " .. text
-				open = false
-			end)
-		end
-
-		button.MouseButton1Click:Connect(function()
-			open = not open
-			optionHolder.Visible = open
-			button.Text = (open and "▾ " or "▸ ") .. text
-		end)
-	end
-
-	function api:CreateRichText(text)
-		local label = create("TextLabel", {
-			Size = UDim2.new(1, -10, 0, 60),
-			Text = text,
-			TextWrapped = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			RichText = true,
-			Font = Enum.Font.Gotham,
-			TextSize = 14,
-			TextColor3 = Color3.new(1,1,1),
-			BackgroundTransparency = 1,
-			Parent = container
-		})
-	end
-
-	return api
+-- Função para criar um objeto Drawing.Text
+local function CreateText()
+    local text = Drawing.new("Text")
+    text.Visible = false
+    text.Color = ESP.Settings.ESPColor
+    text.Size = 16
+    text.Center = true
+    text.Outline = true
+    text.Font = 2
+    return text
 end
 
-return Library
+-- Cria os objetos ESP para um alvo BasePart
+local function CreateESPObjects(target)
+    local data = {
+        Line = CreateLine(),
+        Box = CreateBox(),
+        Name = CreateText(),
+        Distance = CreateText(),
+        Target = target
+    }
+    ESP.Objects[target] = data
+end
+
+-- Remove os objetos ESP de um alvo BasePart
+local function RemoveESPObjects(target)
+    local data = ESP.Objects[target]
+    if data then
+        data.Line:Remove()
+        data.Box:Remove()
+        data.Name:Remove()
+        data.Distance:Remove()
+        ESP.Objects[target] = nil
+    end
+end
+
+-- Atualiza a posição e visibilidade dos objetos ESP para um alvo BasePart
+local function UpdateESPFor(target)
+    local data = ESP.Objects[target]
+    if not data then return end
+    local cam = Camera
+    local pos3D = target.Position
+
+    local screenPos, onScreen = cam:WorldToViewportPoint(pos3D)
+    if not onScreen then
+        data.Line.Visible = false
+        data.Box.Visible = false
+        data.Name.Visible = false
+        data.Distance.Visible = false
+        return
+    end
+
+    local color = ESP.Settings.ESPColor
+    data.Line.Color = color
+    data.Box.Color = color
+    data.Name.Color = color
+    data.Distance.Color = color
+
+    if ESP.Settings.ShowLine then
+        data.Line.Visible = true
+        data.Line.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+        data.Line.To = Vector2.new(screenPos.X, screenPos.Y)
+    else
+        data.Line.Visible = false
+    end
+
+    if ESP.Settings.ShowBox then
+        data.Box.Visible = true
+        local boxSize = Vector2.new(50, 50)
+        data.Box.Position = Vector2.new(screenPos.X - boxSize.X/2, screenPos.Y - boxSize.Y/2)
+        data.Box.Size = boxSize
+    else
+        data.Box.Visible = false
+    end
+
+    if ESP.Settings.ShowName then
+        data.Name.Visible = true
+        data.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 40)
+        local plr = Players:GetPlayerFromCharacter(target.Parent)
+        data.Name.Text = plr and plr.Name or target.Name or "Object"
+    else
+        data.Name.Visible = false
+    end
+
+    if ESP.Settings.ShowDistance then
+        data.Distance.Visible = true
+        local dist = (cam.CFrame.Position - pos3D).Magnitude
+        data.Distance.Position = Vector2.new(screenPos.X, screenPos.Y - 20)
+        data.Distance.Text = string.format("%.1f studs", dist)
+    else
+        data.Distance.Visible = false
+    end
+end
+
+-- Atualiza todos ESPs
+function ESP:Update()
+    if not self.Settings.Enabled then
+        for _, data in pairs(self.Objects) do
+            data.Line.Visible = false
+            data.Box.Visible = false
+            data.Name.Visible = false
+            data.Distance.Visible = false
+        end
+        return
+    end
+
+    for target, _ in pairs(self.Objects) do
+        if target and target.Parent then
+            UpdateESPFor(target)
+        else
+            RemoveESPObjects(target)
+        end
+    end
+end
+
+-- Adiciona um alvo BasePart para ESP
+function ESP:Add(target)
+    if not target or not target:IsA("BasePart") then
+        warn("ESP: alvo deve ser BasePart válido")
+        return
+    end
+    if not self.Objects[target] then
+        CreateESPObjects(target)
+    end
+end
+
+-- Remove um alvo BasePart da ESP
+function ESP:Remove(target)
+    RemoveESPObjects(target)
+end
+
+-- Remove todos alvos ESP
+function ESP:Clear()
+    for target, _ in pairs(self.Objects) do
+        RemoveESPObjects(target)
+    end
+end
+
+-- Configurações
+function ESP:SetEnabled(value)
+    self.Settings.Enabled = value
+    if not value then
+        self:Clear()
+    end
+end
+function ESP:SetShowLine(value) self.Settings.ShowLine = value end
+function ESP:SetShowBox(value) self.Settings.ShowBox = value end
+function ESP:SetShowName(value) self.Settings.ShowName = value end
+function ESP:SetShowDistance(value) self.Settings.ShowDistance = value end
+function ESP:SetColor(color3) self.Settings.ESPColor = color3 end
+
+-- Loop de atualização ligado
+RunService.RenderStepped:Connect(function()
+    ESP:Update()
+end)
+
+return ESP
