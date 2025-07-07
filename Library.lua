@@ -1,193 +1,200 @@
--- ESPLibrary.lua
-local ESP = {}
-ESP.__index = ESP
-
+-- ESP com suporte a jogadores e objetos
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
+local camera = workspace.CurrentCamera
+local localPlayer = Players.LocalPlayer
 
--- Configurações globais
-ESP.Config = {
-    LineEnabled = true,
-    BoxEnabled = true,
-    NameEnabled = true,
-    DistanceEnabled = true,
-    LineColor = Color3.fromRGB(255, 0, 0),
-    BoxColor = Color3.fromRGB(0, 255, 0),
-    TextColor = Color3.fromRGB(255, 255, 255),
-    MaxDistance = 1000,
+local ESP_SETTINGS = {
+    Enabled = true,
+    ShowBox = true,
+    ShowName = true,
+    ShowTracer = true,
+    BoxColor = Color3.new(1, 1, 1),
+    NameColor = Color3.new(1, 1, 1),
+    TracerColor = Color3.new(1, 1, 1),
+    TracerThickness = 2,
+    BoxOutlineColor = Color3.new(0, 0, 0),
+    TracerPosition = "Bottom"
 }
 
-local function createDrawing(type)
-    local drawing = Drawing.new(type)
-    drawing.Visible = false
+local cache = {}
+local objectCache = {}
+local ObjectESPList = {} -- insira aqui os objetos que deseja rastrear
+
+-- Utilitário para criar desenho
+local function create(class, props)
+    local drawing = Drawing.new(class)
+    for prop, val in pairs(props) do
+        drawing[prop] = val
+    end
     return drawing
 end
 
-function ESP.newObjectESP(object, displayName)
-    local self = setmetatable({}, ESP)
-    self.Object = object
-    self.DisplayName = displayName or object.Name
-
-    self.Line = createDrawing("Line")
-    self.Box = createDrawing("Square")
-    self.Name = createDrawing("Text")
-    self.Distance = createDrawing("Text")
-
-    return self
+-- Criar ESP para jogador
+local function createPlayerEsp(player)
+    local esp = {
+        box = create("Square", {
+            Color = ESP_SETTINGS.BoxColor,
+            Thickness = 1,
+            Filled = false
+        }),
+        name = create("Text", {
+            Color = ESP_SETTINGS.NameColor,
+            Outline = true,
+            Center = true,
+            Size = 13
+        }),
+        tracer = create("Line", {
+            Thickness = ESP_SETTINGS.TracerThickness,
+            Color = ESP_SETTINGS.TracerColor,
+            Transparency = 1
+        })
+    }
+    cache[player] = esp
 end
 
-function ESP:update()
-    if not self.Object or not self.Object.Parent then
-        self:hideAll()
-        return
-    end
-
-    local success, minVec, maxVec = pcall(function()
-        return self.Object:GetBoundingBox()
-    end)
-    if not success then
-        self:hideAll()
-        return
-    end
-
-    local center = (minVec + maxVec) / 2
-    local screenPos, visible = Camera:WorldToViewportPoint(center)
-    if not visible then
-        self:hideAll()
-        return
-    end
-
-    local dist = (Camera.CFrame.Position - center).Magnitude
-    if dist > ESP.Config.MaxDistance then
-        self:hideAll()
-        return
-    end
-
-    -- Linha
-    if ESP.Config.LineEnabled then
-        self.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-        self.Line.To = Vector2.new(screenPos.X, screenPos.Y)
-        self.Line.Color = ESP.Config.LineColor
-        self.Line.Visible = true
-    else
-        self.Line.Visible = false
-    end
-
-    -- Caixa
-    if ESP.Config.BoxEnabled then
-        local corners = {
-            Vector3.new(minVec.X, maxVec.Y, minVec.Z),
-            Vector3.new(maxVec.X, maxVec.Y, minVec.Z),
-            Vector3.new(maxVec.X, maxVec.Y, maxVec.Z),
-            Vector3.new(minVec.X, maxVec.Y, maxVec.Z),
-            Vector3.new(minVec.X, minVec.Y, minVec.Z),
-            Vector3.new(maxVec.X, minVec.Y, minVec.Z),
-            Vector3.new(maxVec.X, minVec.Y, maxVec.Z),
-            Vector3.new(minVec.X, minVec.Y, maxVec.Z),
-        }
-
-        local screenCorners = {}
-        for i, corner in pairs(corners) do
-            local sp, vis = Camera:WorldToViewportPoint(corner)
-            screenCorners[i] = Vector2.new(sp.X, sp.Y)
-        end
-
-        local minX, maxX = math.huge, -math.huge
-        local minY, maxY = math.huge, -math.huge
-        for _, point in pairs(screenCorners) do
-            minX = math.min(minX, point.X)
-            maxX = math.max(maxX, point.X)
-            minY = math.min(minY, point.Y)
-            maxY = math.max(maxY, point.Y)
-        end
-
-        self.Box.Position = Vector2.new(minX, minY)
-        self.Box.Size = Vector2.new(maxX - minX, maxY - minY)
-        self.Box.Color = ESP.Config.BoxColor
-        self.Box.Thickness = 2
-        self.Box.Visible = true
-    else
-        self.Box.Visible = false
-    end
-
-    -- Nome
-    if ESP.Config.NameEnabled then
-        self.Name.Text = self.DisplayName
-        self.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 15)
-        self.Name.Center = true
-        self.Name.Color = ESP.Config.TextColor
-        self.Name.Visible = true
-        self.Name.Outline = true
-    else
-        self.Name.Visible = false
-    end
-
-    -- Distância
-    if ESP.Config.DistanceEnabled then
-        self.Distance.Text = string.format("%.0f m", dist)
-        self.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + 15)
-        self.Distance.Center = true
-        self.Distance.Color = ESP.Config.TextColor
-        self.Distance.Visible = true
-        self.Distance.Outline = true
-    else
-        self.Distance.Visible = false
-    end
+-- Criar ESP para objeto
+local function createObjectEsp(obj)
+    local esp = {
+        box = create("Square", {
+            Color = ESP_SETTINGS.BoxColor,
+            Thickness = 1,
+            Filled = false
+        }),
+        name = create("Text", {
+            Color = ESP_SETTINGS.NameColor,
+            Outline = true,
+            Center = true,
+            Size = 13,
+            Text = obj.Name
+        }),
+        tracer = create("Line", {
+            Thickness = ESP_SETTINGS.TracerThickness,
+            Color = ESP_SETTINGS.TracerColor,
+            Transparency = 1
+        })
+    }
+    objectCache[obj] = esp
 end
 
-function ESP:hideAll()
-    self.Line.Visible = false
-    self.Box.Visible = false
-    self.Name.Visible = false
-    self.Distance.Visible = false
-end
+-- Atualizar ESP
+local function updateEsp()
+    -- ESP de jogadores
+    for player, esp in pairs(cache) do
+        local character = player.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
 
-function ESP:remove()
-    self.Line:Remove()
-    self.Box:Remove()
-    self.Name:Remove()
-    self.Distance:Remove()
-end
+        if ESP_SETTINGS.Enabled and root then
+            local pos, onScreen = camera:WorldToViewportPoint(root.Position)
+            if onScreen then
+                local size = Vector2.new(60, 100)
+                local boxPos = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
 
-local ESPManager = {}
-ESPManager.__index = ESPManager
+                -- Box
+                esp.box.Position = boxPos
+                esp.box.Size = size
+                esp.box.Visible = ESP_SETTINGS.ShowBox
 
-function ESPManager.new()
-    local self = setmetatable({}, ESPManager)
-    self.ObjectsESP = {}
+                -- Name
+                esp.name.Position = Vector2.new(pos.X, boxPos.Y - 16)
+                esp.name.Text = player.Name
+                esp.name.Visible = ESP_SETTINGS.ShowName
 
-    RunService.RenderStepped:Connect(function()
-        for obj, esp in pairs(self.ObjectsESP) do
-            if not obj or not obj.Parent then
-                esp:remove()
-                self.ObjectsESP[obj] = nil
+                -- Tracer
+                if ESP_SETTINGS.ShowTracer then
+                    local tracerY = ESP_SETTINGS.TracerPosition == "Top" and 0
+                        or ESP_SETTINGS.TracerPosition == "Middle" and camera.ViewportSize.Y / 2
+                        or camera.ViewportSize.Y
+                    esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY)
+                    esp.tracer.To = Vector2.new(pos.X, pos.Y)
+                    esp.tracer.Visible = true
+                else
+                    esp.tracer.Visible = false
+                end
             else
-                esp:update()
+                esp.box.Visible = false
+                esp.name.Visible = false
+                esp.tracer.Visible = false
+            end
+        else
+            esp.box.Visible = false
+            esp.name.Visible = false
+            esp.tracer.Visible = false
+        end
+    end
+
+    -- ESP de objetos
+    for _, obj in ipairs(ObjectESPList) do
+        if obj and obj:IsA("BasePart") then
+            local esp = objectCache[obj]
+            if not esp then
+                createObjectEsp(obj)
+                esp = objectCache[obj]
+            end
+
+            local pos, onScreen = camera:WorldToViewportPoint(obj.Position)
+            if ESP_SETTINGS.Enabled and onScreen then
+                local size = Vector2.new(50, 50)
+                local boxPos = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+
+                -- Box
+                esp.box.Position = boxPos
+                esp.box.Size = size
+                esp.box.Visible = ESP_SETTINGS.ShowBox
+
+                -- Name
+                esp.name.Position = Vector2.new(pos.X, pos.Y - 20)
+                esp.name.Text = obj.Name
+                esp.name.Visible = ESP_SETTINGS.ShowName
+
+                -- Tracer
+                if ESP_SETTINGS.ShowTracer then
+                    local tracerY = ESP_SETTINGS.TracerPosition == "Top" and 0
+                        or ESP_SETTINGS.TracerPosition == "Middle" and camera.ViewportSize.Y / 2
+                        or camera.ViewportSize.Y
+                    esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY)
+                    esp.tracer.To = Vector2.new(pos.X, pos.Y)
+                    esp.tracer.Visible = true
+                else
+                    esp.tracer.Visible = false
+                end
+            else
+                esp.box.Visible = false
+                esp.name.Visible = false
+                esp.tracer.Visible = false
             end
         end
-    end)
-
-    return self
-end
-
-function ESPManager:addObject(obj, displayName)
-    if not self.ObjectsESP[obj] then
-        self.ObjectsESP[obj] = ESP.newObjectESP(obj, displayName)
     end
 end
 
-function ESPManager:removeObject(obj)
-    if self.ObjectsESP[obj] then
-        self.ObjectsESP[obj]:remove()
-        self.ObjectsESP[obj] = nil
+-- Inicializar ESP para jogadores existentes
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= localPlayer then
+        createPlayerEsp(player)
     end
 end
 
-function ESPManager:clear()
-    for _, esp in pairs(self.ObjectsESP) do
-        esp:remove()
+-- Detectar novos jogadores
+Players.PlayerAdded:Connect(function(player)
+    if player ~= localPlayer then
+        createPlayerEsp(player)
     end
-    self.ObjectsESP = {}
-end
+end)
 
-return ESPManager
+Players.PlayerRemoving:Connect(function(player)
+    if cache[player] then
+        for _, d in pairs(cache[player]) do
+            d:Remove()
+        end
+        cache[player] = nil
+    end
+end)
+
+-- Atualizar em tempo real
+RunService.RenderStepped:Connect(updateEsp)
+
+-- 🔧 Exemplo de uso (adicione seus objetos aqui)
+table.insert(ObjectESPList, workspace:WaitForChild("Part"))
+-- table.insert(ObjectESPList, workspace.CaixaSegredo)
+
+return ESP_SETTINGS
