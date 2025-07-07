@@ -1,140 +1,234 @@
--- RobloxESP.lua
--- Biblioteca ESP para Roblox
--- github.com/seu-usuario/RobloxESP
+-- ESP Library for Roblox
+-- GitHub: https://github.com/yourusername/roblox-esp-library
 
-local ESP = {}
-ESP.Objects = {}
-ESP.Settings = {
-    ShowLine = true,
-    ShowBox = true,
-    ShowDistance = true,
-    ShowName = true,
-    LineColor = Color3.new(1, 0, 0),
-    BoxColor = Color3.new(0, 1, 0),
-    TextColor = Color3.new(1, 1, 1)
+local ESPLibrary = {}
+ESPLibrary.__index = ESPLibrary
+
+-- Configuration defaults
+local defaultConfig = {
+    lineColor = Color3.fromRGB(255, 0, 0),
+    boxColor = Color3.fromRGB(255, 0, 0),
+    textColor = Color3.fromRGB(255, 255, 255),
+    textSize = 14,
+    lineThickness = 1,
+    boxThickness = 1,
+    showDistance = true,
+    showName = true,
+    maxDistance = 1000,
+    enabled = true
 }
 
-local camera = workspace.CurrentCamera
-local localPlayer = game.Players.LocalPlayer
-
--- Adiciona um objeto com ESP
-function ESP:AddObject(model, name)
-    if not model:IsA("Model") then return end
-    if self.Objects[model] then return end
-
-    local box = Drawing.new("Square")
-    box.Thickness = 1
-    box.Filled = false
-    box.Visible = false
-    box.Color = self.Settings.BoxColor
-
-    local line = Drawing.new("Line")
-    line.Thickness = 1
-    line.Visible = false
-    line.Color = self.Settings.LineColor
-
-    local text = Drawing.new("Text")
-    text.Size = 14
-    text.Center = true
-    text.Outline = true
-    text.Visible = false
-    text.Color = self.Settings.TextColor
-
-    self.Objects[model] = {
-        Model = model,
-        Box = box,
-        Line = line,
-        Text = text,
-        Name = name or model.Name
-    }
-end
-
--- Remove ESP de um objeto
-function ESP:RemoveObject(model)
-    if self.Objects[model] then
-        self.Objects[model].Box:Remove()
-        self.Objects[model].Line:Remove()
-        self.Objects[model].Text:Remove()
-        self.Objects[model] = nil
+-- Helper function to create a Drawing object
+local function createDrawing(type, props)
+    local drawing = Drawing.new(type)
+    for prop, value in pairs(props) do
+        drawing[prop] = value
     end
+    return drawing
 end
 
--- Atualiza todos os ESPs (deve ser chamado a cada frame)
-function ESP:UpdateAll()
-    local camPos = camera.CFrame.Position
+-- Constructor
+function ESPLibrary.new(object, config)
+    local self = setmetatable({}, ESPLibrary)
+    
+    self.object = object
+    self.config = config or defaultConfig
+    self.connections = {}
+    
+    -- Initialize ESP components
+    self.line = createDrawing("Line", {
+        Thickness = self.config.lineThickness,
+        Color = self.config.lineColor,
+        Visible = false
+    })
+    
+    self.box = createDrawing("Quad", {
+        Thickness = self.config.boxThickness,
+        Color = self.config.boxColor,
+        Filled = false,
+        Visible = false
+    })
+    
+    self.distanceText = createDrawing("Text", {
+        Size = self.config.textSize,
+        Color = self.config.textColor,
+        Outline = true,
+        Center = true,
+        Visible = false
+    })
+    
+    self.nameText = createDrawing("Text", {
+        Size = self.config.textSize,
+        Color = self.config.textColor,
+        Outline = true,
+        Center = true,
+        Visible = false
+    })
+    
+    -- Set up connections
+    self:setupConnections()
+    
+    return self
+end
 
-    for model, data in pairs(self.Objects) do
-        if not model:IsDescendantOf(game) then
-            self:RemoveObject(model)
+-- Update ESP visuals
+function ESPLibrary:update()
+    if not self.config.enabled or not self.object or not self.object.Parent then
+        self:hide()
+        return
+    end
+    
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+    
+    -- Get object position (handle both BasePart and Model)
+    local position
+    if self.object:IsA("BasePart") then
+        position = self.object.Position
+    elseif self.object:IsA("Model") then
+        local primaryPart = self.object.PrimaryPart or self.object:FindFirstChildWhichIsA("BasePart")
+        if primaryPart then
+            position = primaryPart.Position
         else
-            local primary = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart") or model:FindFirstChildWhichIsA("BasePart")
-            if primary then
-                local pos, onScreen = camera:WorldToViewportPoint(primary.Position)
-
-                if onScreen then
-                    -- Caixa
-                    if self.Settings.ShowBox then
-                        local size = model:GetExtentsSize()
-                        local corners = {}
-                        for _, offset in ipairs({
-                            Vector3.new(1, 1, 1), Vector3.new(-1, 1, 1),
-                            Vector3.new(-1, 1, -1), Vector3.new(1, 1, -1),
-                            Vector3.new(1, -1, 1), Vector3.new(-1, -1, 1),
-                            Vector3.new(-1, -1, -1), Vector3.new(1, -1, -1)
-                        }) do
-                            local worldPos = primary.CFrame:pointToWorldSpace(offset * size / 2)
-                            table.insert(corners, camera:WorldToViewportPoint(worldPos))
-                        end
-
-                        local minX, minY, maxX, maxY = math.huge, math.huge, 0, 0
-                        for _, corner in ipairs(corners) do
-                            minX = math.min(minX, corner.X)
-                            minY = math.min(minY, corner.Y)
-                            maxX = math.max(maxX, corner.X)
-                            maxY = math.max(maxY, corner.Y)
-                        end
-
-                        data.Box.Position = Vector2.new(minX, minY)
-                        data.Box.Size = Vector2.new(maxX - minX, maxY - minY)
-                        data.Box.Visible = true
-                    else
-                        data.Box.Visible = false
-                    end
-
-                    -- Linha
-                    if self.Settings.ShowLine then
-                        data.Line.From = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y)
-                        data.Line.To = Vector2.new(pos.X, pos.Y)
-                        data.Line.Visible = true
-                    else
-                        data.Line.Visible = false
-                    end
-
-                    -- Texto
-                    if self.Settings.ShowName or self.Settings.ShowDistance then
-                        local textStr = ""
-                        if self.Settings.ShowName then
-                            textStr = data.Name
-                        end
-                        if self.Settings.ShowDistance then
-                            local dist = math.floor((camPos - primary.Position).Magnitude)
-                            textStr = textStr .. " [" .. dist .. "m]"
-                        end
-
-                        data.Text.Text = textStr
-                        data.Text.Position = Vector2.new(pos.X, pos.Y - 15)
-                        data.Text.Visible = true
-                    else
-                        data.Text.Visible = false
-                    end
-                else
-                    data.Box.Visible = false
-                    data.Line.Visible = false
-                    data.Text.Visible = false
-                end
-            end
+            self:hide()
+            return
         end
+    else
+        self:hide()
+        return
+    end
+    
+    -- Calculate distance
+    local distance = (camera.CFrame.Position - position).Magnitude
+    if distance > self.config.maxDistance then
+        self:hide()
+        return
+    end
+    
+    -- Get 2D screen position
+    local screenPosition, onScreen = camera:WorldToViewportPoint(position)
+    if not onScreen then
+        self:hide()
+        return
+    end
+    
+    -- Update line (from bottom center of screen to object)
+    if self.config.showLine then
+        self.line.From = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y)
+        self.line.To = Vector2.new(screenPosition.X, screenPosition.Y)
+        self.line.Visible = true
+    else
+        self.line.Visible = false
+    end
+    
+    -- Update box (around object)
+    if self.config.showBox then
+        local size = self.object:IsA("BasePart") and self.object.Size or self.object:GetExtentsSize()
+        local corners = {
+            camera:WorldToViewportPoint(position + Vector3.new(size.X/2, size.Y/2, size.Z/2)),
+            camera:WorldToViewportPoint(position + Vector3.new(-size.X/2, size.Y/2, size.Z/2)),
+            camera:WorldToViewportPoint(position + Vector3.new(-size.X/2, -size.Y/2, size.Z/2)),
+            camera:WorldToViewportPoint(position + Vector3.new(size.X/2, -size.Y/2, size.Z/2))
+        }
+        
+        if #corners == 4 then
+            self.box.PointA = Vector2.new(corners[1].X, corners[1].Y)
+            self.box.PointB = Vector2.new(corners[2].X, corners[2].Y)
+            self.box.PointC = Vector2.new(corners[3].X, corners[3].Y)
+            self.box.PointD = Vector2.new(corners[4].X, corners[4].Y)
+            self.box.Visible = true
+        else
+            self.box.Visible = false
+        end
+    else
+        self.box.Visible = false
+    end
+    
+    -- Update distance text
+    if self.config.showDistance then
+        self.distanceText.Text = string.format("%.1f studs", distance)
+        self.distanceText.Position = Vector2.new(screenPosition.X, screenPosition.Y + 20)
+        self.distanceText.Visible = true
+    else
+        self.distanceText.Visible = false
+    end
+    
+    -- Update name text
+    if self.config.showName then
+        self.nameText.Text = self.object.Name
+        self.nameText.Position = Vector2.new(screenPosition.X, screenPosition.Y - 20)
+        self.nameText.Visible = true
+    else
+        self.nameText.Visible = false
     end
 end
 
-return ESP
+-- Set up event connections
+function ESPLibrary:setupConnections()
+    -- Clean up old connections
+    for _, connection in pairs(self.connections) do
+        connection:Disconnect()
+    end
+    self.connections = {}
+    
+    -- Update ESP on render step
+    table.insert(self.connections, game:GetService("RunService").RenderStepped:Connect(function()
+        self:update()
+    end))
+    
+    -- Clean up if object is removed
+    table.insert(self.connections, self.object.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            self:destroy()
+        end
+    end))
+end
+
+-- Hide all ESP elements
+function ESPLibrary:hide()
+    self.line.Visible = false
+    self.box.Visible = false
+    self.distanceText.Visible = false
+    self.nameText.Visible = false
+end
+
+-- Destroy the ESP object
+function ESPLibrary:destroy()
+    self:hide()
+    
+    -- Disconnect all events
+    for _, connection in pairs(self.connections) do
+        connection:Disconnect()
+    end
+    
+    -- Remove drawing objects
+    self.line:Remove()
+    self.box:Remove()
+    self.distanceText:Remove()
+    self.nameText:Remove()
+    
+    setmetatable(self, nil)
+end
+
+-- Example usage:
+--[[
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Create ESP for all players except yourself
+for _, otherPlayer in ipairs(Players:GetPlayers()) do
+    if otherPlayer ~= player and otherPlayer.Character then
+        local esp = ESPLibrary.new(otherPlayer.Character, {
+            showLine = true,
+            showBox = true,
+            showDistance = true,
+            showName = true,
+            lineColor = Color3.fromRGB(0, 255, 0),
+            boxColor = Color3.fromRGB(0, 255, 0),
+            maxDistance = 500
+        })
+    end
+end
+]]
+
+return ESPLibrary
