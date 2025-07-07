@@ -1,200 +1,141 @@
--- ESP com suporte a jogadores e objetos
-local Players = game:GetService("Players")
+local ESP = {}
+
 local RunService = game:GetService("RunService")
-local camera = workspace.CurrentCamera
-local localPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
-local ESP_SETTINGS = {
-    Enabled = true,
-    ShowBox = true,
-    ShowName = true,
-    ShowTracer = true,
-    BoxColor = Color3.new(1, 1, 1),
-    NameColor = Color3.new(1, 1, 1),
-    TracerColor = Color3.new(1, 1, 1),
-    TracerThickness = 2,
-    BoxOutlineColor = Color3.new(0, 0, 0),
-    TracerPosition = "Bottom"
-}
+ESP.Enabled = false
+ESP.Color = Color3.fromRGB(0, 255, 0)
+ESP.Objects = {} -- Tabela de objetos para ESP
 
-local cache = {}
-local objectCache = {}
-local ObjectESPList = {} -- insira aqui os objetos que deseja rastrear
+-- Tabela para armazenar os objetos Drawing criados para cada objeto
+local espDrawings = {}
 
--- Utilitário para criar desenho
-local function create(class, props)
-    local drawing = Drawing.new(class)
-    for prop, val in pairs(props) do
-        drawing[prop] = val
-    end
-    return drawing
-end
-
--- Criar ESP para jogador
-local function createPlayerEsp(player)
-    local esp = {
-        box = create("Square", {
-            Color = ESP_SETTINGS.BoxColor,
-            Thickness = 1,
-            Filled = false
-        }),
-        name = create("Text", {
-            Color = ESP_SETTINGS.NameColor,
-            Outline = true,
-            Center = true,
-            Size = 13
-        }),
-        tracer = create("Line", {
-            Thickness = ESP_SETTINGS.TracerThickness,
-            Color = ESP_SETTINGS.TracerColor,
-            Transparency = 1
-        })
+-- Cria os desenhos para um objeto
+local function createDrawings()
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Color = ESP.Color
+    line.Visible = false
+    
+    local box = Drawing.new("Square")
+    box.Thickness = 1.5
+    box.Color = ESP.Color
+    box.Filled = false
+    box.Visible = false
+    
+    return {
+        Line = line,
+        Box = box
     }
-    cache[player] = esp
 end
 
--- Criar ESP para objeto
-local function createObjectEsp(obj)
-    local esp = {
-        box = create("Square", {
-            Color = ESP_SETTINGS.BoxColor,
-            Thickness = 1,
-            Filled = false
-        }),
-        name = create("Text", {
-            Color = ESP_SETTINGS.NameColor,
-            Outline = true,
-            Center = true,
-            Size = 13,
-            Text = obj.Name
-        }),
-        tracer = create("Line", {
-            Thickness = ESP_SETTINGS.TracerThickness,
-            Color = ESP_SETTINGS.TracerColor,
-            Transparency = 1
-        })
-    }
-    objectCache[obj] = esp
-end
-
--- Atualizar ESP
-local function updateEsp()
-    -- ESP de jogadores
-    for player, esp in pairs(cache) do
-        local character = player.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-
-        if ESP_SETTINGS.Enabled and root then
-            local pos, onScreen = camera:WorldToViewportPoint(root.Position)
-            if onScreen then
-                local size = Vector2.new(60, 100)
-                local boxPos = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
-
-                -- Box
-                esp.box.Position = boxPos
-                esp.box.Size = size
-                esp.box.Visible = ESP_SETTINGS.ShowBox
-
-                -- Name
-                esp.name.Position = Vector2.new(pos.X, boxPos.Y - 16)
-                esp.name.Text = player.Name
-                esp.name.Visible = ESP_SETTINGS.ShowName
-
-                -- Tracer
-                if ESP_SETTINGS.ShowTracer then
-                    local tracerY = ESP_SETTINGS.TracerPosition == "Top" and 0
-                        or ESP_SETTINGS.TracerPosition == "Middle" and camera.ViewportSize.Y / 2
-                        or camera.ViewportSize.Y
-                    esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY)
-                    esp.tracer.To = Vector2.new(pos.X, pos.Y)
-                    esp.tracer.Visible = true
-                else
-                    esp.tracer.Visible = false
-                end
-            else
-                esp.box.Visible = false
-                esp.name.Visible = false
-                esp.tracer.Visible = false
-            end
-        else
-            esp.box.Visible = false
-            esp.name.Visible = false
-            esp.tracer.Visible = false
-        end
+-- Função para atualizar a posição dos desenhos para um objeto
+local function updateDrawings(obj, drawings)
+    if not obj or not obj.Parent then
+        -- Se o objeto sumiu da workspace, esconder desenhos
+        drawings.Line.Visible = false
+        drawings.Box.Visible = false
+        return
     end
+    
+    local objPos = obj.Position or (obj:IsA("BasePart") and obj.Position) or nil
+    if not objPos then
+        drawings.Line.Visible = false
+        drawings.Box.Visible = false
+        return
+    end
+    
+    local screenPos, onScreen = Camera:WorldToViewportPoint(objPos)
+    
+    if onScreen then
+        local screenX, screenY = screenPos.X, screenPos.Y
+        
+        -- Linha do centro da tela até o objeto
+        local centerX, centerY = Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2
+        drawings.Line.From = Vector2.new(centerX, centerY)
+        drawings.Line.To = Vector2.new(screenX, screenY)
+        drawings.Line.Color = ESP.Color
+        drawings.Line.Visible = true
+        
+        -- Caixa ao redor do objeto (simples, fixa um tamanho)
+        local boxSize = 30
+        drawings.Box.Size = Vector2.new(boxSize, boxSize)
+        drawings.Box.Position = Vector2.new(screenX - boxSize/2, screenY - boxSize/2)
+        drawings.Box.Color = ESP.Color
+        drawings.Box.Visible = true
+    else
+        drawings.Line.Visible = false
+        drawings.Box.Visible = false
+    end
+end
 
-    -- ESP de objetos
-    for _, obj in ipairs(ObjectESPList) do
-        if obj and obj:IsA("BasePart") then
-            local esp = objectCache[obj]
-            if not esp then
-                createObjectEsp(obj)
-                esp = objectCache[obj]
-            end
+-- Atualiza todas as ESPs
+local function onRenderStep()
+    if not ESP.Enabled then
+        -- Esconder tudo quando desabilitado
+        for obj, drawings in pairs(espDrawings) do
+            drawings.Line.Visible = false
+            drawings.Box.Visible = false
+        end
+        return
+    end
+    
+    for obj, drawings in pairs(espDrawings) do
+        updateDrawings(obj, drawings)
+    end
+end
 
-            local pos, onScreen = camera:WorldToViewportPoint(obj.Position)
-            if ESP_SETTINGS.Enabled and onScreen then
-                local size = Vector2.new(50, 50)
-                local boxPos = Vector2.new(pos.X - size.X / 2, pos.Y - size.Y / 2)
+function ESP:SetColor(color)
+    self.Color = color
+    -- Atualiza a cor dos desenhos
+    for _, drawings in pairs(espDrawings) do
+        drawings.Line.Color = color
+        drawings.Box.Color = color
+    end
+end
 
-                -- Box
-                esp.box.Position = boxPos
-                esp.box.Size = size
-                esp.box.Visible = ESP_SETTINGS.ShowBox
+function ESP:AddObject(obj)
+    if not obj or espDrawings[obj] then return end
+    local drawings = createDrawings()
+    espDrawings[obj] = drawings
+    table.insert(self.Objects, obj)
+end
 
-                -- Name
-                esp.name.Position = Vector2.new(pos.X, pos.Y - 20)
-                esp.name.Text = obj.Name
-                esp.name.Visible = ESP_SETTINGS.ShowName
-
-                -- Tracer
-                if ESP_SETTINGS.ShowTracer then
-                    local tracerY = ESP_SETTINGS.TracerPosition == "Top" and 0
-                        or ESP_SETTINGS.TracerPosition == "Middle" and camera.ViewportSize.Y / 2
-                        or camera.ViewportSize.Y
-                    esp.tracer.From = Vector2.new(camera.ViewportSize.X / 2, tracerY)
-                    esp.tracer.To = Vector2.new(pos.X, pos.Y)
-                    esp.tracer.Visible = true
-                else
-                    esp.tracer.Visible = false
-                end
-            else
-                esp.box.Visible = false
-                esp.name.Visible = false
-                esp.tracer.Visible = false
-            end
+function ESP:RemoveObject(obj)
+    if not obj then return end
+    if espDrawings[obj] then
+        espDrawings[obj].Line:Remove()
+        espDrawings[obj].Box:Remove()
+        espDrawings[obj] = nil
+    end
+    for i, o in ipairs(self.Objects) do
+        if o == obj then
+            table.remove(self.Objects, i)
+            break
         end
     end
 end
 
--- Inicializar ESP para jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= localPlayer then
-        createPlayerEsp(player)
+function ESP:Clear()
+    for obj, drawings in pairs(espDrawings) do
+        drawings.Line:Remove()
+        drawings.Box:Remove()
+    end
+    espDrawings = {}
+    self.Objects = {}
+end
+
+function ESP:SetEnabled(state)
+    self.Enabled = state
+    if not state then
+        -- Quando desligar, esconder tudo
+        for obj, drawings in pairs(espDrawings) do
+            drawings.Line.Visible = false
+            drawings.Box.Visible = false
+        end
     end
 end
 
--- Detectar novos jogadores
-Players.PlayerAdded:Connect(function(player)
-    if player ~= localPlayer then
-        createPlayerEsp(player)
-    end
-end)
+RunService.RenderStepped:Connect(onRenderStep)
 
-Players.PlayerRemoving:Connect(function(player)
-    if cache[player] then
-        for _, d in pairs(cache[player]) do
-            d:Remove()
-        end
-        cache[player] = nil
-    end
-end)
-
--- Atualizar em tempo real
-RunService.RenderStepped:Connect(updateEsp)
-
--- 🔧 Exemplo de uso (adicione seus objetos aqui)
-table.insert(ObjectESPList, workspace:WaitForChild("Part"))
--- table.insert(ObjectESPList, workspace.CaixaSegredo)
-
-return ESP_SETTINGS
+return ESP
