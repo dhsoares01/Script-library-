@@ -1,6 +1,5 @@
 -- ESP Library (Object-based) | Suporte: Box, Line, Name, Distance
 -- Compatível com executores como Delta, Fluxus, Arceus X, Hydrogen
--- Atualizado: Auto-remover objetos nulos + toggle ESP.Enabled
 -- Feito por ChatGPT | Licença livre para uso
 
 local RunService = game:GetService("RunService")
@@ -8,7 +7,7 @@ local Camera = workspace.CurrentCamera
 
 local ESP = {}
 ESP.Objects = {}
-ESP.Enabled = true
+ESP.Enabled = true -- Toggle principal
 ESP.Settings = {
     Box = true,
     Line = true,
@@ -18,14 +17,12 @@ ESP.Settings = {
     Color = Color3.new(1, 1, 1)
 }
 
--- Remover desenháveis de um objeto
-local function removeESP(obj)
-    pcall(function()
-        if obj.Box then obj.Box:Remove() end
-        if obj.Line then obj.Line:Remove() end
-        if obj.NameLabel then obj.NameLabel:Remove() end
-        if obj.DistanceLabel then obj.DistanceLabel:Remove() end
-    end)
+-- Remove todas as Drawings de um objeto ESP
+function ESP:Remove(espObject)
+    espObject.Box:Remove()
+    espObject.Line:Remove()
+    espObject.NameLabel:Remove()
+    espObject.DistanceLabel:Remove()
 end
 
 -- Função para criar um ESP em um objeto
@@ -66,63 +63,75 @@ end
 
 -- Atualização contínua dos ESPs
 RunService.RenderStepped:Connect(function()
+    if not ESP.Enabled then
+        for _, obj in ipairs(ESP.Objects) do
+            obj.Box.Visible = false
+            obj.Line.Visible = false
+            obj.NameLabel.Visible = false
+            obj.DistanceLabel.Visible = false
+        end
+        return
+    end
+
+    -- Atualiza e limpa objetos destruídos
     for i = #ESP.Objects, 1, -1 do
         local obj = ESP.Objects[i]
         local target = obj.Target
 
-        -- Se ESP estiver desligado ou target for inválido, limpar e remover
-        if not ESP.Enabled or not target or not target:IsDescendantOf(game) or not target:FindFirstChild("HumanoidRootPart") then
-            removeESP(obj)
+        if not target or not target:IsDescendantOf(game) then
+            ESP:Remove(obj)
             table.remove(ESP.Objects, i)
         else
             local root = target:FindFirstChild("HumanoidRootPart")
-            local pos, visible = Camera:WorldToViewportPoint(root.Position)
+            if root then
+                local pos, visible = Camera:WorldToViewportPoint(root.Position)
 
-            if visible then
-                local size = math.clamp(2000 / (Camera.CFrame.Position - root.Position).Magnitude, 2, 300)
-                local boxSize = Vector2.new(size, size * 1.5)
+                if visible then
+                    local size = math.clamp(2000 / (Camera.CFrame.Position - root.Position).Magnitude, 2, 300)
+                    local boxSize = Vector2.new(size, size * 1.5)
 
-                -- Box ESP
-                if ESP.Settings.Box then
-                    obj.Box.Size = boxSize
-                    obj.Box.Position = Vector2.new(pos.X - boxSize.X / 2, pos.Y - boxSize.Y / 2)
-                    obj.Box.Visible = true
+                    -- Box
+                    if ESP.Settings.Box then
+                        obj.Box.Size = boxSize
+                        obj.Box.Position = Vector2.new(pos.X - boxSize.X / 2, pos.Y - boxSize.Y / 2)
+                        obj.Box.Visible = true
+                    else
+                        obj.Box.Visible = false
+                    end
+
+                    -- Line
+                    if ESP.Settings.Line then
+                        obj.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                        obj.Line.To = Vector2.new(pos.X, pos.Y)
+                        obj.Line.Visible = true
+                    else
+                        obj.Line.Visible = false
+                    end
+
+                    -- Name
+                    if ESP.Settings.Name then
+                        obj.NameLabel.Text = obj.Name
+                        obj.NameLabel.Position = Vector2.new(pos.X, pos.Y - boxSize.Y / 2 - 15)
+                        obj.NameLabel.Visible = true
+                    else
+                        obj.NameLabel.Visible = false
+                    end
+
+                    -- Distance
+                    if ESP.Settings.Distance then
+                        local distance = (Camera.CFrame.Position - root.Position).Magnitude
+                        obj.DistanceLabel.Text = "[" .. math.floor(distance) .. "m]"
+                        obj.DistanceLabel.Position = Vector2.new(pos.X, pos.Y + boxSize.Y / 2 + 5)
+                        obj.DistanceLabel.Visible = true
+                    else
+                        obj.DistanceLabel.Visible = false
+                    end
                 else
                     obj.Box.Visible = false
-                end
-
-                -- Line ESP
-                if ESP.Settings.Line then
-                    obj.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    obj.Line.To = Vector2.new(pos.X, pos.Y)
-                    obj.Line.Visible = true
-                else
                     obj.Line.Visible = false
-                end
-
-                -- Name ESP
-                if ESP.Settings.Name then
-                    obj.NameLabel.Text = obj.Name
-                    obj.NameLabel.Position = Vector2.new(pos.X, pos.Y - boxSize.Y / 2 - 15)
-                    obj.NameLabel.Visible = true
-                else
                     obj.NameLabel.Visible = false
-                end
-
-                -- Distance ESP
-                if ESP.Settings.Distance then
-                    local distance = (Camera.CFrame.Position - root.Position).Magnitude
-                    obj.DistanceLabel.Text = "[" .. math.floor(distance) .. "m]"
-                    obj.DistanceLabel.Position = Vector2.new(pos.X, pos.Y + boxSize.Y / 2 + 5)
-                    obj.DistanceLabel.Visible = true
-                else
                     obj.DistanceLabel.Visible = false
                 end
-            else
-                obj.Box.Visible = false
-                obj.Line.Visible = false
-                obj.NameLabel.Visible = false
-                obj.DistanceLabel.Visible = false
             end
         end
     end
