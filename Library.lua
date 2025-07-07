@@ -1,161 +1,154 @@
--- ESP Library para objetos por endereço
--- Suporta Line e Box
+--[[ 
+ESP Library por Referência de Caminho (Path)
+Suporte: Linha, Caixa, Nome, Distância
+Autor: DH Soares
+--]]
 
-local ESP = {}
-ESP.Objects = {}
-ESP.Enabled = true
-ESP.LineColor = Color3.fromRGB(255, 0, 0)
-ESP.BoxColor = Color3.fromRGB(0, 255, 0)
-
+--// Serviços
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local Camera = workspace.CurrentCamera
 
--- Cria um novo objeto ESP
-function ESP:AddObject(obj)
-    if not obj or not obj:IsA("BasePart") then
-        warn("ESP: Objeto inválido ou não é BasePart")
-        return
-    end
-    if self.Objects[obj] then
-        return -- já existe
-    end
+--// Objeto principal
+local ESP = {
+	Enabled = true,
+	Color = Color3.fromRGB(0, 255, 0),
+	ShowLine = true,
+	ShowBox = true,
+	ShowDistance = true,
+	ShowName = true,
+	Tracked = {} -- { Path = string, Object = Instance }
+}
 
-    local espData = {}
-
-    -- Criar Drawing objects
-    espData.Line = Drawing.new("Line")
-    espData.Line.Color = self.LineColor
-    espData.Line.Thickness = 1
-    espData.Line.Transparency = 1
-    espData.Line.Visible = true
-
-    espData.BoxLines = {}
-    for i=1,4 do
-        local line = Drawing.new("Line")
-        line.Color = self.BoxColor
-        line.Thickness = 1
-        line.Transparency = 1
-        line.Visible = true
-        table.insert(espData.BoxLines, line)
-    end
-
-    self.Objects[obj] = espData
+--// Utilitários de desenho
+local function DrawText(text, pos, color)
+	local obj = Drawing.new("Text")
+	obj.Text = text
+	obj.Position = pos
+	obj.Color = color
+	obj.Size = 13
+	obj.Outline = true
+	obj.Center = true
+	obj.Visible = true
+	return obj
 end
 
--- Remove ESP de um objeto
-function ESP:RemoveObject(obj)
-    local espData = self.Objects[obj]
-    if espData then
-        espData.Line.Visible = false
-        espData.Line:Remove()
-        for _, line in pairs(espData.BoxLines) do
-            line.Visible = false
-            line:Remove()
-        end
-        self.Objects[obj] = nil
-    end
+local function DrawLine(from, to, color)
+	local obj = Drawing.new("Line")
+	obj.From = from
+	obj.To = to
+	obj.Color = color
+	obj.Thickness = 1
+	obj.Visible = true
+	return obj
 end
 
--- Atualiza a posição da box 2D do objeto
-function ESP:GetBoundingBox2D(obj)
-    local corners = {}
+local function DrawBox(center, size, color)
+	local box = {}
+	local half = size / 2
+	local topLeft = center - half
+	local topRight = Vector2.new(topLeft.X + size.X, topLeft.Y)
+	local bottomLeft = Vector2.new(topLeft.X, topLeft.Y + size.Y)
+	local bottomRight = topLeft + size
 
-    -- Pega os 8 pontos da bounding box do objeto no mundo
-    local cframe = obj.CFrame
-    local size = obj.Size / 2
+	box[1] = DrawLine(topLeft, topRight, color)
+	box[2] = DrawLine(topRight, bottomRight, color)
+	box[3] = DrawLine(bottomRight, bottomLeft, color)
+	box[4] = DrawLine(bottomLeft, topLeft, color)
 
-    local points = {
-        cframe * Vector3.new(-size.X, -size.Y, -size.Z),
-        cframe * Vector3.new(-size.X, -size.Y, size.Z),
-        cframe * Vector3.new(-size.X, size.Y, -size.Z),
-        cframe * Vector3.new(-size.X, size.Y, size.Z),
-        cframe * Vector3.new(size.X, -size.Y, -size.Z),
-        cframe * Vector3.new(size.X, -size.Y, size.Z),
-        cframe * Vector3.new(size.X, size.Y, -size.Z),
-        cframe * Vector3.new(size.X, size.Y, size.Z),
-    }
-
-    for _, point in pairs(points) do
-        local screenPos, onScreen = Camera:WorldToViewportPoint(point)
-        if onScreen then
-            table.insert(corners, Vector2.new(screenPos.X, screenPos.Y))
-        end
-    end
-
-    if #corners == 0 then
-        return nil
-    end
-
-    -- Calcula min e max para formar a box 2D
-    local minX = corners[1].X
-    local maxX = corners[1].X
-    local minY = corners[1].Y
-    local maxY = corners[1].Y
-
-    for i=2,#corners do
-        local v = corners[i]
-        if v.X < minX then minX = v.X end
-        if v.X > maxX then maxX = v.X end
-        if v.Y < minY then minY = v.Y end
-        if v.Y > maxY then maxY = v.Y end
-    end
-
-    return Vector2.new(minX, minY), Vector2.new(maxX, maxY)
+	return box
 end
 
--- Atualiza a ESP toda frame
+--// Função para resolver string path -> Instance
+local function ResolvePath(path)
+	local current = game
+	for segment in string.gmatch(path, "[^%.]+") do
+		current = current:FindFirstChild(segment)
+		if not current then return nil end
+	end
+	return current
+end
+
+--// Adiciona objeto por path
+function ESP:AddPath(path)
+	local obj = ResolvePath(path)
+	if obj and obj:IsA("BasePart") then
+		table.insert(self.Tracked, {
+			Path = path,
+			Object = obj
+		})
+	end
+end
+
+--// Remove objeto por path
+function ESP:RemovePath(path)
+	for i, data in ipairs(self.Tracked) do
+		if data.Path == path then
+			table.remove(self.Tracked, i)
+			break
+		end
+	end
+end
+
+--// Loop de desenho
 RunService.RenderStepped:Connect(function()
-    if not ESP.Enabled then return end
+	if not ESP.Enabled then return end
 
-    for obj, espData in pairs(ESP.Objects) do
-        if not obj or not obj.Parent then
-            -- Objeto removido
-            ESP:RemoveObject(obj)
-        else
-            local screenPos, onScreen = Camera:WorldToViewportPoint(obj.Position)
-            if onScreen then
-                -- Atualiza linha (do centro da tela até o objeto)
-                local centerScreen = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-                espData.Line.From = centerScreen
-                espData.Line.To = Vector2.new(screenPos.X, screenPos.Y)
-                espData.Line.Visible = true
+	for _, entry in ipairs(ESP.Tracked) do
+		local obj = entry.Object
+		if obj and obj:IsA("BasePart") and obj:IsDescendantOf(workspace) then
+			local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
+			if onScreen then
+				local screenPos = Vector2.new(pos.X, pos.Y)
+				local dist = (Camera.CFrame.Position - obj.Position).Magnitude
+				local color = ESP.Color
 
-                -- Atualiza box
-                local min, max = ESP:GetBoundingBox2D(obj)
-                if min and max then
-                    -- 4 linhas da box
-                    local lines = espData.BoxLines
+				-- ESP elementos
+				local lineObj, boxObj, textObj, distObj
 
-                    lines[1].From = Vector2.new(min.X, min.Y)
-                    lines[1].To = Vector2.new(max.X, min.Y)
+				if ESP.ShowLine then
+					lineObj = DrawLine(Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y), screenPos, color)
+				end
 
-                    lines[2].From = Vector2.new(max.X, min.Y)
-                    lines[2].To = Vector2.new(max.X, max.Y)
+				if ESP.ShowBox then
+					local size2D = Vector2.new(60 / pos.Z, 100 / pos.Z)
+					boxObj = DrawBox(screenPos, size2D, color)
+				end
 
-                    lines[3].From = Vector2.new(max.X, max.Y)
-                    lines[3].To = Vector2.new(min.X, max.Y)
+				if ESP.ShowName then
+					textObj = DrawText(obj.Name, screenPos + Vector2.new(0, -30), color)
+				end
 
-                    lines[4].From = Vector2.new(min.X, max.Y)
-                    lines[4].To = Vector2.new(min.X, min.Y)
+				if ESP.ShowDistance then
+					distObj = DrawText(string.format("%.1f studs", dist), screenPos + Vector2.new(0, -15), color)
+				end
 
-                    for i=1,4 do
-                        lines[i].Visible = true
-                    end
-                else
-                    for i=1,4 do
-                        espData.BoxLines[i].Visible = false
-                    end
-                end
-
-            else
-                -- Fora da tela
-                espData.Line.Visible = false
-                for i=1,4 do
-                    espData.BoxLines[i].Visible = false
-                end
-            end
-        end
-    end
+				-- Remove os desenhos no próximo frame
+				RunService.RenderStepped:Once(function()
+					if lineObj then lineObj:Remove() end
+					if textObj then textObj:Remove() end
+					if distObj then distObj:Remove() end
+					if boxObj then
+						for _, l in ipairs(boxObj) do
+							l:Remove()
+						end
+					end
+				end)
+			end
+		end
+	end
 end)
 
-return ESP
+--// Exemplo de uso:
+ESP:AddPath("workspace.Part") -- substitua por qualquer endereço válido
+ESP:AddPath("workspace.Model.Lamp")
+
+--// Configurações (opcional)
+ESP.Color = Color3.fromRGB(255, 255, 0)
+ESP.ShowLine = true
+ESP.ShowBox = true
+ESP.ShowDistance = true
+ESP.ShowName = true
+
+--// Para desativar tudo:
+-- ESP.Enabled = false
