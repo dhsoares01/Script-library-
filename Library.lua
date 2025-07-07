@@ -1,202 +1,199 @@
--- ESP.lua
--- Biblioteca simples de ESP para Roblox
--- Permite criar ESP com linha, caixa, nome, distância e cor customizável
--- Alvo via objeto BasePart (ex: HumanoidRootPart)
-
 local ESP = {}
 ESP.__index = ESP
 
--- Serviços usados
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
 local Camera = workspace.CurrentCamera
 
 -- Configurações padrão
-ESP.Settings = {
-    Enabled = true,
-    ShowLine = true,
-    ShowBox = true,
-    ShowName = true,
-    ShowDistance = true,
-    ESPColor = Color3.fromRGB(0, 255, 0),
+ESP.Config = {
+    LineEnabled = true,
+    BoxEnabled = true,
+    NameEnabled = true,
+    DistanceEnabled = true,
+    LineColor = Color3.fromRGB(255, 0, 0),
+    BoxColor = Color3.fromRGB(0, 255, 0),
+    TextColor = Color3.fromRGB(255, 255, 255),
+    MaxDistance = 1000,
 }
 
--- Tabela para armazenar dados ESP por BasePart alvo
-ESP.Objects = {}
-
--- Função para criar um objeto Drawing.Line
-local function CreateLine()
-    local line = Drawing.new("Line")
-    line.Visible = false
-    line.Color = ESP.Settings.ESPColor
-    line.Thickness = 1.5
-    return line
+-- Função para criar objetos Drawing
+local function createDrawing(type)
+    local d = Drawing.new(type)
+    d.Visible = false
+    return d
 end
 
--- Função para criar um objeto Drawing.Square (caixa)
-local function CreateBox()
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = ESP.Settings.ESPColor
-    box.Thickness = 2
-    box.Filled = false
-    return box
+-- Cria ESP para um objeto (obj pode ser qualquer Instância com posição e boundingbox)
+function ESP.newForObject(obj, displayName)
+    local self = setmetatable({}, ESP)
+    self.Object = obj
+    self.NameText = displayName or obj.Name
+
+    self.Line = createDrawing("Line")
+    self.Box = createDrawing("Square")
+    self.Name = createDrawing("Text")
+    self.Distance = createDrawing("Text")
+
+    return self
 end
 
--- Função para criar um objeto Drawing.Text
-local function CreateText()
-    local text = Drawing.new("Text")
-    text.Visible = false
-    text.Color = ESP.Settings.ESPColor
-    text.Size = 16
-    text.Center = true
-    text.Outline = true
-    text.Font = 2
-    return text
-end
-
--- Cria os objetos ESP para um alvo BasePart
-local function CreateESPObjects(target)
-    local data = {
-        Line = CreateLine(),
-        Box = CreateBox(),
-        Name = CreateText(),
-        Distance = CreateText(),
-        Target = target
-    }
-    ESP.Objects[target] = data
-end
-
--- Remove os objetos ESP de um alvo BasePart
-local function RemoveESPObjects(target)
-    local data = ESP.Objects[target]
-    if data then
-        data.Line:Remove()
-        data.Box:Remove()
-        data.Name:Remove()
-        data.Distance:Remove()
-        ESP.Objects[target] = nil
-    end
-end
-
--- Atualiza a posição e visibilidade dos objetos ESP para um alvo BasePart
-local function UpdateESPFor(target)
-    local data = ESP.Objects[target]
-    if not data then return end
-    local cam = Camera
-    local pos3D = target.Position
-
-    local screenPos, onScreen = cam:WorldToViewportPoint(pos3D)
-    if not onScreen then
-        data.Line.Visible = false
-        data.Box.Visible = false
-        data.Name.Visible = false
-        data.Distance.Visible = false
+-- Atualiza posição do ESP para o objeto
+function ESP:update()
+    if not self.Object or not self.Object.Parent then
+        self:hideAll()
         return
     end
 
-    local color = ESP.Settings.ESPColor
-    data.Line.Color = color
-    data.Box.Color = color
-    data.Name.Color = color
-    data.Distance.Color = color
-
-    if ESP.Settings.ShowLine then
-        data.Line.Visible = true
-        data.Line.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-        data.Line.To = Vector2.new(screenPos.X, screenPos.Y)
-    else
-        data.Line.Visible = false
+    local success, minVec, maxVec = pcall(function()
+        return self.Object:GetBoundingBox()
+    end)
+    if not success then
+        self:hideAll()
+        return
     end
 
-    if ESP.Settings.ShowBox then
-        data.Box.Visible = true
-        local boxSize = Vector2.new(50, 50)
-        data.Box.Position = Vector2.new(screenPos.X - boxSize.X/2, screenPos.Y - boxSize.Y/2)
-        data.Box.Size = boxSize
-    else
-        data.Box.Visible = false
+    local center = (minVec + maxVec) / 2
+
+    local screenPos, visible = Camera:WorldToViewportPoint(center)
+    if not visible then
+        self:hideAll()
+        return
     end
 
-    if ESP.Settings.ShowName then
-        data.Name.Visible = true
-        data.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 40)
-        local plr = Players:GetPlayerFromCharacter(target.Parent)
-        data.Name.Text = plr and plr.Name or target.Name or "Object"
-    else
-        data.Name.Visible = false
+    local dist = (Camera.CFrame.Position - center).Magnitude
+    if dist > ESP.Config.MaxDistance then
+        self:hideAll()
+        return
     end
 
-    if ESP.Settings.ShowDistance then
-        data.Distance.Visible = true
-        local dist = (cam.CFrame.Position - pos3D).Magnitude
-        data.Distance.Position = Vector2.new(screenPos.X, screenPos.Y - 20)
-        data.Distance.Text = string.format("%.1f studs", dist)
+    -- Linha: da base da tela até o objeto
+    if ESP.Config.LineEnabled then
+        self.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+        self.Line.To = Vector2.new(screenPos.X, screenPos.Y)
+        self.Line.Color = ESP.Config.LineColor
+        self.Line.Visible = true
     else
-        data.Distance.Visible = false
+        self.Line.Visible = false
     end
-end
 
--- Atualiza todos ESPs
-function ESP:Update()
-    if not self.Settings.Enabled then
-        for _, data in pairs(self.Objects) do
-            data.Line.Visible = false
-            data.Box.Visible = false
-            data.Name.Visible = false
-            data.Distance.Visible = false
+    -- Caixa em volta
+    if ESP.Config.BoxEnabled then
+        local corners = {
+            Vector3.new(minVec.X, maxVec.Y, minVec.Z),
+            Vector3.new(maxVec.X, maxVec.Y, minVec.Z),
+            Vector3.new(maxVec.X, maxVec.Y, maxVec.Z),
+            Vector3.new(minVec.X, maxVec.Y, maxVec.Z),
+            Vector3.new(minVec.X, minVec.Y, minVec.Z),
+            Vector3.new(maxVec.X, minVec.Y, minVec.Z),
+            Vector3.new(maxVec.X, minVec.Y, maxVec.Z),
+            Vector3.new(minVec.X, minVec.Y, maxVec.Z),
+        }
+
+        local screenPoints = {}
+        for i, corner in pairs(corners) do
+            local sp, vis = Camera:WorldToViewportPoint(corner)
+            screenPoints[i] = Vector2.new(sp.X, sp.Y)
         end
-        return
-    end
 
-    for target, _ in pairs(self.Objects) do
-        if target and target.Parent then
-            UpdateESPFor(target)
-        else
-            RemoveESPObjects(target)
+        local minX = math.huge
+        local maxX = -math.huge
+        local minY = math.huge
+        local maxY = -math.huge
+        for _, point in pairs(screenPoints) do
+            minX = math.min(minX, point.X)
+            maxX = math.max(maxX, point.X)
+            minY = math.min(minY, point.Y)
+            maxY = math.max(maxY, point.Y)
         end
+
+        self.Box.Position = Vector2.new(minX, minY)
+        self.Box.Size = Vector2.new(maxX - minX, maxY - minY)
+        self.Box.Color = ESP.Config.BoxColor
+        self.Box.Thickness = 2
+        self.Box.Visible = true
+    else
+        self.Box.Visible = false
+    end
+
+    -- Nome
+    if ESP.Config.NameEnabled then
+        self.Name.Text = self.NameText
+        self.Name.Position = Vector2.new(screenPos.X, screenPos.Y - 15)
+        self.Name.Center = true
+        self.Name.Color = ESP.Config.TextColor
+        self.Name.Visible = true
+        self.Name.Outline = true
+    else
+        self.Name.Visible = false
+    end
+
+    -- Distância
+    if ESP.Config.DistanceEnabled then
+        self.Distance.Text = string.format("%.0f m", dist)
+        self.Distance.Position = Vector2.new(screenPos.X, screenPos.Y + 15)
+        self.Distance.Center = true
+        self.Distance.Color = ESP.Config.TextColor
+        self.Distance.Visible = true
+        self.Distance.Outline = true
+    else
+        self.Distance.Visible = false
     end
 end
 
--- Adiciona um alvo BasePart para ESP
-function ESP:Add(target)
-    if not target or not target:IsA("BasePart") then
-        warn("ESP: alvo deve ser BasePart válido")
-        return
-    end
-    if not self.Objects[target] then
-        CreateESPObjects(target)
+function ESP:hideAll()
+    self.Line.Visible = false
+    self.Box.Visible = false
+    self.Name.Visible = false
+    self.Distance.Visible = false
+end
+
+function ESP:remove()
+    self.Line:Remove()
+    self.Box:Remove()
+    self.Name:Remove()
+    self.Distance:Remove()
+end
+
+-- Gerenciador de múltiplos ESPs
+local ESPManager = {}
+ESPManager.__index = ESPManager
+
+function ESPManager.new()
+    local self = setmetatable({}, ESPManager)
+    self.ESPObjects = {}
+
+    RunService.RenderStepped:Connect(function()
+        for obj, esp in pairs(self.ESPObjects) do
+            if not obj or not obj.Parent then
+                esp:remove()
+                self.ESPObjects[obj] = nil
+            else
+                esp:update()
+            end
+        end
+    end)
+
+    return self
+end
+
+function ESPManager:addObject(obj, displayName)
+    if not self.ESPObjects[obj] then
+        self.ESPObjects[obj] = ESP.newForObject(obj, displayName)
     end
 end
 
--- Remove um alvo BasePart da ESP
-function ESP:Remove(target)
-    RemoveESPObjects(target)
-end
-
--- Remove todos alvos ESP
-function ESP:Clear()
-    for target, _ in pairs(self.Objects) do
-        RemoveESPObjects(target)
+function ESPManager:removeObject(obj)
+    if self.ESPObjects[obj] then
+        self.ESPObjects[obj]:remove()
+        self.ESPObjects[obj] = nil
     end
 end
 
--- Configurações
-function ESP:SetEnabled(value)
-    self.Settings.Enabled = value
-    if not value then
-        self:Clear()
+function ESPManager:clear()
+    for _, esp in pairs(self.ESPObjects) do
+        esp:remove()
     end
+    self.ESPObjects = {}
 end
-function ESP:SetShowLine(value) self.Settings.ShowLine = value end
-function ESP:SetShowBox(value) self.Settings.ShowBox = value end
-function ESP:SetShowName(value) self.Settings.ShowName = value end
-function ESP:SetShowDistance(value) self.Settings.ShowDistance = value end
-function ESP:SetColor(color3) self.Settings.ESPColor = color3 end
 
--- Loop de atualização ligado
-RunService.RenderStepped:Connect(function()
-    ESP:Update()
-end)
-
-return ESP
+return ESPManager
