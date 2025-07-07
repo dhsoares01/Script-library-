@@ -1,13 +1,13 @@
 local Library = {}
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local dragging, dragInput, dragStart, startPos
 
+-- 📌 Função de arrastar
 local function makeDraggable(frame)
 	frame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			dragStart = input.Position
 			startPos = frame.Position
@@ -21,7 +21,7 @@ local function makeDraggable(frame)
 	end)
 
 	frame.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			dragInput = input
 		end
 	end)
@@ -34,188 +34,143 @@ local function makeDraggable(frame)
 	end)
 end
 
--- Cria o menu base
-function Library:CreateMenu(title)
-	local gui = Instance.new("ScreenGui", game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"))
-	gui.Name = "CustomLibrary"
+-- 🎨 Criar Menu
+function Library:CreateMenu(titleText)
+	local ScreenGui = Instance.new("ScreenGui", game:GetService("Players").LocalPlayer.PlayerGui)
+	ScreenGui.Name = "CustomLibraryGUI"
 
-	local main = Instance.new("Frame", gui)
-	main.Size = UDim2.new(0, 300, 0, 350)
-	main.Position = UDim2.new(0.5, -150, 0.5, -175)
-	main.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-	main.BorderSizePixel = 0
-	main.Active = true
-	main.Draggable = false
+	local Main = Instance.new("Frame", ScreenGui)
+	Main.Size = UDim2.new(0, 300, 0, 40)
+	Main.Position = UDim2.new(0.5, -150, 0.5, -100)
+	Main.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+	Main.BorderSizePixel = 0
+	Main.Active = true
+	Main.Name = "MainMenu"
 
-	local header = Instance.new("Frame", main)
-	header.Size = UDim2.new(1, 0, 0, 30)
-	header.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	local Header = Instance.new("Frame", Main)
+	Header.Size = UDim2.new(1, 0, 0, 40)
+	Header.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	Header.BorderSizePixel = 0
 
-	local titleLabel = Instance.new("TextLabel", header)
-	titleLabel.Text = title
-	titleLabel.Size = UDim2.new(1, -60, 1, 0)
-	titleLabel.Position = UDim2.new(0, 5, 0, 0)
-	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.TextColor3 = Color3.new(1,1,1)
-	titleLabel.BackgroundTransparency = 1
+	local Title = Instance.new("TextLabel", Header)
+	Title.Size = UDim2.new(1, -60, 1, 0)
+	Title.Position = UDim2.new(0, 10, 0, 0)
+	Title.Text = titleText or "Menu"
+	Title.TextColor3 = Color3.new(1, 1, 1)
+	Title.BackgroundTransparency = 1
+	Title.TextXAlignment = Enum.TextXAlignment.Left
+	Title.Font = Enum.Font.Gotham
+	Title.TextSize = 16
 
-	local close = Instance.new("TextButton", header)
-	close.Text = "×"
-	close.Size = UDim2.new(0, 30, 1, 0)
-	close.Position = UDim2.new(1, -30, 0, 0)
-	close.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-	close.TextColor3 = Color3.new(1,1,1)
+	local Minimize = Instance.new("TextButton", Header)
+	Minimize.Size = UDim2.new(0, 20, 0, 20)
+	Minimize.Position = UDim2.new(1, -50, 0.5, -10)
+	Minimize.Text = "–"
+	Minimize.TextColor3 = Color3.new(1, 1, 1)
+	Minimize.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 
-	local minimize = Instance.new("TextButton", header)
-	minimize.Text = "–"
-	minimize.Size = UDim2.new(0, 30, 1, 0)
-	minimize.Position = UDim2.new(1, -60, 0, 0)
-	minimize.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-	minimize.TextColor3 = Color3.new(1,1,1)
+	local Close = Instance.new("TextButton", Header)
+	Close.Size = UDim2.new(0, 20, 0, 20)
+	Close.Position = UDim2.new(1, -25, 0.5, -10)
+	Close.Text = "×"
+	Close.TextColor3 = Color3.new(1, 1, 1)
+	Close.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
 
-	local content = Instance.new("Frame", main)
-	content.Size = UDim2.new(1, 0, 1, -30)
-	content.Position = UDim2.new(0, 0, 0, 30)
-	content.BackgroundTransparency = 1
+	local Body = Instance.new("Frame", Main)
+	Body.Name = "Body"
+	Body.Position = UDim2.new(0, 0, 0, 40)
+	Body.Size = UDim2.new(1, 0, 0, 160)
+	Body.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
-	local layout = Instance.new("UIListLayout", content)
+	local layout = Instance.new("UIListLayout", Body)
 	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
 
-	makeDraggable(header)
+	-- Toggle
+	local Toggle = Instance.new("TextButton", Body)
+	Toggle.Size = UDim2.new(1, -10, 0, 30)
+	Toggle.Position = UDim2.new(0, 5, 0, 5)
+	Toggle.Text = "Toggle: OFF"
+	Toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+	local toggleState = false
+	Toggle.MouseButton1Click:Connect(function()
+		toggleState = not toggleState
+		Toggle.Text = "Toggle: " .. (toggleState and "ON" or "OFF")
+	end)
 
-	local minimized = false
+	-- Slider
+	local SliderFrame = Instance.new("Frame", Body)
+	SliderFrame.Size = UDim2.new(1, -10, 0, 30)
+	SliderFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 
-	minimize.MouseButton1Click:Connect(function()
-		minimized = not minimized
-		if minimized then
-			content.Visible = false
-			minimize.Text = "□"
-			main.Size = UDim2.new(0, 300, 0, 30)
-		else
-			content.Visible = true
-			minimize.Text = "–"
-			main.Size = UDim2.new(0, 300, 0, 350)
+	local SliderBar = Instance.new("Frame", SliderFrame)
+	SliderBar.Size = UDim2.new(1, 0, 0.5, 0)
+	SliderBar.Position = UDim2.new(0, 0, 0.25, 0)
+	SliderBar.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+
+	local SliderKnob = Instance.new("Frame", SliderBar)
+	SliderKnob.Size = UDim2.new(0, 10, 1, 0)
+	SliderKnob.Position = UDim2.new(0, 0, 0, 0)
+	SliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	SliderKnob.BorderSizePixel = 0
+
+	local draggingSlider = false
+	SliderKnob.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			draggingSlider = true
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			draggingSlider = false
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local bar = SliderBar
+			local pos = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+			SliderKnob.Position = UDim2.new(pos, -5, 0, 0)
 		end
 	end)
 
-	close.MouseButton1Click:Connect(function()
-		gui:Destroy()
+	-- Botão com submenu
+	local MenuButton = Instance.new("TextButton", Body)
+	MenuButton.Size = UDim2.new(1, -10, 0, 30)
+	MenuButton.Text = "Mostrar Opções"
+	MenuButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+
+	local SubMenu = Instance.new("Frame", Body)
+	SubMenu.Size = UDim2.new(1, -10, 0, 90)
+	SubMenu.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	SubMenu.Visible = false
+
+	local options = { "Item 1", "Item 2", "Item 3" }
+	for _, item in ipairs(options) do
+		local btn = Instance.new("TextButton", SubMenu)
+		btn.Size = UDim2.new(1, 0, 0, 25)
+		btn.Text = item
+		btn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+	end
+
+	MenuButton.MouseButton1Click:Connect(function()
+		SubMenu.Visible = not SubMenu.Visible
 	end)
 
-	-- API para adicionar elementos
-	local api = {}
+	-- Minimizar
+	local isMinimized = false
+	Minimize.MouseButton1Click:Connect(function()
+		isMinimized = not isMinimized
+		Body.Visible = not isMinimized
+		Minimize.Text = isMinimized and "☐" or "–"
+		Main.Size = isMinimized and UDim2.new(0, 300, 0, 40) or UDim2.new(0, 300, 0, 200)
+	end)
 
-	function api:CreateToggle(text, callback)
-		local toggle = Instance.new("TextButton", content)
-		toggle.Size = UDim2.new(1, -10, 0, 30)
-		toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		toggle.TextColor3 = Color3.new(1,1,1)
-		toggle.Text = "[ ] " .. text
+	-- Fechar
+	Close.MouseButton1Click:Connect(function()
+		ScreenGui:Destroy()
+	end)
 
-		local state = false
-		toggle.MouseButton1Click:Connect(function()
-			state = not state
-			toggle.Text = (state and "[✓] " or "[ ] ") .. text
-			if callback then callback(state) end
-		end)
-	end
-
-	function api:CreateSlider(text, min, max, default, callback)
-		local holder = Instance.new("Frame", content)
-		holder.Size = UDim2.new(1, -10, 0, 40)
-		holder.BackgroundTransparency = 1
-
-		local label = Instance.new("TextLabel", holder)
-		label.Size = UDim2.new(1, 0, 0, 20)
-		label.Text = text .. ": " .. default
-		label.TextColor3 = Color3.new(1,1,1)
-		label.BackgroundTransparency = 1
-
-		local slider = Instance.new("TextButton", holder)
-		slider.Size = UDim2.new(1, 0, 0, 20)
-		slider.Position = UDim2.new(0, 0, 0, 20)
-		slider.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-		slider.Text = ""
-
-		local value = default
-
-		slider.MouseButton1Down:Connect(function()
-			local conn
-			conn = UserInputService.InputChanged:Connect(function(input)
-				if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-					local relX = math.clamp((input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
-					value = math.floor(min + (max - min) * relX)
-					label.Text = text .. ": " .. value
-					if callback then callback(value) end
-				end
-			end)
-
-			UserInputService.InputEnded:Connect(function(input)
-				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-					conn:Disconnect()
-				end
-			end)
-		end)
-	end
-
-	function api:CreateButton(text, callback)
-		local button = Instance.new("TextButton", content)
-		button.Size = UDim2.new(1, -10, 0, 30)
-		button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		button.TextColor3 = Color3.new(1,1,1)
-		button.Text = text
-
-		button.MouseButton1Click:Connect(function()
-			if callback then callback() end
-		end)
-	end
-
-	function api:CreateMenuOptions(name, options, callback)
-		local dropdown = Instance.new("TextButton", content)
-		dropdown.Size = UDim2.new(1, -10, 0, 30)
-		dropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-		dropdown.TextColor3 = Color3.new(1,1,1)
-		dropdown.Text = name
-
-		local menu = Instance.new("Frame", dropdown)
-		menu.Size = UDim2.new(1, 0, 0, #options * 25)
-		menu.Position = UDim2.new(0, 0, 1, 0)
-		menu.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-		menu.Visible = false
-		menu.ClipsDescendants = true
-
-		local list = Instance.new("UIListLayout", menu)
-
-		for _, option in ipairs(options) do
-			local optBtn = Instance.new("TextButton", menu)
-			optBtn.Size = UDim2.new(1, 0, 0, 25)
-			optBtn.Text = option
-			optBtn.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
-			optBtn.TextColor3 = Color3.new(1,1,1)
-
-			optBtn.MouseButton1Click:Connect(function()
-				callback(option)
-				menu.Visible = false
-			end)
-		end
-
-		dropdown.MouseButton1Click:Connect(function()
-			menu.Visible = not menu.Visible
-		end)
-	end
-
-	function api:CreateRichText(text)
-		local rich = Instance.new("TextLabel", content)
-		rich.Size = UDim2.new(1, -10, 0, 80)
-		rich.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-		rich.TextColor3 = Color3.new(1,1,1)
-		rich.Text = text
-		rich.TextWrapped = true
-		rich.RichText = true
-		rich.TextYAlignment = Enum.TextYAlignment.Top
-	end
-
-	return api
+	makeDraggable(Main)
 end
 
 return Library
