@@ -1,146 +1,108 @@
---// ESP Library by Endereço (Com toggles individuais e box corrigido)
-local ESP = {
-    Enabled = true,
-    Objects = {},
-    Settings = {
-        Line = true,
-        Box = true,
-        Name = true,
-        Distance = true,
-        Color = Color3.fromRGB(255, 170, 0),
-        FOVCorrection = true,
-        MaxDistance = 2000 -- Em studs
-    }
-}
+--// LibraryESP.lua
 
-local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
-local function WorldToScreen(position)
-    local screenPos, onScreen = Camera:WorldToViewportPoint(position)
-    return Vector2.new(screenPos.X, screenPos.Y), onScreen, screenPos.Z
+local LibraryESP = {}
+local ESPObjects = {}
+
+function DrawText(size, color)
+    local text = Drawing.new("Text")
+    text.Size = size
+    text.Center = true
+    text.Outline = true
+    text.Font = 2
+    text.Color = color
+    text.Visible = false
+    return text
 end
 
-function ESP:Add(object, name)
-    if not object:IsA("BasePart") then return end
-    if self.Objects[object] then return end
+function DrawLine(color)
+    local line = Drawing.new("Line")
+    line.Thickness = 1.5
+    line.Color = color
+    line.Visible = false
+    return line
+end
 
-    self.Objects[object] = {
-        Name = name or object.Name,
-        Part = object,
-        Drawing = {
-            Line = Drawing.new("Line"),
-            Box = Drawing.new("Square"),
-            Name = Drawing.new("Text"),
-            Distance = Drawing.new("Text")
-        }
+function DrawBox(color)
+    local box = Drawing.new("Square")
+    box.Thickness = 1
+    box.Color = color
+    box.Filled = false
+    box.Visible = false
+    return box
+end
+
+function LibraryESP:CreateESP(object, options)
+    local esp = {
+        Object = object,
+        Options = options,
+        NameText = options.Name and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,
+        DistanceText = options.Distance and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,
+        TracerLine = options.Tracer and DrawLine(options.Color or Color3.new(1, 1, 1)) or nil,
+        Box = options.Box and DrawBox(options.Color or Color3.new(1, 1, 1)) or nil
     }
 
-    local d = self.Objects[object].Drawing
-
-    -- Linha
-    d.Line.Thickness = 1.5
-    d.Line.Transparency = 1
-    d.Line.Color = self.Settings.Color
-    d.Line.ZIndex = 2
-
-    -- Caixa (Square)
-    d.Box.Thickness = 2
-    d.Box.Filled = false
-    d.Box.Transparency = 1
-    d.Box.Color = self.Settings.Color
-    d.Box.ZIndex = 2
-
-    -- Nome
-    d.Name.Size = 14
-    d.Name.Center = true
-    d.Name.Outline = true
-    d.Name.OutlineColor = Color3.new(0, 0, 0)
-    d.Name.Transparency = 1
-    d.Name.Color = self.Settings.Color
-    d.Name.Font = Enum.Font.GothamSemibold
-    d.Name.ZIndex = 3
-
-    -- Distância
-    d.Distance.Size = 12
-    d.Distance.Center = true
-    d.Distance.Outline = true
-    d.Distance.OutlineColor = Color3.new(0, 0, 0)
-    d.Distance.Transparency = 1
-    d.Distance.Color = Color3.fromRGB(200, 200, 200)
-    d.Distance.Font = Enum.Font.Gotham
-    d.Distance.ZIndex = 3
+    table.insert(ESPObjects, esp)
+    return esp
 end
 
-function ESP:Remove(object)
-    if self.Objects[object] then
-        for _, v in pairs(self.Objects[object].Drawing) do
-            v:Remove()
+function LibraryESP:RemoveESP(object)
+    for i, esp in ipairs(ESPObjects) do
+        if esp.Object == object then
+            if esp.NameText then esp.NameText:Remove() end
+            if esp.DistanceText then esp.DistanceText:Remove() end
+            if esp.TracerLine then esp.TracerLine:Remove() end
+            if esp.Box then esp.Box:Remove() end
+            table.remove(ESPObjects, i)
+            break
         end
-        self.Objects[object] = nil
     end
 end
 
 RunService.RenderStepped:Connect(function()
-    if not ESP.Enabled then
-        for _, esp in pairs(ESP.Objects) do
-            for _, draw in pairs(esp.Drawing) do
-                draw.Visible = false
-            end
-        end
-        return
-    end
+    for _, esp in ipairs(ESPObjects) do
+        local obj = esp.Object
+        if obj and obj:IsDescendantOf(workspace) then
+            local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
+            if onScreen then
+                local distance = (Camera.CFrame.Position - obj.Position).Magnitude
 
-    for object, data in pairs(ESP.Objects) do
-        if not object or not object:IsDescendantOf(workspace) then
-            ESP:Remove(object)
-            continue
-        end
+                if esp.NameText then
+                    esp.NameText.Position = Vector2.new(pos.X, pos.Y - 16)
+                    esp.NameText.Text = tostring(obj.Name)
+                    esp.NameText.Visible = true
+                end
 
-        local part = data.Part
-        local name = data.Name
-        local drawing = data.Drawing
+                if esp.DistanceText then
+                    esp.DistanceText.Position = Vector2.new(pos.X, pos.Y + 16)
+                    esp.DistanceText.Text = string.format("[%dm]", math.floor(distance))
+                    esp.DistanceText.Visible = true
+                end
 
-        local screenPos, onScreen, depth = WorldToScreen(part.Position)
+                if esp.TracerLine then
+                    esp.TracerLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    esp.TracerLine.To = Vector2.new(pos.X, pos.Y)
+                    esp.TracerLine.Visible = true
+                end
 
-        if onScreen and depth < ESP.Settings.MaxDistance then
-            local scale = ESP.Settings.FOVCorrection and (90 / Camera.FieldOfView) or 1
-            local size = math.clamp((1 / depth) * 1000 * scale, 3, 70)
-            local boxSize = Vector2.new(size * 1.1, size * 1.5)
-            local topLeft = screenPos - boxSize / 2
-
-            -- Caixa (Box)
-            drawing.Box.Position = topLeft
-            drawing.Box.Size = boxSize
-            drawing.Box.Visible = ESP.Settings.Box
-
-            -- Linha (Line)
-            drawing.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-            drawing.Line.To = Vector2.new(screenPos.X, screenPos.Y + boxSize.Y / 2)
-            drawing.Line.Visible = ESP.Settings.Line
-
-            -- Nome (Name)
-            drawing.Name.Position = Vector2.new(screenPos.X, topLeft.Y - 18)
-            drawing.Name.Text = name
-            drawing.Name.Visible = ESP.Settings.Name
-
-            -- Distância (Distance)
-            local distanceInMeters = depth * 0.28
-            drawing.Distance.Position = Vector2.new(screenPos.X, topLeft.Y + boxSize.Y + 4)
-            drawing.Distance.Text = string.format("%.1f m", distanceInMeters)
-            drawing.Distance.Visible = ESP.Settings.Distance
-        else
-            for _, v in pairs(drawing) do
-                v.Visible = false
+                if esp.Box then
+                    local size = 30 / (distance / 10)
+                    esp.Box.Size = Vector2.new(size, size * 1.5)
+                    esp.Box.Position = Vector2.new(pos.X - size / 2, pos.Y - size * 0.75)
+                    esp.Box.Visible = true
+                end
+            else
+                if esp.NameText then esp.NameText.Visible = false end
+                if esp.DistanceText then esp.DistanceText.Visible = false end
+                if esp.TracerLine then esp.TracerLine.Visible = false end
+                if esp.Box then esp.Box.Visible = false end
             end
         end
     end
 end)
 
-function ESP:Clear()
-    for obj in pairs(self.Objects) do
-        self:Remove(obj)
-    end
-end
-
-return ESP
+return LibraryESP
