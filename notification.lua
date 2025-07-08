@@ -1,98 +1,127 @@
 -- NotificationLibrary.lua
--- Library de notificações 
 local NotificationLibrary = {}
 
+-- Serviços
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 
--- Configurações padrão
-local Config = {
-    Duration = 5,         -- tempo visível (segundos)
-    FadeTime = 0.4,       -- duração da animação de entrada/saída
-    Width = 300,          -- largura do frame
-    Height = 80,          -- altura do frame
-    StartPosition = UDim2.new(1, 310, 0, 50),  -- posição inicial (fora da tela à direita)
-    EndPosition = UDim2.new(1, -10, 0, 50),    -- posição final (visível)
-    BackgroundColor = Color3.fromRGB(30, 30, 30),
-    TitleColor = Color3.fromRGB(255, 255, 255),
-    SubtitleColor = Color3.fromRGB(180, 180, 180),
-    FontTitle = Enum.Font.GothamBold,
-    FontSubtitle = Enum.Font.Gotham,
-    TextSizeTitle = 20,
-    TextSizeSubtitle = 14,
-}
+-- Configuração
+local NOTIFY_DURATION = 5
+local NOTIFY_SPACING = 8
+local NOTIFY_WIDTH = 300
+local NOTIFY_HEIGHT = 80
 
--- Função principal para criar e mostrar notificação
-function NotificationLibrary:Notify(titleText, subtitleText)
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "NerdV5Notification"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = CoreGui
+-- Tela principal
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NotificationGui"
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, Config.Width, 0, Config.Height)
-    frame.Position = Config.StartPosition
-    frame.BackgroundColor3 = Config.BackgroundColor
-    frame.BorderSizePixel = 0
-    frame.AnchorPoint = Vector2.new(1, 0)
-    frame.Name = "NotificationFrame"
-    frame.Parent = screenGui
-    frame.ClipsDescendants = true
-    frame.ZIndex = 10
-    frame.Rotation = 0
+-- Container para notificações
+local NotifyContainer = Instance.new("Frame")
+NotifyContainer.Name = "NotifyContainer"
+NotifyContainer.AnchorPoint = Vector2.new(1, 1)
+NotifyContainer.Position = UDim2.new(1, -10, 1, -10)
+NotifyContainer.Size = UDim2.new(0, NOTIFY_WIDTH, 1, 0)
+NotifyContainer.BackgroundTransparency = 1
+NotifyContainer.Parent = ScreenGui
 
-    -- Sombra (opcional para estilo mais clean)
-    local shadow = Instance.new("ImageLabel")
-    shadow.Name = "Shadow"
-    shadow.BackgroundTransparency = 1
-    shadow.Size = UDim2.new(1, 20, 1, 20)
-    shadow.Position = UDim2.new(0, -10, 0, -10)
-    shadow.Image = "rbxassetid://1316045217" -- sombra circular (pode trocar)
-    shadow.ImageColor3 = Color3.new(0,0,0)
-    shadow.ImageTransparency = 0.75
-    shadow.ScaleType = Enum.ScaleType.Slice
-    shadow.SliceCenter = Rect.new(10, 10, 118, 118)
-    shadow.Parent = frame
+-- Lista de notificações ativas
+local notifications = {}
 
-    -- Título
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 0, 30)
-    title.Position = UDim2.new(0, 10, 0, 12)
-    title.BackgroundTransparency = 1
-    title.Text = titleText or "Título"
-    title.TextColor3 = Config.TitleColor
-    title.TextStrokeColor3 = Color3.new(0, 0, 0)
-    title.TextStrokeTransparency = 0
-    title.Font = Config.FontTitle
-    title.TextSize = Config.TextSizeTitle
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = frame
+function NotificationLibrary:Notify(title, description, duration)
+	duration = duration or NOTIFY_DURATION
 
-    -- Subtítulo
-    local subtitle = Instance.new("TextLabel")
-    subtitle.Size = UDim2.new(1, -20, 0, 30)
-    subtitle.Position = UDim2.new(0, 10, 0, 42)
-    subtitle.BackgroundTransparency = 1
-    subtitle.Text = subtitleText or "Subtítulo"
-    subtitle.TextColor3 = Config.SubtitleColor
-    subtitle.TextStrokeColor3 = Color3.new(0, 0, 0)
-    subtitle.TextStrokeTransparency = 0.3
-    subtitle.Font = Config.FontSubtitle
-    subtitle.TextSize = Config.TextSizeSubtitle
-    subtitle.TextXAlignment = Enum.TextXAlignment.Left
-    subtitle.Parent = frame
+	-- Criar base
+	local NotifyFrame = Instance.new("Frame")
+	NotifyFrame.Size = UDim2.new(0, NOTIFY_WIDTH, 0, NOTIFY_HEIGHT)
+	NotifyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	NotifyFrame.BorderSizePixel = 0
+	NotifyFrame.BackgroundTransparency = 0.1
+	NotifyFrame.ClipsDescendants = true
+	NotifyFrame.AnchorPoint = Vector2.new(1, 1)
+	NotifyFrame.Position = UDim2.new(1, 0, 1, 0)
+	NotifyFrame.Parent = NotifyContainer
+	NotifyFrame.AutomaticSize = Enum.AutomaticSize.Y
+	NotifyFrame.ZIndex = 5
+	NotifyFrame.Name = "Notification"
 
-    -- Tween para entrada
-    local tweenIn = TweenService:Create(frame, TweenInfo.new(Config.FadeTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = Config.EndPosition})
-    tweenIn:Play()
+	-- Arredondamento
+	local UICorner = Instance.new("UICorner")
+	UICorner.CornerRadius = UDim.new(0, 8)
+	UICorner.Parent = NotifyFrame
 
-    -- Depois de Duration segundos, faz saída e destrói
-    delay(Config.Duration, function()
-        local tweenOut = TweenService:Create(frame, TweenInfo.new(Config.FadeTime, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Position = Config.StartPosition})
-        tweenOut:Play()
-        tweenOut.Completed:Wait()
-        screenGui:Destroy()
-    end)
+	local UIStroke = Instance.new("UIStroke")
+	UIStroke.Color = Color3.fromRGB(70, 70, 70)
+	UIStroke.Thickness = 1
+	UIStroke.Parent = NotifyFrame
+
+	local Padding = Instance.new("UIPadding")
+	Padding.PaddingTop = UDim.new(0, 8)
+	Padding.PaddingBottom = UDim.new(0, 8)
+	Padding.PaddingLeft = UDim.new(0, 10)
+	Padding.PaddingRight = UDim.new(0, 10)
+	Padding.Parent = NotifyFrame
+
+	-- Título
+	local TitleLabel = Instance.new("TextLabel")
+	TitleLabel.Text = title
+	TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TitleLabel.TextSize = 16
+	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TitleLabel.BackgroundTransparency = 1
+	TitleLabel.Font = Enum.Font.GothamBold
+	TitleLabel.Size = UDim2.new(1, 0, 0, 18)
+	TitleLabel.Parent = NotifyFrame
+
+	-- Descrição
+	local DescriptionLabel = Instance.new("TextLabel")
+	DescriptionLabel.Text = description
+	DescriptionLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+	DescriptionLabel.TextSize = 14
+	DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
+	DescriptionLabel.BackgroundTransparency = 1
+	DescriptionLabel.Font = Enum.Font.Gotham
+	DescriptionLabel.Position = UDim2.new(0, 0, 0, 22)
+	DescriptionLabel.Size = UDim2.new(1, 0, 0, 40)
+	DescriptionLabel.TextWrapped = true
+	DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+	DescriptionLabel.Parent = NotifyFrame
+
+	-- Organizar notificações existentes
+	table.insert(notifications, 1, NotifyFrame)
+	for i, notif in ipairs(notifications) do
+		local targetY = -((NOTIFY_HEIGHT + NOTIFY_SPACING) * (i - 1))
+		TweenService:Create(notif, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = UDim2.new(1, 0, 1, targetY)
+		}):Play()
+	end
+
+	-- Remover após tempo
+	task.delay(duration, function()
+		if NotifyFrame and NotifyFrame.Parent then
+			local index = table.find(notifications, NotifyFrame)
+			if index then
+				table.remove(notifications, index)
+			end
+
+			-- Fade out
+			local tween = TweenService:Create(NotifyFrame, TweenInfo.new(0.3), { BackgroundTransparency = 1 })
+			tween:Play()
+			tween.Completed:Wait()
+
+			NotifyFrame:Destroy()
+
+			-- Reorganizar
+			for i, notif in ipairs(notifications) do
+				local targetY = -((NOTIFY_HEIGHT + NOTIFY_SPACING) * (i - 1))
+				TweenService:Create(notif, TweenInfo.new(0.25), {
+					Position = UDim2.new(1, 0, 1, targetY)
+				}):Play()
+			end
+		end
+	end)
 end
 
 return NotificationLibrary
