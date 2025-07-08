@@ -8,7 +8,12 @@ local LocalPlayer = Players.LocalPlayer
 local LibraryESP = {}
 local ESPObjects = {}
 
-function DrawText(size, color)
+--// Configurações globais
+LibraryESP.TextPosition = "Top" -- Top, Center, Bottom, Below, LeftSide, RightSide
+LibraryESP.LineFrom = "Bottom" -- Top, Center, Bottom, Below, Left, Right
+
+--// Funções de desenho
+local function DrawText(size, color)
     local text = Drawing.new("Text")
     text.Size = size
     text.Center = true
@@ -19,7 +24,7 @@ function DrawText(size, color)
     return text
 end
 
-function DrawLine(color)
+local function DrawLine(color)
     local line = Drawing.new("Line")
     line.Thickness = 1.5
     line.Color = color
@@ -27,7 +32,7 @@ function DrawLine(color)
     return line
 end
 
-function DrawBox(color)
+local function DrawBox(color)
     local box = Drawing.new("Square")
     box.Thickness = 1
     box.Color = color
@@ -36,6 +41,7 @@ function DrawBox(color)
     return box
 end
 
+--// Cria ESP
 function LibraryESP:CreateESP(object, options)
     local esp = {
         Object = object,
@@ -50,6 +56,7 @@ function LibraryESP:CreateESP(object, options)
     return esp
 end
 
+--// Remove ESP
 function LibraryESP:RemoveESP(object)
     for i = #ESPObjects, 1, -1 do
         local esp = ESPObjects[i]
@@ -63,6 +70,28 @@ function LibraryESP:RemoveESP(object)
     end
 end
 
+--// Calcula posição de texto
+local function getTextPosition(basePos, offsetType)
+    local offset = Vector2.new(0, 0)
+
+    if offsetType == "Top" then
+        offset = Vector2.new(0, -16)
+    elseif offsetType == "Center" then
+        offset = Vector2.new(0, 0)
+    elseif offsetType == "Bottom" then
+        offset = Vector2.new(0, 16)
+    elseif offsetType == "Below" then
+        offset = Vector2.new(0, 26)
+    elseif offsetType == "LeftSide" then
+        offset = Vector2.new(-40, 0)
+    elseif offsetType == "RightSide" then
+        offset = Vector2.new(40, 0)
+    end
+
+    return basePos + offset
+end
+
+--// Loop de atualização
 RunService.RenderStepped:Connect(function()
     for i = #ESPObjects, 1, -1 do
         local esp = ESPObjects[i]
@@ -76,27 +105,46 @@ RunService.RenderStepped:Connect(function()
             table.remove(ESPObjects, i)
         else
             local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
+            local basePos = Vector2.new(pos.X, pos.Y)
+
             if onScreen then
                 local distance = (Camera.CFrame.Position - obj.Position).Magnitude
 
+                -- Nome
                 if esp.NameText then
-                    esp.NameText.Position = Vector2.new(pos.X, pos.Y - 16)
+                    esp.NameText.Position = getTextPosition(basePos, LibraryESP.TextPosition)
                     esp.NameText.Text = tostring(obj.Name)
                     esp.NameText.Visible = true
                 end
 
+                -- Distância
                 if esp.DistanceText then
-                    esp.DistanceText.Position = Vector2.new(pos.X, pos.Y + 16)
+                    esp.DistanceText.Position = getTextPosition(basePos, LibraryESP.TextPosition) + Vector2.new(0, 14)
                     esp.DistanceText.Text = string.format("[%dm]", math.floor(distance))
                     esp.DistanceText.Visible = true
                 end
 
+                -- Tracer
                 if esp.TracerLine then
-                    esp.TracerLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    esp.TracerLine.To = Vector2.new(pos.X, pos.Y)
+                    local from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    if LibraryESP.LineFrom == "Top" then
+                        from = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                    elseif LibraryESP.LineFrom == "Center" then
+                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    elseif LibraryESP.LineFrom == "Below" then
+                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 1.25)
+                    elseif LibraryESP.LineFrom == "Left" then
+                        from = Vector2.new(0, Camera.ViewportSize.Y / 2)
+                    elseif LibraryESP.LineFrom == "Right" then
+                        from = Vector2.new(Camera.ViewportSize.X, Camera.ViewportSize.Y / 2)
+                    end
+
+                    esp.TracerLine.From = from
+                    esp.TracerLine.To = basePos
                     esp.TracerLine.Visible = true
                 end
 
+                -- Caixa
                 if esp.Box then
                     local size = 30 / (distance / 10)
                     esp.Box.Size = Vector2.new(size, size * 1.5)
