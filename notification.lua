@@ -96,6 +96,7 @@ function NotificationLibrary:Notify(title, description, duration, imageId)
 	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	TitleLabel.Position = UDim2.new(0, 40, 0, 2)
 	TitleLabel.Size = UDim2.new(1, -50, 0, 18)
+	TitleLabel.ZIndex = 6
 
 	-- Descrição
 	local DescriptionLabel = Instance.new("TextLabel", NotifyFrame)
@@ -109,6 +110,7 @@ function NotificationLibrary:Notify(title, description, duration, imageId)
 	DescriptionLabel.TextWrapped = true
 	DescriptionLabel.Position = UDim2.new(0, 40, 0, 24)
 	DescriptionLabel.Size = UDim2.new(1, -50, 1, -26)
+	DescriptionLabel.ZIndex = 6
 
 	-- organizar lista
 	table.insert(notifications, 1, NotifyFrame)
