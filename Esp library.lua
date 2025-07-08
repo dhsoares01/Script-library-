@@ -8,8 +8,9 @@ local LocalPlayer = Players.LocalPlayer
 local LibraryESP = {}
 local ESPObjects = {}
 
-LibraryESP.TextPosition = "Top"    -- "Top", "Center", "Bottom", "Below", "LeftSide", "RightSide"
-LibraryESP.LineFrom = "Bottom"     -- "Top", "Center", "Bottom", "Below", "Left", "Right"
+LibraryESP.TextPosition = "Top"      -- "Top", "Center", "Bottom", "Below", "LeftSide", "RightSide"
+LibraryESP.LineFrom = "Bottom"       -- "Top", "Center", "Bottom", "Below", "Left", "Right"
+LibraryESP.BoxShape = "Square"       -- "Square", "Circle", "Octagon"
 
 local function DrawText(size, color)
     local text = Drawing.new("Text")
@@ -31,12 +32,31 @@ local function DrawLine(color)
 end
 
 local function DrawBox(color)
-    local box = Drawing.new("Square")
-    box.Thickness = 1
-    box.Color = color
-    box.Filled = false
-    box.Visible = false
-    return box
+    local shape
+    if LibraryESP.BoxShape == "Circle" then
+        shape = Drawing.new("Circle")
+        shape.Radius = 50 -- valor inicial
+        shape.Thickness = 1
+        shape.Filled = false
+        shape.Color = color
+        shape.Visible = false
+    elseif LibraryESP.BoxShape == "Octagon" then
+        shape = {}
+        for i = 1,8 do
+            local line = Drawing.new("Line")
+            line.Thickness = 1
+            line.Color = color
+            line.Visible = false
+            table.insert(shape, line)
+        end
+    else -- Square
+        shape = Drawing.new("Square")
+        shape.Thickness = 1
+        shape.Filled = false
+        shape.Color = color
+        shape.Visible = false
+    end
+    return shape
 end
 
 function LibraryESP:CreateESP(object, options)
@@ -59,7 +79,15 @@ function LibraryESP:RemoveESP(object)
             if esp.NameText then esp.NameText:Remove() end
             if esp.DistanceText then esp.DistanceText:Remove() end
             if esp.TracerLine then esp.TracerLine:Remove() end
-            if esp.Box then esp.Box:Remove() end
+            if esp.Box then
+                if LibraryESP.BoxShape == "Octagon" then
+                    for _, line in ipairs(esp.Box) do
+                        line:Remove()
+                    end
+                else
+                    esp.Box:Remove()
+                end
+            end
             table.remove(ESPObjects, i)
         end
     end
@@ -128,7 +156,15 @@ RunService.RenderStepped:Connect(function()
             if esp.NameText then esp.NameText:Remove() end
             if esp.DistanceText then esp.DistanceText:Remove() end
             if esp.TracerLine then esp.TracerLine:Remove() end
-            if esp.Box then esp.Box:Remove() end
+            if esp.Box then
+                if LibraryESP.BoxShape == "Octagon" then
+                    for _, line in ipairs(esp.Box) do
+                        line:Remove()
+                    end
+                else
+                    esp.Box:Remove()
+                end
+            end
             table.remove(ESPObjects, i)
 
         else
@@ -137,7 +173,15 @@ RunService.RenderStepped:Connect(function()
                 if esp.NameText then esp.NameText.Visible = false end
                 if esp.DistanceText then esp.DistanceText.Visible = false end
                 if esp.TracerLine then esp.TracerLine.Visible = false end
-                if esp.Box then esp.Box.Visible = false end
+                if esp.Box then
+                    if LibraryESP.BoxShape == "Octagon" then
+                        for _, line in ipairs(esp.Box) do
+                            line.Visible = false
+                        end
+                    else
+                        esp.Box.Visible = false
+                    end
+                end
                 continue
             end
 
@@ -187,16 +231,49 @@ RunService.RenderStepped:Connect(function()
                     local boxWidth = sizeX * scale
                     local boxHeight = sizeY * scale
 
-                    esp.Box.Size = Vector2.new(boxWidth, boxHeight)
-                    esp.Box.Position = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxHeight / 2)
-                    esp.Box.Visible = true
+                    if LibraryESP.BoxShape == "Circle" then
+                        esp.Box.Position = basePos
+                        esp.Box.Radius = math.max(boxWidth, boxHeight) / 2
+                        esp.Box.Visible = true
+
+                    elseif LibraryESP.BoxShape == "Octagon" then
+                        local radiusX = boxWidth / 2
+                        local radiusY = boxHeight / 2
+                        local center = basePos
+
+                        for j = 1,8 do
+                            local angle1 = math.rad((j - 1) * 45)
+                            local angle2 = math.rad((j % 8) * 45)
+
+                            local p1 = center + Vector2.new(math.cos(angle1) * radiusX, math.sin(angle1) * radiusY)
+                            local p2 = center + Vector2.new(math.cos(angle2) * radiusX, math.sin(angle2) * radiusY)
+
+                            local line = esp.Box[j]
+                            line.From = p1
+                            line.To = p2
+                            line.Visible = true
+                        end
+
+                    else -- Square
+                        esp.Box.Size = Vector2.new(boxWidth, boxHeight)
+                        esp.Box.Position = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxHeight / 2)
+                        esp.Box.Visible = true
+                    end
                 end
 
             else
                 if esp.NameText then esp.NameText.Visible = false end
                 if esp.DistanceText then esp.DistanceText.Visible = false end
                 if esp.TracerLine then esp.TracerLine.Visible = false end
-                if esp.Box then esp.Box.Visible = false end
+                if esp.Box then
+                    if LibraryESP.BoxShape == "Octagon" then
+                        for _, line in ipairs(esp.Box) do
+                            line.Visible = false
+                        end
+                    else
+                        esp.Box.Visible = false
+                    end
+                end
             end
         end
     end
