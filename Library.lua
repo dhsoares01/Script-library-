@@ -164,38 +164,66 @@ end)
 
         local mouseDown = false
         local lastPos = Vector2.new()
+-- Ajuste no TabContainer para bordas arredondadas maiores
+local TabCorner = Instance.new("UICorner", TabContainer)
+TabCorner.CornerRadius = UDim.new(0, 8)  -- mudou de 6 para 8 para combinar com o MainFrame
 
-        resizeFrame.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                mouseDown = true
-                lastPos = UserInputService:GetMouseLocation()
+-- Arredondamento para o PageContainer (área das abas)
+local pageContainerCorner = Instance.new("UICorner", PageContainer)
+pageContainerCorner.CornerRadius = UDim.new(0, 8)
+
+-- Redimensionar menu (borda direita-inferior)
+do
+    local resizeFrame = Instance.new("Frame", MainFrame)
+    resizeFrame.Size = UDim2.new(0, 20, 0, 20)
+    resizeFrame.Position = UDim2.new(1, -20, 1, -20)
+    resizeFrame.BackgroundTransparency = 1
+    resizeFrame.ZIndex = 10
+    resizeFrame.Active = true
+
+    -- Visual para a área de redimensionamento com cantos arredondados
+    local visualCorner = Instance.new("Frame", resizeFrame)
+    visualCorner.Size = UDim2.new(1, 0, 1, 0)
+    visualCorner.BackgroundColor3 = theme.Stroke
+    visualCorner.BorderSizePixel = 0
+
+    local visualCornerUICorner = Instance.new("UICorner", visualCorner)
+    visualCornerUICorner.CornerRadius = UDim.new(0, 10)
+
+    local mouseDown = false
+    local lastPos = Vector2.new()
+
+    resizeFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            mouseDown = true
+            lastPos = UserInputService:GetMouseLocation()
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if mouseDown and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = UserInputService:GetMouseLocation() - lastPos
+            lastPos = UserInputService:GetMouseLocation()
+
+            local newWidth = math.clamp(MainFrame.AbsoluteSize.X + delta.X, 350, 900)
+            local newHeight = math.clamp(MainFrame.AbsoluteSize.Y + delta.Y, 220, 600)
+
+            MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+            TabContainer.Size = UDim2.new(0, 130, 1, -40)
+            PageContainer.Size = UDim2.new(1, -130, 1, -40)
+
+            for _, pg in pairs(pages) do
+                pg.Size = UDim2.new(1, 0, 1, 0)
             end
-        end)
+        end
+    end)
 
-        UserInputService.InputChanged:Connect(function(input)
-            if mouseDown and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = UserInputService:GetMouseLocation() - lastPos
-                lastPos = UserInputService:GetMouseLocation()
-
-                local newWidth = math.clamp(MainFrame.AbsoluteSize.X + delta.X, 350, 900)
-                local newHeight = math.clamp(MainFrame.AbsoluteSize.Y + delta.Y, 220, 600)
-
-                MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
-                TabContainer.Size = UDim2.new(0, 130, 1, -40)
-                PageContainer.Size = UDim2.new(1, -130, 1, -40)
-
-                for _, pg in pairs(pages) do
-                    pg.Size = UDim2.new(1, 0, 1, 0)
-                end
-            end
-        end)
-
-        UserInputService.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                mouseDown = false
-            end
-        end)
-    end
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            mouseDown = false
+        end
+    end)
+end
 
     function window:CreateTab(tabName, icon)
         local Button = Instance.new("TextButton", TabContainer)
