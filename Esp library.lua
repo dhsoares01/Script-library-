@@ -193,7 +193,7 @@ RunService.RenderStepped:Connect(function()
 
                 if esp.NameText then
                     esp.NameText.Position = getTextPosition(basePos, LibraryESP.TextPosition)
-                    esp.NameText.Text = tostring(obj.Name)
+                    esp.NameText.Text = esp.Options.NameString or tostring(obj.Name)  -- <- Aquí el cambio para nombre personalizado
                     esp.NameText.Visible = true
                 end
 
