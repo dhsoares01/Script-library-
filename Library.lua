@@ -432,4 +432,10 @@ function tab:AddDropdownToggle(title, options, default, callback)
     }
 end
 
+return tab    
+end    
+    
+return window    
+end    
+    
 return Library
