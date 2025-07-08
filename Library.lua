@@ -325,6 +325,97 @@ function window:CreateTab(tabName, icon)
         }    
     end    
 
+        function tab:AddDropdownButtonOnOff(title, items, callback)
+    local container = Instance.new("Frame", Page)
+    container.Size = UDim2.new(1, -10, 0, 36)
+    container.BackgroundColor3 = theme.Tab
+    container.BorderSizePixel = 0
+
+    local corner = Instance.new("UICorner", container)
+    corner.CornerRadius = UDim.new(0, 6)
+
+    local header = Instance.new("TextButton", container)
+    header.Size = UDim2.new(1, 0, 1, 0)
+    header.BackgroundTransparency = 1
+    header.Text = "▸ " .. title
+    header.TextColor3 = theme.Text
+    header.TextSize = 16
+    header.Font = Enum.Font.Gotham
+    header.TextXAlignment = Enum.TextXAlignment.Left
+
+    local dropdownFrame = Instance.new("Frame", Page)
+    dropdownFrame.Size = UDim2.new(1, -10, 0, #items * 32 + 4)
+    dropdownFrame.BackgroundColor3 = theme.Tab
+    dropdownFrame.Visible = false
+
+    local dropCorner = Instance.new("UICorner", dropdownFrame)
+    dropCorner.CornerRadius = UDim.new(0, 6)
+
+    local listLayout = Instance.new("UIListLayout", dropdownFrame)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 4)
+
+    local states = {}
+
+    for _, name in ipairs(items) do
+        states[name] = false
+
+        local btn = Instance.new("TextButton", dropdownFrame)
+        btn.Size = UDim2.new(1, -8, 0, 28)
+        btn.Position = UDim2.new(0, 4, 0, 0)
+        btn.BackgroundColor3 = theme.Tab
+        btn.TextColor3 = theme.Text
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 14
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+
+        local btnCorner = Instance.new("UICorner", btn)
+        btnCorner.CornerRadius = UDim.new(0, 6)
+
+        local function updateBtn()
+            btn.Text = name .. ": " .. (states[name] and "ON" or "OFF")
+            btn.BackgroundColor3 = states[name] and theme.Accent or theme.Tab
+        end
+        updateBtn()
+
+        btn.MouseButton1Click:Connect(function()
+            states[name] = not states[name]
+            updateBtn()
+            if callback then
+                callback(states)
+            end
+        end)
+    end
+
+    local expanded = false
+
+    header.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        dropdownFrame.Visible = expanded
+        header.Text = (expanded and "▾ " or "▸ ") .. title
+    end)
+
+    return {
+        Set = function(_, item, value)
+            if states[item] ~= nil then
+                states[item] = value
+                for _, child in pairs(dropdownFrame:GetChildren()) do
+                    if child:IsA("TextButton") and child.Text:find(item) then
+                        child.BackgroundColor3 = value and theme.Accent or theme.Tab
+                        child.Text = item .. ": " .. (value and "ON" or "OFF")
+                    end
+                end
+                if callback then
+                    callback(states)
+                end
+            end
+        end,
+        GetAll = function()
+            return states
+        end
+    }
+end
+
     function tab:AddSlider(text, min, max, default, callback)    
         local SliderFrame = Instance.new("Frame", Page)    
         SliderFrame.Size = UDim2.new(1, -10, 0, 40)    
