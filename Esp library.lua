@@ -1,4 +1,4 @@
---// ESP Library by Endereço (Com toggles individuais e box corrigido)
+--// ESP Library by Endereço (Com toggles individuais e box corrigido, linha melhorada)
 local ESP = {
     Enabled = true,
     Objects = {},
@@ -39,16 +39,16 @@ function ESP:Add(object, name)
     local d = self.Objects[object].Drawing
 
     -- Linha
-    d.Line.Thickness = 1.5
+    d.Line.Thickness = 2
     d.Line.Transparency = 1
-    d.Line.Color = self.Settings.Color
+    d.Line.Color = ESP.Settings.Color
     d.Line.ZIndex = 2
 
     -- Caixa (Square)
     d.Box.Thickness = 2
     d.Box.Filled = false
     d.Box.Transparency = 1
-    d.Box.Color = self.Settings.Color
+    d.Box.Color = ESP.Settings.Color
     d.Box.ZIndex = 2
 
     -- Nome
@@ -57,7 +57,7 @@ function ESP:Add(object, name)
     d.Name.Outline = true
     d.Name.OutlineColor = Color3.new(0, 0, 0)
     d.Name.Transparency = 1
-    d.Name.Color = self.Settings.Color
+    d.Name.Color = ESP.Settings.Color
     d.Name.Font = Enum.Font.GothamSemibold
     d.Name.ZIndex = 3
 
@@ -77,6 +77,9 @@ function ESP:Remove(object)
         for _, v in pairs(self.Objects[object].Drawing) do
             v:Remove()
         end
+        if self.Objects[object].Drawing.Circle then
+            self.Objects[object].Drawing.Circle:Remove()
+        end
         self.Objects[object] = nil
     end
 end
@@ -86,6 +89,9 @@ RunService.RenderStepped:Connect(function()
         for _, esp in pairs(ESP.Objects) do
             for _, draw in pairs(esp.Drawing) do
                 draw.Visible = false
+            end
+            if esp.Drawing.Circle then
+                esp.Drawing.Circle.Visible = false
             end
         end
         return
@@ -114,24 +120,53 @@ RunService.RenderStepped:Connect(function()
             drawing.Box.Size = boxSize
             drawing.Box.Visible = ESP.Settings.Box
 
-            -- Linha (Line)
-            drawing.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-            drawing.Line.To = Vector2.new(screenPos.X, screenPos.Y + boxSize.Y / 2)
-            drawing.Line.Visible = ESP.Settings.Line
+            -- Linha (Line) melhorada
+            if ESP.Settings.Line then
+                local startPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y) -- centro inferior da tela
+                local endPos = Vector2.new(screenPos.X, screenPos.Y + boxSize.Y / 2)
+
+                drawing.Line.From = startPos
+                drawing.Line.To = endPos
+                drawing.Line.Color = ESP.Settings.Color
+                drawing.Line.Thickness = 2
+                drawing.Line.Transparency = 1
+                drawing.Line.ZIndex = 2
+                drawing.Line.Visible = true
+
+                -- Círculo no fim da linha
+                if not drawing.Circle then
+                    drawing.Circle = Drawing.new("Circle")
+                    drawing.Circle.Color = ESP.Settings.Color
+                    drawing.Circle.Thickness = 2
+                    drawing.Circle.NumSides = 18
+                    drawing.Circle.Filled = false
+                    drawing.Circle.Transparency = 1
+                    drawing.Circle.ZIndex = 3
+                end
+                drawing.Circle.Position = endPos
+                drawing.Circle.Radius = 5
+                drawing.Circle.Visible = true
+            else
+                drawing.Line.Visible = false
+                if drawing.Circle then drawing.Circle.Visible = false end
+            end
 
             -- Nome (Name)
-            drawing.Name.Position = Vector2.new(screenPos.X, topLeft.Y - 18)
+            drawing.Name.Position = Vector2.new(screenPos.X, topLeft.Y - 20)
             drawing.Name.Text = name
             drawing.Name.Visible = ESP.Settings.Name
 
             -- Distância (Distance)
             local distanceInMeters = depth * 0.28
-            drawing.Distance.Position = Vector2.new(screenPos.X, topLeft.Y + boxSize.Y + 4)
+            drawing.Distance.Position = Vector2.new(screenPos.X, topLeft.Y + boxSize.Y + 8)
             drawing.Distance.Text = string.format("%.1f m", distanceInMeters)
             drawing.Distance.Visible = ESP.Settings.Distance
         else
             for _, v in pairs(drawing) do
                 v.Visible = false
+            end
+            if drawing.Circle then
+                drawing.Circle.Visible = false
             end
         end
     end
