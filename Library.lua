@@ -263,6 +263,131 @@ Button.MouseButton1Click:Connect(function()
 end)          
   
 local tab = {}          
+
+    function tab:AddDropdownToggle(text, options, default, callback)
+    -- Container do dropdown
+    local DropdownFrame = Instance.new("Frame", Page)
+    DropdownFrame.Size = UDim2.new(1, -10, 0, 36)
+    DropdownFrame.BackgroundColor3 = theme.Tab
+    DropdownFrame.ClipsDescendants = true
+
+    local corner = Instance.new("UICorner", DropdownFrame)
+    corner.CornerRadius = UDim.new(0, 6)
+
+    -- Label do dropdown (texto + seleção atual)
+    local Label = Instance.new("TextLabel", DropdownFrame)
+    Label.Size = UDim2.new(1, -30, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.BackgroundTransparency = 1
+    Label.Font = Enum.Font.Gotham
+    Label.TextSize = 16
+    Label.TextColor3 = theme.Text
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Ícone de seta (seta para baixo)
+    local Arrow = Instance.new("TextLabel", DropdownFrame)
+    Arrow.Size = UDim2.new(0, 20, 0, 20)
+    Arrow.Position = UDim2.new(1, -25, 0.5, -10)
+    Arrow.BackgroundTransparency = 1
+    Arrow.Font = Enum.Font.GothamBold
+    Arrow.TextSize = 18
+    Arrow.TextColor3 = theme.Accent
+    Arrow.Text = "▼"
+
+    -- Frame com as opções do dropdown (inicialmente invisível)
+    local OptionsFrame = Instance.new("Frame", DropdownFrame)
+    OptionsFrame.Size = UDim2.new(1, 0, 0, 0)
+    OptionsFrame.Position = UDim2.new(0, 0, 1, 2)
+    OptionsFrame.BackgroundColor3 = theme.Tab
+    OptionsFrame.ClipsDescendants = true
+    OptionsFrame.Visible = false
+
+    local optionsLayout = Instance.new("UIListLayout", OptionsFrame)
+    optionsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    optionsLayout.Padding = UDim.new(0, 2)
+
+    local dropdownOpen = false
+    local selected = default or options[1]
+
+    local function updateLabel()
+        Label.Text = text .. ": " .. tostring(selected)
+    end
+    updateLabel()
+
+    -- Função para ajustar a altura das opções conforme o número de itens
+    local function updateOptionsSize()
+        local count = #options
+        local optionHeight = 28
+        OptionsFrame.Size = UDim2.new(1, 0, 0, count * (optionHeight + optionsLayout.Padding.Offset))
+    end
+    updateOptionsSize()
+
+    -- Cria botão para cada opção
+    for _, option in ipairs(options) do
+        local optionBtn = Instance.new("TextButton", OptionsFrame)
+        optionBtn.Size = UDim2.new(1, -10, 0, 28)
+        optionBtn.Position = UDim2.new(0, 5, 0, 0)
+        optionBtn.BackgroundColor3 = theme.Background
+        optionBtn.TextColor3 = theme.Text
+        optionBtn.Font = Enum.Font.Gotham
+        optionBtn.TextSize = 14
+        optionBtn.Text = option
+        optionBtn.AutoButtonColor = false
+
+        local optCorner = Instance.new("UICorner", optionBtn)
+        optCorner.CornerRadius = UDim.new(0, 6)
+
+        optionBtn.MouseEnter:Connect(function()
+            TweenService:Create(optionBtn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Accent }):Play()
+        end)
+        optionBtn.MouseLeave:Connect(function()
+            TweenService:Create(optionBtn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Background }):Play()
+        end)
+
+        optionBtn.MouseButton1Click:Connect(function()
+            selected = option
+            updateLabel()
+            if callback then
+                callback(selected)
+            end
+            dropdownOpen = false
+            OptionsFrame.Visible = false
+            -- Ajusta tamanho do DropdownFrame para a versão fechada
+            DropdownFrame.Size = UDim2.new(1, -10, 0, 36)
+            Arrow.Text = "▼"
+        end)
+    end
+
+    -- Toggle para abrir/fechar dropdown
+    DropdownFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dropdownOpen = not dropdownOpen
+            OptionsFrame.Visible = dropdownOpen
+            if dropdownOpen then
+                DropdownFrame.Size = UDim2.new(1, -10, 0, 36 + OptionsFrame.Size.Y.Offset + 4)
+                Arrow.Text = "▲"
+            else
+                DropdownFrame.Size = UDim2.new(1, -10, 0, 36)
+                Arrow.Text = "▼"
+            end
+        end
+    end)
+
+    return {
+        Set = function(self, value)
+            if table.find(options, value) then
+                selected = value
+                updateLabel()
+                if callback then
+                    callback(selected)
+                end
+            end
+        end,
+        Get = function(self)
+            return selected
+        end
+    }
+end
   
 function tab:AddLabel(text)          
     local Label = Instance.new("TextLabel", Page)          
