@@ -41,6 +41,19 @@ local function DrawBox(color)
     return box
 end
 
+--// Função para pegar todos os cantos da bounding box 3D
+local function GetBoundingCorners(cframe, size)
+    local corners = {}
+    for x = -0.5, 0.5, 1 do
+        for y = -0.5, 0.5, 1 do
+            for z = -0.5, 0.5, 1 do
+                table.insert(corners, (cframe * CFrame.new(x * size.X, y * size.Y, z * size.Z)).Position)
+            end
+        end
+    end
+    return corners
+end
+
 --// Cria ESP
 function LibraryESP:CreateESP(object, options)
     local esp = {
@@ -49,8 +62,23 @@ function LibraryESP:CreateESP(object, options)
         NameText = options.Name and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,
         DistanceText = options.Distance and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,
         TracerLine = options.Tracer and DrawLine(options.Color or Color3.new(1, 1, 1)) or nil,
-        Box = options.Box and DrawBox(options.Color or Color3.new(1, 1, 1)) or nil
+        Box = options.Box and DrawBox(options.Color or Color3.new(1, 1, 1)) or nil,
+        Box3D = nil
     }
+
+    if options.Box3D then
+        local box3d = Instance.new("BoxHandleAdornment")
+        box3d.Name = "ESPBox3D"
+        box3d.Size = Vector3.new(1, 1, 1)
+        box3d.Color3 = options.Color or Color3.new(1, 1, 1)
+        box3d.Transparency = 0.7
+        box3d.ZIndex = 0
+        box3d.Adornee = object
+        box3d.AlwaysOnTop = true
+        box3d.Visible = true
+        box3d.Parent = object
+        esp.Box3D = box3d
+    end
 
     table.insert(ESPObjects, esp)
     return esp
@@ -65,6 +93,7 @@ function LibraryESP:RemoveESP(object)
             if esp.DistanceText then esp.DistanceText:Remove() end
             if esp.TracerLine then esp.TracerLine:Remove() end
             if esp.Box then esp.Box:Remove() end
+            if esp.Box3D then esp.Box3D:Destroy() end
             table.remove(ESPObjects, i)
         end
     end
@@ -74,20 +103,20 @@ end
 local function getTextPosition(basePos, offsetType)
     local offset = Vector2.new(0, 0)
 
-    if offsetType == "Top" then
-        offset = Vector2.new(0, -16)
-    elseif offsetType == "Center" then
-        offset = Vector2.new(0, 0)
-    elseif offsetType == "Bottom" then
-        offset = Vector2.new(0, 16)
-    elseif offsetType == "Below" then
-        offset = Vector2.new(0, 26)
-    elseif offsetType == "LeftSide" then
-        offset = Vector2.new(-40, 0)
-    elseif offsetType == "RightSide" then
-        offset = Vector2.new(40, 0)
-    end
-
+    if offsetType == "Top" then      
+        offset = Vector2.new(0, -16)      
+    elseif offsetType == "Center" then      
+        offset = Vector2.new(0, 0)      
+    elseif offsetType == "Bottom" then      
+        offset = Vector2.new(0, 16)      
+    elseif offsetType == "Below" then      
+        offset = Vector2.new(0, 26)      
+    elseif offsetType == "LeftSide" then      
+        offset = Vector2.new(-40, 0)      
+    elseif offsetType == "RightSide" then      
+        offset = Vector2.new(40, 0)      
+    end      
+  
     return basePos + offset
 end
 
@@ -102,6 +131,7 @@ RunService.RenderStepped:Connect(function()
             if esp.DistanceText then esp.DistanceText:Remove() end
             if esp.TracerLine then esp.TracerLine:Remove() end
             if esp.Box then esp.Box:Remove() end
+            if esp.Box3D then esp.Box3D:Destroy() end
             table.remove(ESPObjects, i)
         else
             local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
@@ -144,18 +174,39 @@ RunService.RenderStepped:Connect(function()
                     esp.TracerLine.Visible = true
                 end
 
-                -- Caixa
+                -- Caixa 2D
                 if esp.Box then
-                    local size = 30 / (distance / 10)
-                    esp.Box.Size = Vector2.new(size, size * 1.5)
-                    esp.Box.Position = Vector2.new(pos.X - size / 2, pos.Y - size * 0.75)
+                    local cframe, size = obj:GetBoundingBox()
+                    local corners = GetBoundingCorners(cframe, size)
+
+                    local min, max = Vector2.new(math.huge, math.huge), Vector2.new(-math.huge, -math.huge)
+
+                    for _, corner in ipairs(corners) do
+                        local screenPos, onScreen = Camera:WorldToViewportPoint(corner)
+                        if onScreen then
+                            local v2 = Vector2.new(screenPos.X, screenPos.Y)
+                            min = Vector2.new(math.min(min.X, v2.X), math.min(min.Y, v2.Y))
+                            max = Vector2.new(math.max(max.X, v2.X), math.max(max.Y, v2.Y))
+                        end
+                    end
+
+                    local boxSize = max - min
+                    esp.Box.Size = boxSize
+                    esp.Box.Position = min
                     esp.Box.Visible = true
                 end
+
+                -- Caixa 3D já está ligada ao objeto, só atualiza visibilidade
+                if esp.Box3D then
+                    esp.Box3D.Visible = true
+                end
+
             else
                 if esp.NameText then esp.NameText.Visible = false end
                 if esp.DistanceText then esp.DistanceText.Visible = false end
                 if esp.TracerLine then esp.TracerLine.Visible = false end
                 if esp.Box then esp.Box.Visible = false end
+                if esp.Box3D then esp.Box3D.Visible = false end
             end
         end
     end
