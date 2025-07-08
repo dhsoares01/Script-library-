@@ -1,3 +1,4 @@
+-- library.lua (corrigido)
 local Library = {}
 
 local TweenService = game:GetService("TweenService")
@@ -25,13 +26,10 @@ function Library:CreateWindow(name)
     MainFrame.Active = true
     MainFrame.Draggable = true
     MainFrame.ClipsDescendants = true
-    MainFrame.BackgroundTransparency = 0
-    MainFrame.Name = "MainWindow"
-    MainFrame.ZIndex = 10
-    MainFrame.AutomaticSize = Enum.AutomaticSize.None
     MainFrame:SetAttribute("Minimized", false)
-    MainFrame.UICorner = Instance.new("UICorner", MainFrame)
-    MainFrame.UICorner.CornerRadius = UDim.new(0, 10)
+
+    local corner = Instance.new("UICorner", MainFrame)
+    corner.CornerRadius = UDim.new(0, 10)
 
     local TitleBar = Instance.new("Frame", MainFrame)
     TitleBar.Size = UDim2.new(1, 0, 0, 40)
@@ -61,13 +59,11 @@ function Library:CreateWindow(name)
     TabContainer.Position = UDim2.new(0, 0, 0, 40)
     TabContainer.Size = UDim2.new(0, 120, 1, -40)
     TabContainer.BackgroundColor3 = theme.Tab
-    TabContainer.ZIndex = 2
 
     local PageContainer = Instance.new("Frame", MainFrame)
     PageContainer.Position = UDim2.new(0, 120, 0, 40)
     PageContainer.Size = UDim2.new(1, -120, 1, -40)
     PageContainer.BackgroundColor3 = theme.Background
-    PageContainer.ZIndex = 2
 
     local UIList = Instance.new("UIListLayout", TabContainer)
     UIList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -93,7 +89,6 @@ function Library:CreateWindow(name)
         Button.TextSize = 15
         Button.BorderSizePixel = 0
         Button.AutoButtonColor = true
-        Button.BackgroundTransparency = 0.2
 
         local Page = Instance.new("ScrollingFrame", PageContainer)
         Page.Visible = false
@@ -101,7 +96,6 @@ function Library:CreateWindow(name)
         Page.CanvasSize = UDim2.new(0, 0, 0, 0)
         Page.ScrollBarThickness = 4
         Page.BackgroundTransparency = 1
-        Page.ZIndex = 2
 
         local Layout = Instance.new("UIListLayout", Page)
         Layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -117,6 +111,11 @@ function Library:CreateWindow(name)
             switchToPage(tabName)
         end)
 
+        -- Mostrar a primeira aba criada por padrão
+        if not next(pages, tabName) then
+            switchToPage(tabName)
+        end
+
         local tab = {}
 
         function tab:AddLabel(text)
@@ -130,100 +129,12 @@ function Library:CreateWindow(name)
             Label.TextXAlignment = Enum.TextXAlignment.Left
         end
 
-        function tab:AddButton(text, callback)
-            local Btn = Instance.new("TextButton", Page)
-            Btn.Size = UDim2.new(1, -10, 0, 30)
-            Btn.BackgroundColor3 = theme.Accent
-            Btn.Text = text
-            Btn.TextColor3 = Color3.new(1,1,1)
-            Btn.Font = Enum.Font.Gotham
-            Btn.TextSize = 16
-            Btn.AutoButtonColor = true
-            Btn.UICorner = Instance.new("UICorner", Btn)
-            Btn.MouseButton1Click:Connect(callback)
-        end
-
-        function tab:AddToggle(text, callback)
-            local ToggleBtn = Instance.new("TextButton", Page)
-            ToggleBtn.Size = UDim2.new(1, -10, 0, 30)
-            ToggleBtn.BackgroundColor3 = theme.Tab
-            ToggleBtn.TextColor3 = theme.Text
-            ToggleBtn.Font = Enum.Font.Gotham
-            ToggleBtn.TextSize = 16
-            ToggleBtn.AutoButtonColor = true
-
-            local state = false
-            local function update()
-                ToggleBtn.Text = text .. ": " .. (state and "ON" or "OFF")
-            end
-
-            update()
-            ToggleBtn.MouseButton1Click:Connect(function()
-                state = not state
-                update()
-                if callback then callback(state) end
-            end)
-        end
-
-        function tab:AddSlider(text, min, max, default, callback)
-            local frame = Instance.new("Frame", Page)
-            frame.Size = UDim2.new(1, -10, 0, 30)
-            frame.BackgroundTransparency = 1
-
-            local label = Instance.new("TextLabel", frame)
-            label.Size = UDim2.new(0.5, 0, 1, 0)
-            label.Text = text .. ": " .. tostring(default)
-            label.Font = Enum.Font.Gotham
-            label.TextColor3 = theme.Text
-            label.BackgroundTransparency = 1
-            label.TextSize = 14
-            label.TextXAlignment = Enum.TextXAlignment.Left
-
-            local slider = Instance.new("TextButton", frame)
-            slider.Size = UDim2.new(0.5, 0, 1, 0)
-            slider.Position = UDim2.new(0.5, 0, 0, 0)
-            slider.Text = "Set"
-            slider.Font = Enum.Font.Gotham
-            slider.TextColor3 = theme.Text
-            slider.BackgroundColor3 = theme.Accent
-            slider.TextSize = 14
-            slider.UICorner = Instance.new("UICorner", slider)
-
-            slider.MouseButton1Click:Connect(function()
-                callback(default)
-            end)
-
-            callback(default)
-        end
-
-        function tab:AddDropdown(text, options, callback)
-            local button = Instance.new("TextButton", Page)
-            button.Size = UDim2.new(1, -10, 0, 30)
-            button.Text = text .. ": " .. options[1]
-            button.BackgroundColor3 = theme.Tab
-            button.TextColor3 = theme.Text
-            button.Font = Enum.Font.Gotham
-            button.TextSize = 14
-            button.AutoButtonColor = true
-
-            local index = 1
-            button.MouseButton1Click:Connect(function()
-                index = index + 1
-                if index > #options then index = 1 end
-                button.Text = text .. ": " .. options[index]
-                if callback then callback(options[index]) end
-            end)
-        end
-
         return tab
     end
 
-    -- Minimizar
-    local minimized = false
     MinimizeBtn.MouseButton1Click:Connect(function()
-        minimized = not minimized
+        local minimized = not MainFrame:GetAttribute("Minimized")
         MainFrame:SetAttribute("Minimized", minimized)
-
         TweenService:Create(MainFrame, TweenInfo.new(0.25), {
             Size = minimized and UDim2.new(0, 520, 0, 40) or UDim2.new(0, 520, 0, 340)
         }):Play()
