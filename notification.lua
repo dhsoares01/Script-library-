@@ -69,6 +69,7 @@ function NotificationLibrary:Notify(title, description, duration, imageId)
 		Icon.BackgroundTransparency = 1
 		Icon.ScaleType = Enum.ScaleType.Fit
 		Icon.Parent = NotifyFrame
+		Icon.ZIndex = 6
 
 		local extraPad = Instance.new("UIPadding", NotifyFrame)
 		extraPad.PaddingLeft = UDim.new(0, 40)
