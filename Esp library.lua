@@ -35,7 +35,7 @@ local function DrawBox(color)
     local shape
     if LibraryESP.BoxShape == "Circle" then
         shape = Drawing.new("Circle")
-        shape.Radius = 50
+        shape.Radius = 50 -- valor inicial
         shape.Thickness = 1
         shape.Filled = false
         shape.Color = color
@@ -67,16 +67,9 @@ function LibraryESP:CreateESP(object, options)
         DistanceText = options.Distance and DrawText(13, options.Color or Color3.new(1,1,1)) or nil,
         TracerLine = options.Tracer and DrawLine(options.Color or Color3.new(1,1,1)) or nil,
         Box = options.Box and DrawBox(options.Color or Color3.new(1,1,1)) or nil,
-        ApelidoString = options.ApelidoString or nil -- Novo campo para apelido
     }
     table.insert(ESPObjects, esp)
     return esp
-end
-
-function LibraryESP:SetApelido(espObject, apelido)
-    if typeof(apelido) == "string" then
-        espObject.ApelidoString = apelido
-    end
 end
 
 function LibraryESP:RemoveESP(object)
@@ -173,6 +166,7 @@ RunService.RenderStepped:Connect(function()
                 end
             end
             table.remove(ESPObjects, i)
+
         else
             local objPos = getObjectPosition(obj)
             if not objPos then
@@ -199,7 +193,7 @@ RunService.RenderStepped:Connect(function()
 
                 if esp.NameText then
                     esp.NameText.Position = getTextPosition(basePos, LibraryESP.TextPosition)
-                    esp.NameText.Text = esp.ApelidoString or esp.Options.NameString or "ESP"
+                    esp.NameText.Text = esp.Options.NameString or tostring(obj.Name)  -- <- Aquí el cambio para nombre personalizado
                     esp.NameText.Visible = true
                 end
 
@@ -222,6 +216,7 @@ RunService.RenderStepped:Connect(function()
                     elseif LibraryESP.LineFrom == "Right" then
                         from = Vector2.new(Camera.ViewportSize.X, Camera.ViewportSize.Y / 2)
                     end
+
                     esp.TracerLine.From = from
                     esp.TracerLine.To = basePos
                     esp.TracerLine.Visible = true
@@ -232,6 +227,7 @@ RunService.RenderStepped:Connect(function()
                     local sizeX = math.clamp(size3D.X, 1, 10)
                     local sizeY = math.clamp(size3D.Y, 1, 10)
                     local scale = 300 / (distance + 0.1)
+
                     local boxWidth = sizeX * scale
                     local boxHeight = sizeY * scale
 
@@ -239,26 +235,32 @@ RunService.RenderStepped:Connect(function()
                         esp.Box.Position = basePos
                         esp.Box.Radius = math.max(boxWidth, boxHeight) / 2
                         esp.Box.Visible = true
+
                     elseif LibraryESP.BoxShape == "Octagon" then
                         local radiusX = boxWidth / 2
                         local radiusY = boxHeight / 2
                         local center = basePos
+
                         for j = 1,8 do
                             local angle1 = math.rad((j - 1) * 45)
                             local angle2 = math.rad((j % 8) * 45)
+
                             local p1 = center + Vector2.new(math.cos(angle1) * radiusX, math.sin(angle1) * radiusY)
                             local p2 = center + Vector2.new(math.cos(angle2) * radiusX, math.sin(angle2) * radiusY)
+
                             local line = esp.Box[j]
                             line.From = p1
                             line.To = p2
                             line.Visible = true
                         end
+
                     else -- Square
                         esp.Box.Size = Vector2.new(boxWidth, boxHeight)
                         esp.Box.Position = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxHeight / 2)
                         esp.Box.Visible = true
                     end
                 end
+
             else
                 if esp.NameText then esp.NameText.Visible = false end
                 if esp.DistanceText then esp.DistanceText.Visible = false end
