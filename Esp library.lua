@@ -1,308 +1,190 @@
---// LibraryESP.lua    
+--// LibraryESP.lua
 
-local Camera = workspace.CurrentCamera    
-local Players = game:GetService("Players")    
-local RunService = game:GetService("RunService")    
-local LocalPlayer = Players.LocalPlayer    
+-- Referências importantes para câmera, jogadores, atualização por frame e jogador local
+local Camera = workspace.CurrentCamera
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
-local LibraryESP = {}    
-local ESPObjects = {}    
+-- Tabela principal que conterá todas as funções da LibraryESP
+local LibraryESP = {}
 
---// Configurações globais    
-LibraryESP.TextPosition = "Top" -- Top, Center, Bottom, Below, LeftSide, RightSide    
-LibraryESP.LineFrom = "Bottom" -- Top, Center, Bottom, Below, Left, Right    
+-- Tabela que armazenará todos os ESPs ativos criados
+local ESPObjects = {}
 
---// Funções de desenho    
+--// Configurações globais para a posição do texto e origem da linha (tracer)
+LibraryESP.TextPosition = "Top"    -- Opções: Top, Center, Bottom, Below, LeftSide, RightSide
+LibraryESP.LineFrom = "Bottom"     -- Opções: Top, Center, Bottom, Below, Left, Right
 
--- Texto com sombra    
-local function DrawText(size, color)    
-    local text = Drawing.new("Text")    
-    text.Size = size    
-    text.Center = true    
-    text.Outline = false    
-    text.Font = 2    
-    text.Color = color    
-    text.Visible = false    
+--// Função para criar um texto com as configurações básicas do ESP
+local function DrawText(size, color)
+    local text = Drawing.new("Text") -- Cria um novo objeto de texto
+    text.Size = size                 -- Define o tamanho do texto
+    text.Center = true              -- Centraliza o texto na posição definida
+    text.Outline = true             -- Habilita contorno para melhor leitura
+    text.Font = 2                   -- Define a fonte do texto (2 = fonte padrão Roblox)
+    text.Color = color              -- Cor do texto
+    text.Visible = false            -- Inicialmente invisível, só aparece quando atualizado
+    return text                    -- Retorna o objeto texto para uso
+end
 
-    local shadow = Drawing.new("Text")    
-    shadow.Size = size    
-    shadow.Center = true    
-    shadow.Outline = false    
-    shadow.Font = 2    
-    shadow.Color = Color3.new(0,0,0)    
-    shadow.Transparency = 0.4    
-    shadow.Visible = false    
+--// Função para criar uma linha (tracer) com configurações básicas
+local function DrawLine(color)
+    local line = Drawing.new("Line") -- Cria um novo objeto de linha
+    line.Thickness = 1.5            -- Espessura da linha
+    line.Color = color              -- Cor da linha
+    line.Visible = false            -- Inicialmente invisível
+    return line                    -- Retorna o objeto linha para uso
+end
 
-    function text:SetPosition(pos)    
-        text.Position = pos    
-        shadow.Position = pos + Vector2.new(1, 1)    
-    end    
-    function text:SetText(txt)    
-        text.Text = txt    
-        shadow.Text = txt    
-    end    
-    function text:SetVisible(v)    
-        text.Visible = v    
-        shadow.Visible = v    
-    end    
-    function text:Remove()    
-        text:Remove()    
-        shadow:Remove()    
-    end    
+--// Função para criar uma caixa (box) com configurações básicas
+local function DrawBox(color)
+    local box = Drawing.new("Square") -- Cria um objeto de quadrado
+    box.Thickness = 1               -- Espessura da borda da caixa
+    box.Color = color               -- Cor da caixa
+    box.Filled = false              -- Caixa não preenchida (só contorno)
+    box.Visible = false             -- Inicialmente invisível
+    return box                     -- Retorna o objeto caixa para uso
+end
 
-    return text    
-end    
+--// Função que cria um ESP para um objeto com as opções definidas
+function LibraryESP:CreateESP(object, options)
+    -- Cria uma tabela ESP que armazena o objeto, opções e os elementos visuais (texto, linha, caixa)
+    local esp = {
+        Object = object,
+        Options = options,
+        NameText = options.Name and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,           -- Texto do nome
+        DistanceText = options.Distance and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,   -- Texto da distância
+        TracerLine = options.Tracer and DrawLine(options.Color or Color3.new(1, 1, 1)) or nil,           -- Linha do tracer
+        Box = options.Box and DrawBox(options.Color or Color3.new(1, 1, 1)) or nil                        -- Caixa ao redor do objeto
+    }
 
--- Caixa com borda dupla e cantos arredondados simulados    
-local function DrawFancyBox(color)    
-    local box = {}    
+    -- Insere o ESP criado na lista de ESPs ativos
+    table.insert(ESPObjects, esp)
+    return esp -- Retorna o ESP criado para manipulação futura, se necessário
+end
 
-    box.bg = Drawing.new("Square")    
-    box.bg.Color = Color3.new(color.R, color.G, color.B)    
-    box.bg.Transparency = 0.15    
-    box.bg.Thickness = 6    
-    box.bg.Filled = false    
-    box.bg.Visible = false    
+--// Função para remover ESPs de um objeto (ou todos se nil)
+function LibraryESP:RemoveESP(object)
+    -- Itera de trás para frente para remover ESPs com segurança durante a iteração
+    for i = #ESPObjects, 1, -1 do
+        local esp = ESPObjects[i]
+        if esp.Object == object or object == nil then -- Se o objeto for o alvo ou nenhum especificado (remove tudo)
+            -- Remove os elementos gráficos visuais do ESP
+            if esp.NameText then esp.NameText:Remove() end
+            if esp.DistanceText then esp.DistanceText:Remove() end
+            if esp.TracerLine then esp.TracerLine:Remove() end
+            if esp.Box then esp.Box:Remove() end
+            -- Remove o ESP da lista ativa
+            table.remove(ESPObjects, i)
+        end
+    end
+end
 
-    box.fg = Drawing.new("Square")    
-    box.fg.Color = color    
-    box.fg.Thickness = 1.5    
-    box.fg.Filled = false    
-    box.fg.Visible = false    
+--// Função que calcula a posição do texto baseado no ponto base e no tipo de offset desejado
+local function getTextPosition(basePos, offsetType)
+    local offset = Vector2.new(0, 0) -- Inicializa offset neutro
 
-    box.corners = {}    
-    local cornerSize = 6    
-    local thickness = 1.5    
+    -- Define o offset com base na posição configurada
+    if offsetType == "Top" then
+        offset = Vector2.new(0, -16)
+    elseif offsetType == "Center" then
+        offset = Vector2.new(0, 0)
+    elseif offsetType == "Bottom" then
+        offset = Vector2.new(0, 16)
+    elseif offsetType == "Below" then
+        offset = Vector2.new(0, 26)
+    elseif offsetType == "LeftSide" then
+        offset = Vector2.new(-40, 0)
+    elseif offsetType == "RightSide" then
+        offset = Vector2.new(40, 0)
+    end
 
-    local function createCorner()    
-        return {    
-            Drawing.new("Line"), -- horizontal    
-            Drawing.new("Line")  -- vertical    
-        }    
-    end    
+    -- Retorna a posição base somada ao offset, para posicionar o texto corretamente
+    return basePos + offset
+end
 
-    for i=1,4 do    
-        local h, v = createCorner()    
-        h.Thickness = thickness    
-        v.Thickness = thickness    
-        h.Color = color    
-        v.Color = color    
-        h.Visible = false    
-        v.Visible = false    
-        table.insert(box.corners, {h, v})    
-    end    
+--// Loop que atualiza o ESP a cada frame renderizado
+RunService.RenderStepped:Connect(function()
+    -- Percorre todos os ESPs criados
+    for i = #ESPObjects, 1, -1 do
+        local esp = ESPObjects[i]
+        local obj = esp.Object
 
-    function box:SetPosition(pos)    
-        box.bg.Position = pos    
-        box.fg.Position = pos    
+        -- Verifica se o objeto ainda é válido e está na workspace
+        if not obj or typeof(obj) ~= "Instance" or not obj:IsDescendantOf(workspace) then
+            -- Remove ESPs de objetos inválidos para limpar a lista
+            if esp.NameText then esp.NameText:Remove() end
+            if esp.DistanceText then esp.DistanceText:Remove() end
+            if esp.TracerLine then esp.TracerLine:Remove() end
+            if esp.Box then esp.Box:Remove() end
+            table.remove(ESPObjects, i)
 
-        local x, y = pos.X, pos.Y    
-        local w, h = box:GetSize()    
+        else
+            -- Converte a posição 3D do objeto para coordenadas 2D da tela
+            local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
+            local basePos = Vector2.new(pos.X, pos.Y)
 
-        -- Superior esquerdo    
-        box.corners[1][1].From = Vector2.new(x, y)    
-        box.corners[1][1].To = Vector2.new(x + cornerSize, y)    
-        box.corners[1][2].From = Vector2.new(x, y)    
-        box.corners[1][2].To = Vector2.new(x, y + cornerSize)    
+            -- Se o objeto está visível na tela
+            if onScreen then
+                -- Calcula a distância entre câmera e objeto para escalar elementos visuais
+                local distance = (Camera.CFrame.Position - obj.Position).Magnitude
 
-        -- Superior direito    
-        box.corners[2][1].From = Vector2.new(x + w - cornerSize, y)    
-        box.corners[2][1].To = Vector2.new(x + w, y)    
-        box.corners[2][2].From = Vector2.new(x + w, y)    
-        box.corners[2][2].To = Vector2.new(x + w, y + cornerSize)    
+                -- Atualiza o texto do nome do objeto e sua posição
+                if esp.NameText then
+                    esp.NameText.Position = getTextPosition(basePos, LibraryESP.TextPosition)
+                    esp.NameText.Text = tostring(obj.Name)
+                    esp.NameText.Visible = true
+                end
 
-        -- Inferior esquerdo    
-        box.corners[3][1].From = Vector2.new(x, y + h)    
-        box.corners[3][1].To = Vector2.new(x + cornerSize, y + h)    
-        box.corners[3][2].From = Vector2.new(x, y + h - cornerSize)    
-        box.corners[3][2].To = Vector2.new(x, y + h)    
+                -- Atualiza o texto da distância e sua posição um pouco abaixo do nome
+                if esp.DistanceText then
+                    esp.DistanceText.Position = getTextPosition(basePos, LibraryESP.TextPosition) + Vector2.new(0, 14)
+                    esp.DistanceText.Text = string.format("[%dm]", math.floor(distance))
+                    esp.DistanceText.Visible = true
+                end
 
-        -- Inferior direito    
-        box.corners[4][1].From = Vector2.new(x + w - cornerSize, y + h)    
-        box.corners[4][1].To = Vector2.new(x + w, y + h)    
-        box.corners[4][2].From = Vector2.new(x + w, y + h - cornerSize)    
-        box.corners[4][2].To = Vector2.new(x + w, y + h)    
-    end    
+                -- Atualiza a posição da linha tracer baseado na configuração LineFrom
+                if esp.TracerLine then
+                    local from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y) -- Padrão: inferior centro
 
-    function box:SetSize(size)    
-        box.bg.Size = size    
-        box.fg.Size = size    
-    end    
+                    -- Ajusta origem da linha conforme configuração
+                    if LibraryESP.LineFrom == "Top" then
+                        from = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                    elseif LibraryESP.LineFrom == "Center" then
+                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    elseif LibraryESP.LineFrom == "Below" then
+                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 1.25)
+                    elseif LibraryESP.LineFrom == "Left" then
+                        from = Vector2.new(0, Camera.ViewportSize.Y / 2)
+                    elseif LibraryESP.LineFrom == "Right" then
+                        from = Vector2.new(Camera.ViewportSize.X, Camera.ViewportSize.Y / 2)
+                    end
 
-    function box:GetSize()    
-        return box.bg.Size    
-    end    
+                    -- Define o início e fim da linha e torna visível
+                    esp.TracerLine.From = from
+                    esp.TracerLine.To = basePos
+                    esp.TracerLine.Visible = true
+                end
 
-    function box:SetVisible(v)    
-        box.bg.Visible = v    
-        box.fg.Visible = v    
-        for _,corner in pairs(box.corners) do    
-            corner[1].Visible = v    
-            corner[2].Visible = v    
-        end    
-    end    
+                -- Atualiza a caixa ao redor do objeto, escalando pelo tamanho/distância
+                if esp.Box then
+                    local size = 30 / (distance / 10) -- Ajusta tamanho com base na distância
+                    esp.Box.Size = Vector2.new(size, size * 1.5) -- Caixa mais alta que larga
+                    esp.Box.Position = Vector2.new(pos.X - size / 2, pos.Y - size * 0.75) -- Centraliza caixa no objeto
+                    esp.Box.Visible = true
+                end
 
-    function box:Remove()    
-        box.bg:Remove()    
-        box.fg:Remove()    
-        for _,corner in pairs(box.corners) do    
-            corner[1]:Remove()    
-            corner[2]:Remove()    
-        end    
-    end    
+            else
+                -- Se o objeto não está na tela, esconde todos os elementos visuais
+                if esp.NameText then esp.NameText.Visible = false end
+                if esp.DistanceText then esp.DistanceText.Visible = false end
+                if esp.TracerLine then esp.TracerLine.Visible = false end
+                if esp.Box then esp.Box.Visible = false end
+            end
+        end
+    end
+end)
 
-    return box    
-end    
-
--- Linha tracer com efeito gradiente (duas linhas)    
-local function DrawFancyLine(color)    
-    local line1 = Drawing.new("Line")    
-    line1.Thickness = 3    
-    line1.Color = Color3.new(color.R, color.G, color.B)    
-    line1.Transparency = 0.2    
-    line1.Visible = false    
-
-    local line2 = Drawing.new("Line")    
-    line2.Thickness = 1.5    
-    line2.Color = color    
-    line2.Visible = false    
-
-    return {    
-        SetFromTo = function(self, from, to)    
-            line1.From = from    
-            line1.To = to    
-            line2.From = from    
-            line2.To = to    
-        end,    
-        SetVisible = function(self, v)    
-            line1.Visible = v    
-            line2.Visible = v    
-        end,    
-        Remove = function(self)    
-            line1:Remove()    
-            line2:Remove()    
-        end    
-    }    
-end    
-
--- Cria ESP com novo design    
-function LibraryESP:CreateESP(object, options)    
-    local esp = {    
-        Object = object,    
-        Options = options,    
-        NameText = options.Name and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,    
-        DistanceText = options.Distance and DrawText(13, options.Color or Color3.new(1, 1, 1)) or nil,    
-        TracerLine = options.Tracer and DrawFancyLine(options.Color or Color3.new(1, 1, 1)) or nil,    
-        Box = options.Box and DrawFancyBox(options.Color or Color3.new(1, 1, 1)) or nil    
-    }    
-
-    table.insert(ESPObjects, esp)          
-    return esp    
-end    
-
--- Remove ESP    
-function LibraryESP:RemoveESP(object)    
-    for i = #ESPObjects, 1, -1 do    
-        local esp = ESPObjects[i]    
-        if esp.Object == object or object == nil then    
-            if esp.NameText then esp.NameText:Remove() end    
-            if esp.DistanceText then esp.DistanceText:Remove() end    
-            if esp.TracerLine then esp.TracerLine:Remove() end    
-            if esp.Box then esp.Box:Remove() end    
-            table.remove(ESPObjects, i)    
-        end    
-    end    
-end    
-
--- Calcula posição de texto    
-local function getTextPosition(basePos, offsetType)    
-    local offset = Vector2.new(0, 0)    
-
-    if offsetType == "Top" then          
-        offset = Vector2.new(0, -16)          
-    elseif offsetType == "Center" then          
-        offset = Vector2.new(0, 0)          
-    elseif offsetType == "Bottom" then          
-        offset = Vector2.new(0, 16)          
-    elseif offsetType == "Below" then          
-        offset = Vector2.new(0, 26)          
-    elseif offsetType == "LeftSide" then          
-        offset = Vector2.new(-40, 0)          
-    elseif offsetType == "RightSide" then          
-        offset = Vector2.new(40, 0)          
-    end          
-
-    return basePos + offset    
-end    
-
--- Loop de atualização    
-RunService.RenderStepped:Connect(function()    
-    for i = #ESPObjects, 1, -1 do    
-        local esp = ESPObjects[i]    
-        local obj = esp.Object    
-
-        if not obj or typeof(obj) ~= "Instance" or not obj:IsDescendantOf(workspace) then          
-            if esp.NameText then esp.NameText:Remove() end          
-            if esp.DistanceText then esp.DistanceText:Remove() end          
-            if esp.TracerLine then esp.TracerLine:Remove() end          
-            if esp.Box then esp.Box:Remove() end          
-            table.remove(ESPObjects, i)          
-        else          
-            local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)          
-            local basePos = Vector2.new(pos.X, pos.Y)          
-
-            if onScreen then          
-                local distance = (Camera.CFrame.Position - obj.Position).Magnitude          
-
-                -- Nome          
-                if esp.NameText then          
-                    esp.NameText:SetPosition(getTextPosition(basePos, LibraryESP.TextPosition))          
-                    esp.NameText:SetText(tostring(obj.Name))          
-                    esp.NameText:SetVisible(true)          
-                end          
-
-                -- Distância          
-                if esp.DistanceText then          
-                    esp.DistanceText:SetPosition(getTextPosition(basePos, LibraryESP.TextPosition) + Vector2.new(0, 14))          
-                    esp.DistanceText:SetText(string.format("[%dm]", math.floor(distance)))          
-                    esp.DistanceText:SetVisible(true)          
-                end          
-
-                -- Tracer          
-                if esp.TracerLine then          
-                    local from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)          
-                    if LibraryESP.LineFrom == "Top" then          
-                        from = Vector2.new(Camera.ViewportSize.X / 2, 0)          
-                    elseif LibraryESP.LineFrom == "Center" then          
-                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)          
-                    elseif LibraryESP.LineFrom == "Below" then          
-                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 1.25)          
-                    elseif LibraryESP.LineFrom == "Left" then          
-                        from = Vector2.new(0, Camera.ViewportSize.Y / 2)          
-                    elseif LibraryESP.LineFrom == "Right" then          
-                        from = Vector2.new(Camera.ViewportSize.X, Camera.ViewportSize.Y / 2)          
-                    end          
-
-                    esp.TracerLine:SetFromTo(from, basePos)          
-                    esp.TracerLine:SetVisible(true)          
-                end          
-
-                -- Caixa          
-                if esp.Box then          
-                    local size = 30 / (distance / 10)          
-                    local boxSize = Vector2.new(size, size * 1.5)          
-                    esp.Box:SetSize(boxSize)          
-                    esp.Box:SetPosition(Vector2.new(pos.X - boxSize.X / 2, pos.Y - boxSize.Y / 2))          
-                    esp.Box:SetVisible(true)          
-                end          
-            else          
-                if esp.NameText then esp.NameText:SetVisible(false) end          
-                if esp.DistanceText then esp.DistanceText:SetVisible(false) end          
-                if esp.TracerLine then esp.TracerLine:SetVisible(false) end          
-                if esp.Box then esp.Box:SetVisible(false) end          
-            end          
-        end          
-    end    
-end)    
-
+-- Retorna a tabela principal para uso externo
 return LibraryESP
