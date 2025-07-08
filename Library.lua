@@ -292,23 +292,46 @@ corner.CornerRadius = UDim.new(0, 6)
 Btn.MouseButton1Click:Connect(callback)    
     
 end    
-    
-function tab:AddToggle(text, callback)    
-local ToggleBtn = Instance.new("TextButton", Page)    
-ToggleBtn.Size = UDim2.new(1, -10, 0, 32)    
-ToggleBtn.BackgroundColor3 = theme.Tab    
-ToggleBtn.TextColor3 = theme.Text    
-ToggleBtn.Font = Enum.Font.Gotham    
-ToggleBtn.TextSize = 16    
-    
-local corner = Instance.new("UICorner", ToggleBtn)    
-corner.CornerRadius = UDim.new(0, 6)    
-    
-local state = false    
-local function update()    
-ToggleBtn.Text = text .. ": " .. (state and "ON" or "OFF")    
-ToggleBtn.BackgroundColor3 = state and theme.Accent or theme.Tab    
-end    
+    -- ... (seu código anterior permanece o mesmo)
+
+function tab:AddToggle(text, callback)
+    local ToggleBtn = Instance.new("TextButton", Page)
+    ToggleBtn.Size = UDim2.new(1, -10, 0, 32)
+    ToggleBtn.BackgroundColor3 = theme.Tab
+    ToggleBtn.TextColor3 = theme.Text
+    ToggleBtn.Font = Enum.Font.Gotham
+    ToggleBtn.TextSize = 16
+
+    local corner = Instance.new("UICorner", ToggleBtn)
+    corner.CornerRadius = UDim.new(0, 6)
+
+    local state = false
+    local function update()
+        ToggleBtn.Text = text .. ": " .. (state and "ON" or "OFF")
+        ToggleBtn.BackgroundColor3 = state and theme.Accent or theme.Tab
+    end
+
+    update()
+
+    ToggleBtn.MouseButton1Click:Connect(function()
+        state = not state
+        update()
+        if callback then
+            callback(state)
+        end
+    end)
+
+    return {
+        Set = function(_, value)
+            state = value
+            update()
+        end,
+        Get = function()
+            return state
+        end,
+    }
+end
+
 function tab:AddDropdownToggle(title, options, default, callback)
     local frame = Instance.new("Frame", Page)
     frame.Size = UDim2.new(1, -10, 0, 34)
@@ -408,126 +431,5 @@ function tab:AddDropdownToggle(title, options, default, callback)
         end,
     }
 end
-            
-update()    
-    
-ToggleBtn.MouseButton1Click:Connect(function()    
-state = not state    
-update()    
-if callback then    
-callback(state)    
-end    
-end)    
-    
-return {    
-Set = function(self, value)    
-state = value    
-update()    
-end,    
-Get = function(self)    
-return state    
-end,    
-}    
-    
-end    
-    
-function tab:AddSlider(text, min, max, default, callback)    
-local SliderFrame = Instance.new("Frame", Page)    
-SliderFrame.Size = UDim2.new(1, -10, 0, 40)    
-SliderFrame.BackgroundTransparency = 1    
-    
-local Label = Instance.new("TextLabel", SliderFrame)    
-Label.Size = UDim2.new(1, 0, 0, 16)    
-Label.Position = UDim2.new(0, 0, 0, 0)    
-Label.BackgroundTransparency = 1    
-Label.Font = Enum.Font.Gotham    
-Label.TextSize = 14    
-Label.TextColor3 = theme.Text    
-Label.Text = text .. ": " .. tostring(default)    
-Label.TextXAlignment = Enum.TextXAlignment.Left    
-    
-local SliderBar = Instance.new("Frame", SliderFrame)    
-SliderBar.Size = UDim2.new(1, 0, 0, 12)    
-SliderBar.Position = UDim2.new(0, 0, 0, 24)    
-SliderBar.BackgroundColor3 = theme.Tab    
-SliderBar.BorderSizePixel = 0    
-    
-local SliderCorner = Instance.new("UICorner", SliderBar)    
-SliderCorner.CornerRadius = UDim.new(0, 6)    
-    
-local SliderFill = Instance.new("Frame", SliderBar)    
-SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)    
-SliderFill.BackgroundColor3 = theme.Accent    
-SliderFill.BorderSizePixel = 0    
-    
-local FillCorner = Instance.new("UICorner", SliderFill)    
-FillCorner.CornerRadius = UDim.new(0, 6)    
-    
-local dragging = false    
-    
-local function updateValue(input)    
-local relativeX = math.clamp(input.Position.X - SliderBar.AbsolutePosition.X, 0, SliderBar.AbsoluteSize.X)    
-local percent = relativeX / SliderBar.AbsoluteSize.X    
-local value = math.floor(min + (max - min) * percent)    
-SliderFill.Size = UDim2.new(percent, 0, 1, 0)    
-Label.Text = text .. ": " .. tostring(value)    
-if callback then    
-callback(value)    
-end    
-return value    
-end    
-    
-SliderBar.InputBegan:Connect(function(input)    
-if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then    
-dragging = true    
-updateValue(input)    
-end    
-end)    
-    
-SliderBar.InputChanged:Connect(function(input)    
-if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then    
-updateValue(input)    
-end    
-end)    
-    
-UserInputService.InputEnded:Connect(function(input)    
-if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then    
-dragging = false    
-end    
-end)    
-    
-return {    
-Set = function(self, value)    
-local percent = math.clamp((value - min) / (max - min), 0, 1)    
-SliderFill.Size = UDim2.new(percent, 0, 1, 0)    
-Label.Text = text .. ": " .. tostring(value)    
-if callback then    
-callback(value)    
-end    
-end,    
-Get = function(self)    
-local size = SliderFill.Size.X.Scale    
-return math.floor(min + (max - min) * size)    
-end,    
-}    
-    
-end    
-    
-return tab    
-    
-end    
-    
--- Inicializa na primeira aba se existir    
-coroutine.wrap(function()    
-wait(0.1)    
-for tabName, _ in pairs(pages) do    
-switchToPage(tabName)    
-break    
-end    
-end)()    
-    
-return window    
-    
-end    
-    
-return Library    
+
+return Library
