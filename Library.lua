@@ -8,7 +8,8 @@ local theme = {
     Tab = Color3.fromRGB(40, 40, 40),
     Accent = Color3.fromRGB(0, 120, 255),
     Text = Color3.fromRGB(255, 255, 255),
-    Stroke = Color3.fromRGB(60, 60, 60)
+    Stroke = Color3.fromRGB(60, 60, 60),
+    ScrollViewBackground = Color3.fromRGB(20, 20, 20), -- mais escuro para o background do ScrollView
 }
 
 function Library:CreateWindow(name)
@@ -92,7 +93,6 @@ function Library:CreateWindow(name)
     BtnMinimize.MouseButton1Click:Connect(function()
         minimized = not minimized
         if minimized then
-            -- anima esconder (encolher)
             TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = UDim2.new(0, 130, 0, 40) }):Play()
             PageContainer.Visible = false
             TabContainer.Visible = false
@@ -112,7 +112,6 @@ function Library:CreateWindow(name)
     local function switchToPage(name)
         for pgName, pg in pairs(pages) do
             if pgName == name then
-                -- Fade in a página
                 pg.Visible = true
                 pg.BackgroundTransparency = 1
                 TweenService:Create(pg, TweenInfo.new(0.25), { BackgroundTransparency = 0 }):Play()
@@ -124,7 +123,7 @@ function Library:CreateWindow(name)
 
     local window = {}
 
-    -- Função para permitir redimensionar o menu pela borda direita-inferior
+    -- Redimensionar menu (borda direita-inferior)
     do
         local resizeFrame = Instance.new("Frame", MainFrame)
         resizeFrame.Size = UDim2.new(0, 20, 0, 20)
@@ -152,11 +151,9 @@ function Library:CreateWindow(name)
                 local newHeight = math.clamp(MainFrame.AbsoluteSize.Y + delta.Y, 220, 600)
 
                 MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
-                -- Atualizar containers relativos ao tamanho
                 TabContainer.Size = UDim2.new(0, 130, 1, -40)
                 PageContainer.Size = UDim2.new(1, -130, 1, -40)
 
-                -- Ajustar abas e páginas para o novo tamanho
                 for _, pg in pairs(pages) do
                     pg.Size = UDim2.new(1, 0, 1, 0)
                 end
@@ -184,7 +181,6 @@ function Library:CreateWindow(name)
         local btnCorner = Instance.new("UICorner", Button)
         btnCorner.CornerRadius = UDim.new(0, 6)
 
-        -- Adiciona ícone (emoji) à esquerda
         if icon then
             local iconLabel = Instance.new("TextLabel", Button)
             iconLabel.Text = icon
@@ -197,7 +193,7 @@ function Library:CreateWindow(name)
             iconLabel.TextXAlignment = Enum.TextXAlignment.Center
             iconLabel.TextYAlignment = Enum.TextYAlignment.Center
 
-            Button.Text = "  " .. tabName -- espaço para o emoji
+            Button.Text = "  " .. tabName
         else
             Button.Text = tabName
         end
@@ -214,8 +210,12 @@ function Library:CreateWindow(name)
         Page.Size = UDim2.new(1, 0, 1, 0)
         Page.CanvasSize = UDim2.new(0, 0, 0, 0)
         Page.ScrollBarThickness = 4
-        Page.BackgroundTransparency = 1
+        Page.BackgroundColor3 = theme.ScrollViewBackground -- background mais escuro
         Page.BorderSizePixel = 0
+
+        -- Cantos arredondados para o ScrollView, inclusive canto inferior direito
+        local pageCorner = Instance.new("UICorner", Page)
+        pageCorner.CornerRadius = UDim.new(0, 8)
 
         local Layout = Instance.new("UIListLayout", Page)
         Layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -274,117 +274,119 @@ function Library:CreateWindow(name)
                 ToggleBtn.Text = text .. ": " .. (state and "ON" or "OFF")
                 ToggleBtn.BackgroundColor3 = state and theme.Accent or theme.Tab
             end
-
             update()
+
             ToggleBtn.MouseButton1Click:Connect(function()
                 state = not state
                 update()
-                if callback then callback(state) end
+                if callback then
+                    callback(state)
+                end
             end)
+
+            return {
+                Set = function(self, value)
+                    state = value
+                    update()
+                end,
+                Get = function(self)
+                    return state
+                end,
+            }
         end
 
         function tab:AddSlider(text, min, max, default, callback)
-            local frame = Instance.new("Frame", Page)
-            frame.Size = UDim2.new(1, -10, 0, 40)
-            frame.BackgroundTransparency = 1
+            local SliderFrame = Instance.new("Frame", Page)
+            SliderFrame.Size = UDim2.new(1, -10, 0, 40)
+            SliderFrame.BackgroundTransparency = 1
 
-            local label = Instance.new("TextLabel", frame)
-            label.Size = UDim2.new(1, 0, 0, 18)
-            label.Text = text .. ": " .. tostring(default)
-            label.Font = Enum.Font.Gotham
-            label.TextColor3 = theme.Text
-            label.BackgroundTransparency = 1
-            label.TextSize = 14
-            label.TextXAlignment = Enum.TextXAlignment.Left
+            local Label = Instance.new("TextLabel", SliderFrame)
+            Label.Size = UDim2.new(1, 0, 0, 16)
+            Label.Position = UDim2.new(0, 0, 0, 0)
+            Label.BackgroundTransparency = 1
+            Label.Font = Enum.Font.Gotham
+            Label.TextSize = 14
+            Label.TextColor3 = theme.Text
+            Label.Text = text .. ": " .. tostring(default)
+            Label.TextXAlignment = Enum.TextXAlignment.Left
 
-            local sliderBar = Instance.new("Frame", frame)
-            sliderBar.Size = UDim2.new(1, 0, 0, 10)
-            sliderBar.Position = UDim2.new(0, 0, 0, 22)
-            sliderBar.BackgroundColor3 = theme.Tab
-            sliderBar.ClipsDescendants = true
+            local SliderBar = Instance.new("Frame", SliderFrame)
+            SliderBar.Size = UDim2.new(1, 0, 0, 12)
+            SliderBar.Position = UDim2.new(0, 0, 0, 24)
+            SliderBar.BackgroundColor3 = theme.Tab
+            SliderBar.BorderSizePixel = 0
 
-            local sliderFill = Instance.new("Frame", sliderBar)
-            sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-            sliderFill.BackgroundColor3 = theme.Accent
-            sliderFill.BorderSizePixel = 0
+            local SliderCorner = Instance.new("UICorner", SliderBar)
+            SliderCorner.CornerRadius = UDim.new(0, 6)
 
-            local UISizeConstraint = Instance.new("UISizeConstraint", sliderBar)
-            UISizeConstraint.MaxSize = Vector2.new(350, 10)
+            local SliderFill = Instance.new("Frame", SliderBar)
+            SliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+            SliderFill.BackgroundColor3 = theme.Accent
+            SliderFill.BorderSizePixel = 0
 
-            local mouseDown = false
+            local FillCorner = Instance.new("UICorner", SliderFill)
+            FillCorner.CornerRadius = UDim.new(0, 6)
 
-            sliderBar.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    mouseDown = true
-                    local pos = input.Position.X - sliderBar.AbsolutePosition.X
-                    local size = math.clamp(pos / sliderBar.AbsoluteSize.X, 0, 1)
-                    sliderFill.Size = UDim2.new(size, 0, 1, 0)
-                    local val = math.floor(min + size * (max - min))
-                    label.Text = text .. ": " .. val
-                    if callback then callback(val) end
+            local dragging = false
+
+            local function updateValue(input)
+                local relativeX = math.clamp(input.Position.X - SliderBar.AbsolutePosition.X, 0, SliderBar.AbsoluteSize.X)
+                local percent = relativeX / SliderBar.AbsoluteSize.X
+                local value = math.floor(min + (max - min) * percent)
+                SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+                Label.Text = text .. ": " .. tostring(value)
+                if callback then
+                    callback(value)
                 end
-            end)
-
-            sliderBar.InputEnded:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    mouseDown = false
-                end
-            end)
-
-            sliderBar.InputChanged:Connect(function(input)
-                if mouseDown and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    local pos = input.Position.X - sliderBar.AbsolutePosition.X
-                    local size = math.clamp(pos / sliderBar.AbsoluteSize.X, 0, 1)
-                    sliderFill.Size = UDim2.new(size, 0, 1, 0)
-                    local val = math.floor(min + size * (max - min))
-                    label.Text = text .. ": " .. val
-                    if callback then callback(val) end
-                end
-            end)
-
-            -- Inicializa valor default no callback
-            if callback then
-                callback(default)
+                return value
             end
-        end
 
-        function tab:AddDropdown(text, options, callback)
-            local frame = Instance.new("Frame", Page)
-            frame.Size = UDim2.new(1, -10, 0, 36)
-            frame.BackgroundTransparency = 1
-
-            local label = Instance.new("TextLabel", frame)
-            label.Size = UDim2.new(1, 0, 1, 0)
-            label.Text = text .. ": " .. options[1]
-            label.Font = Enum.Font.Gotham
-            label.TextColor3 = theme.Text
-            label.BackgroundTransparency = 1
-            label.TextSize = 16
-            label.TextXAlignment = Enum.TextXAlignment.Left
-
-            local index = 1
-            frame.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    index = index + 1
-                    if index > #options then index = 1 end
-                    label.Text = text .. ": " .. options[index]
-                    if callback then callback(options[index]) end
+            SliderBar.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = true
+                    updateValue(input)
                 end
             end)
 
-            -- Também aceita clique no label
-            label.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    index = index + 1
-                    if index > #options then index = 1 end
-                    label.Text = text .. ": " .. options[index]
-                    if callback then callback(options[index]) end
+            SliderBar.InputChanged:Connect(function(input)
+                if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    updateValue(input)
                 end
             end)
+
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    dragging = false
+                end
+            end)
+
+            return {
+                Set = function(self, value)
+                    local percent = math.clamp((value - min) / (max - min), 0, 1)
+                    SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+                    Label.Text = text .. ": " .. tostring(value)
+                    if callback then
+                        callback(value)
+                    end
+                end,
+                Get = function(self)
+                    local size = SliderFill.Size.X.Scale
+                    return math.floor(min + (max - min) * size)
+                end,
+            }
         end
 
         return tab
     end
+
+    -- Inicializa na primeira aba se existir
+    coroutine.wrap(function()
+        wait(0.1)
+        for tabName, _ in pairs(pages) do
+            switchToPage(tabName)
+            break
+        end
+    end)()
 
     return window
 end
