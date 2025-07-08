@@ -25,10 +25,9 @@ NotifyContainer.Parent = ScreenGui
 
 local notifications = {}
 
--- som padrão
 local function playSound()
 	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://6026984224" -- som leve tipo "ping"
+	sound.SoundId = "rbxassetid://6026984224" -- som suave
 	sound.Volume = 1
 	sound.PlayOnRemove = true
 	sound.Parent = SoundService
@@ -41,82 +40,87 @@ function NotificationLibrary:Notify(title, description, duration, imageId)
 	playSound()
 
 	local NotifyFrame = Instance.new("Frame")
-NotifyFrame.Size = UDim2.new(0, NOTIFY_WIDTH, 0, NOTIFY_HEIGHT)
-NotifyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-NotifyFrame.BorderSizePixel = 0
-NotifyFrame.BackgroundTransparency = 0.05
-NotifyFrame.ClipsDescendants = true
-NotifyFrame.AnchorPoint = Vector2.new(1, 1)
-NotifyFrame.Position = UDim2.new(1, 0, 1, 0)
-NotifyFrame.Parent = NotifyContainer
-NotifyFrame.ZIndex = 1 -- base
+	NotifyFrame.Size = UDim2.new(0, NOTIFY_WIDTH, 0, NOTIFY_HEIGHT)
+	NotifyFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	NotifyFrame.BorderSizePixel = 0
+	NotifyFrame.BackgroundTransparency = 0.05
+	NotifyFrame.ClipsDescendants = true
+	NotifyFrame.AnchorPoint = Vector2.new(1, 1)
+	NotifyFrame.Position = UDim2.new(1, 0, 1, 0)
+	NotifyFrame.Parent = NotifyContainer
+	NotifyFrame.ZIndex = 1
 
-Instance.new("UICorner", NotifyFrame).CornerRadius = UDim.new(0, 8)
-local stroke = Instance.new("UIStroke", NotifyFrame)
-stroke.Color = Color3.fromRGB(70, 70, 70)
-stroke.Thickness = 1
-stroke.ZIndex = 1
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = NotifyFrame
 
-local Padding = Instance.new("UIPadding", NotifyFrame)
-Padding.PaddingTop = UDim.new(0, 8)
-Padding.PaddingBottom = UDim.new(0, 8)
-Padding.PaddingLeft = UDim.new(0, 10)
-Padding.PaddingRight = UDim.new(0, 10)
+	local stroke = Instance.new("UIStroke", NotifyFrame)
+	stroke.Color = Color3.fromRGB(70, 70, 70)
+	stroke.Thickness = 1
+	stroke.ZIndex = 1
 
--- Ícone
-if imageId then
-	local Icon = Instance.new("ImageLabel")
-	Icon.Image = imageId
-	Icon.Size = UDim2.new(0, 32, 0, 32)
-	Icon.Position = UDim2.new(0, 0, 0, 0)
-	Icon.BackgroundTransparency = 1
-	Icon.ScaleType = Enum.ScaleType.Fit
-	Icon.ZIndex = 2
-	Icon.Parent = NotifyFrame
+	local Padding = Instance.new("UIPadding", NotifyFrame)
+	Padding.PaddingTop = UDim.new(0, 8)
+	Padding.PaddingBottom = UDim.new(0, 8)
+	Padding.PaddingLeft = UDim.new(0, 10)
+	Padding.PaddingRight = UDim.new(0, 10)
 
-	local extraPad = Instance.new("UIPadding", NotifyFrame)
-	extraPad.PaddingLeft = UDim.new(0, 40)
-end
+	-- Ícone
+	if imageId then
+		local Icon = Instance.new("ImageLabel")
+		Icon.Image = imageId
+		Icon.Size = UDim2.new(0, 32, 0, 32)
+		Icon.Position = UDim2.new(0, 0, 0, 0)
+		Icon.BackgroundTransparency = 1
+		Icon.ScaleType = Enum.ScaleType.Fit
+		Icon.ZIndex = 2
+		Icon.Parent = NotifyFrame
 
--- Botão de fechar
-local CloseButton = Instance.new("TextButton")
-CloseButton.Text = "×"
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.TextSize = 20
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.BackgroundTransparency = 1
-CloseButton.Size = UDim2.new(0, 24, 0, 24)
-CloseButton.Position = UDim2.new(1, -24, 0, 0)
-CloseButton.ZIndex = 4
-CloseButton.Parent = NotifyFrame
+		local extraPad = Instance.new("UIPadding", NotifyFrame)
+		extraPad.PaddingLeft = UDim.new(0, 40)
+	end
 
--- Título
-local TitleLabel = Instance.new("TextLabel", NotifyFrame)
-TitleLabel.Text = title
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 16
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Position = UDim2.new(0, 40, 0, 2)
-TitleLabel.Size = UDim2.new(1, -50, 0, 18)
-TitleLabel.ZIndex = 3
+	-- Botão de fechar
+	local CloseButton = Instance.new("TextButton")
+	CloseButton.Text = "×"
+	CloseButton.Font = Enum.Font.GothamBold
+	CloseButton.TextSize = 20
+	CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	CloseButton.BackgroundTransparency = 1
+	CloseButton.Size = UDim2.new(0, 24, 0, 24)
+	CloseButton.Position = UDim2.new(1, -24, 0, 0)
+	CloseButton.ZIndex = 4
+	CloseButton.Parent = NotifyFrame
 
--- Descrição
-local DescriptionLabel = Instance.new("TextLabel", NotifyFrame)
-DescriptionLabel.Text = description
-DescriptionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-DescriptionLabel.TextSize = 14
-DescriptionLabel.Font = Enum.Font.GothamBold
-DescriptionLabel.BackgroundTransparency = 1
-DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
-DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
-DescriptionLabel.TextWrapped = true
-DescriptionLabel.Position = UDim2.new(0, 40, 0, 24)
-DescriptionLabel.Size = UDim2.new(1, -50, 1, -26)
-DescriptionLabel.ZIndex = 3
-	
-	-- organizar lista
+	-- Título
+	local TitleLabel = Instance.new("TextLabel")
+	TitleLabel.Text = title
+	TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TitleLabel.TextSize = 16
+	TitleLabel.Font = Enum.Font.GothamBold
+	TitleLabel.BackgroundTransparency = 1
+	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	TitleLabel.Position = UDim2.new(0, 40, 0, 2)
+	TitleLabel.Size = UDim2.new(1, -50, 0, 18)
+	TitleLabel.ZIndex = 3
+	TitleLabel.Parent = NotifyFrame
+
+	-- Descrição
+	local DescriptionLabel = Instance.new("TextLabel")
+	DescriptionLabel.Text = description
+	DescriptionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	DescriptionLabel.TextSize = 14
+	DescriptionLabel.Font = Enum.Font.GothamBold
+	DescriptionLabel.BackgroundTransparency = 1
+	DescriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
+	DescriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+	DescriptionLabel.TextWrapped = true
+	DescriptionLabel.Position = UDim2.new(0, 40, 0, 24)
+	DescriptionLabel.Size = UDim2.new(1, -50, 1, -26)
+	DescriptionLabel.ZIndex = 3
+	DescriptionLabel.Parent = NotifyFrame
+
+	-- Adiciona à pilha
 	table.insert(notifications, 1, NotifyFrame)
 	for i, notif in ipairs(notifications) do
 		local targetY = -((NOTIFY_HEIGHT + NOTIFY_SPACING) * (i - 1))
@@ -125,7 +129,7 @@ DescriptionLabel.ZIndex = 3
 		}):Play()
 	end
 
-	-- remover função
+	-- Função para remover
 	local function removeNotify()
 		if NotifyFrame and NotifyFrame.Parent then
 			local index = table.find(notifications, NotifyFrame)
