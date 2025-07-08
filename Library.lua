@@ -33,44 +33,20 @@ function Library:CreateWindow(name)
     Title.TextSize = 20
     Title.Font = Enum.Font.SourceSansBold
     Title.TextColor3 = theme.Text
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.PaddingLeft = UDim.new(0, 10)
-
-    -- Minimizar botão
-    local MinimizeBtn = Instance.new("TextButton", MainFrame)
-    MinimizeBtn.Size = UDim2.new(0, 30, 0, 30)
-    MinimizeBtn.Position = UDim2.new(1, -35, 0, 5)
-    MinimizeBtn.Text = "-"
-    MinimizeBtn.Font = Enum.Font.SourceSansBold
-    MinimizeBtn.TextSize = 24
-    MinimizeBtn.TextColor3 = theme.Text
-    MinimizeBtn.BackgroundColor3 = theme.Background
-    MinimizeBtn.BorderSizePixel = 0
 
     local TabContainer = Instance.new("Frame", MainFrame)
     TabContainer.Position = UDim2.new(0, 0, 0, 40)
     TabContainer.Size = UDim2.new(0, 120, 1, -40)
     TabContainer.BackgroundColor3 = theme.Tab
-    TabContainer.Name = "TabContainer"
 
     local PageContainer = Instance.new("Frame", MainFrame)
     PageContainer.Position = UDim2.new(0, 120, 0, 40)
     PageContainer.Size = UDim2.new(1, -120, 1, -40)
     PageContainer.BackgroundColor3 = theme.Background
-    PageContainer.Name = "PageContainer"
 
     local UIList = Instance.new("UIListLayout", TabContainer)
     UIList.SortOrder = Enum.SortOrder.LayoutOrder
     UIList.Padding = UDim.new(0, 4)
-
-    local minimized = false
-    MinimizeBtn.MouseButton1Click:Connect(function()
-        minimized = not minimized
-        TabContainer.Visible = not minimized
-        PageContainer.Visible = not minimized
-        MinimizeBtn.Text = minimized and "+" or "-"
-        MainFrame.Size = minimized and UDim2.new(0, 500, 0, 40) or UDim2.new(0, 500, 0, 320)
-    end)
 
     local pages = {}
 
