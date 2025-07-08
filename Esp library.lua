@@ -64,9 +64,18 @@ function LibraryESP:RemoveESP(object)
 end
 
 RunService.RenderStepped:Connect(function()
-    for _, esp in ipairs(ESPObjects) do
+    for i = #ESPObjects, 1, -1 do
+        local esp = ESPObjects[i]
         local obj = esp.Object
-        if obj and obj:IsDescendantOf(workspace) then
+
+        -- Remove ESP se objeto for inválido ou não estiver mais no workspace
+        if not obj or not obj:IsDescendantOf(workspace) then
+            if esp.NameText then esp.NameText:Remove() end
+            if esp.DistanceText then esp.DistanceText:Remove() end
+            if esp.TracerLine then esp.TracerLine:Remove() end
+            if esp.Box then esp.Box:Remove() end
+            table.remove(ESPObjects, i)
+        else
             local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
             if onScreen then
                 local distance = (Camera.CFrame.Position - obj.Position).Magnitude
