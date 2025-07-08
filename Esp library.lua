@@ -51,14 +51,14 @@ function LibraryESP:CreateESP(object, options)
 end
 
 function LibraryESP:RemoveESP(object)
-    for i, esp in ipairs(ESPObjects) do
-        if esp.Object == object then
+    for i = #ESPObjects, 1, -1 do
+        local esp = ESPObjects[i]
+        if esp.Object == object or object == nil then
             if esp.NameText then esp.NameText:Remove() end
             if esp.DistanceText then esp.DistanceText:Remove() end
             if esp.TracerLine then esp.TracerLine:Remove() end
             if esp.Box then esp.Box:Remove() end
             table.remove(ESPObjects, i)
-            break
         end
     end
 end
@@ -68,8 +68,7 @@ RunService.RenderStepped:Connect(function()
         local esp = ESPObjects[i]
         local obj = esp.Object
 
-        -- Remove ESP se objeto for inválido ou não estiver mais no workspace
-        if not obj or not obj:IsDescendantOf(workspace) then
+        if not obj or typeof(obj) ~= "Instance" or not obj:IsDescendantOf(workspace) then
             if esp.NameText then esp.NameText:Remove() end
             if esp.DistanceText then esp.DistanceText:Remove() end
             if esp.TracerLine then esp.TracerLine:Remove() end
