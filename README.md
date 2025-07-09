@@ -37,8 +37,6 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoa
 
 🛠️ Exemplo Rápido
 
----
-
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
 local MyMenu = Library:CreateWindow("Meu Script Cheats")
@@ -72,26 +70,26 @@ Library
 
 Método	Parâmetros	Descrição	Retorno
 
-CreateWindow(name)	name: string	Cria e retorna uma janela GUI.	objeto window
+CreateWindow(name)	name: string	Cria e retorna uma janela GUI	objeto window
 
 
 Window (objeto retornado)
 
 Método	Parâmetros	Descrição	Retorno
 
-CreateTab(tabName, icon?)	tabName: string, icon?: string	Cria uma aba dentro da janela.	objeto tab
+CreateTab(tabName, icon?)	tabName: string, icon?: string	Cria uma aba dentro da janela	objeto tab
 
 
 Tab (objeto retornado)
 
 Método	Parâmetros	Descrição	Retorno
 
-AddLabel(text)	text: string	Adiciona texto informativo.	—
-AddButton(text, callback)	text: string, callback: function	Adiciona botão clicável.	—
-AddToggle(text, callback)	text: string, callback: function(state: boolean)	Botão ON/OFF. Retorna objeto com .Set(), .Get().	objeto toggle
-AddDropdownButtonOnOff(title, items, callback)	title: string, items: table, callback: function(states: table)	Menu expansível multi-toggle. Retorna objeto com .Set(), .GetAll().	objeto dropdown multi-toggle
-AddSelectDropdown(title, items, callback)	title: string, items: table, callback: function(selectedItem: string)	Menu expansível single-select. Retorna objeto com .Set(), .Get().	objeto dropdown single-select
-AddSlider(text, min, max, default, callback)	text: string, min: number, max: number, default: number, callback: function(value: number)	Slider numérico. Retorna objeto com .Set(), .Get().	objeto slider
+AddLabel(text)	text: string	Adiciona texto informativo	—
+AddButton(text, callback)	text: string, callback: function	Adiciona botão clicável	—
+AddToggle(text, callback)	text: string, callback: function(state: boolean)	Botão ON/OFF. Retorna objeto com .Set(), .Get()	objeto toggle
+AddDropdownButtonOnOff(title, items, callback)	title: string, items: table, callback: function(states: table)	Menu expansível multi-toggle. Retorna objeto com .Set(), .GetAll()	objeto dropdown multi-toggle
+AddSelectDropdown(title, items, callback)	title: string, items: table, callback: function(selectedItem: string)	Menu expansível single-select. Retorna objeto com .Set(), .Get()	objeto dropdown single-select
+AddSlider(text, min, max, default, callback)	text: string, min: number, max: number, default: number, callback: function(value: number)	Slider numérico. Retorna objeto com .Set(), .Get()	objeto slider
 
 
 
@@ -129,6 +127,3 @@ Este projeto está licenciado sob a Licença MIT. Consulte o arquivo LICENSE no 
 
 
 ---
-
-Se quiser, posso também criar um README com badges, links para o repositório, imagens/screenshots, ou gerar um sumário automático — é só pedir! Quer adicionar algo do tipo?
-
