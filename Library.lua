@@ -1,7 +1,8 @@
 --[[
     GuiMenuLibrary.lua
     Biblioteca para criar menus GUI em executores como Delta via loadstring.
-    Layout e design aprimorados, incluindo Slider, Dropdown com botão liga/desliga (ButtonOnOff) e Dropdown com botão simples (Button).
+    Design aprimorado, Slider, DropdownButtonOnOff, DropdownButton.
+    Bugs corrigidos: sombra branca e arrasto touch.
     Desenvolvido por: dhsoares01
 --]]
 
@@ -10,7 +11,6 @@ GuiMenuLibrary.__index = GuiMenuLibrary
 
 local UserInputService = game:GetService("UserInputService")
 
--- Utilitário para criar instâncias rapidamente
 local function create(class, props)
     local inst = Instance.new(class)
     for prop, val in pairs(props or {}) do
@@ -40,14 +40,24 @@ local function setupSmartDrag(MainFrame, disallowAreas)
     end
 
     MainFrame.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
             if not isInDisallowArea(input.Position) then
                 dragging = true
                 dragStart = input.Position
                 startPos = MainFrame.Position
-                if input.UserInputType == Enum.UserInputType.Touch then
-                    dragTouchId = input.TouchId
-                end
+                local conn; conn = input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                        if conn then conn:Disconnect() end
+                    end
+                end)
+            end
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            if not isInDisallowArea(input.Position) and not dragging then
+                dragging = true
+                dragTouchId = input.TouchId
+                dragStart = input.Position
+                startPos = MainFrame.Position
                 local conn; conn = input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         dragging = false
@@ -60,10 +70,7 @@ local function setupSmartDrag(MainFrame, disallowAreas)
     end)
 
     MainFrame.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            if input.UserInputType == Enum.UserInputType.Touch and dragTouchId and input.TouchId ~= dragTouchId then
-                return
-            end
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(
                 startPos.X.Scale,
@@ -98,16 +105,20 @@ function GuiMenuLibrary:CreateMenu(options)
         Parent = game:GetService("CoreGui")
     })
 
-    -- DESIGN: Sombra suave
+    -- Sombra suave (correção: Shadow atrás do MainFrame)
+    local MainSize = UDim2.new(0, 410, 0, 280)
+    local MainAnchor = Vector2.new(0.5, 0.5)
+    local MainPos = UDim2.new(0.5, 0, 0.5, 0)
+
     local Shadow = create("ImageLabel", {
         Name = "Shadow",
         Image = "rbxassetid://1316045217",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 430, 0, 300),
-        Position = UDim2.new(0.5, -215, 0.5, -150),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        ZIndex = 0,
         ImageTransparency = 0.35,
+        Size = UDim2.new(0, 430, 0, 300),
+        Position = MainPos,
+        AnchorPoint = MainAnchor,
+        ZIndex = 0,
         Parent = ScreenGui
     })
 
@@ -115,9 +126,9 @@ function GuiMenuLibrary:CreateMenu(options)
         Name = "MainFrame",
         BackgroundColor3 = Color3.fromRGB(22, 23, 36),
         BorderSizePixel = 0,
-        Size = UDim2.new(0, 410, 0, 280),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
+        Size = MainSize,
+        Position = MainPos,
+        AnchorPoint = MainAnchor,
         Parent = ScreenGui,
         ZIndex = 1,
     })
@@ -324,7 +335,6 @@ function GuiMenuLibrary:CreateMenu(options)
                 })
 
             elseif el.Type == "Slider" then
-                -- el.Min, el.Max, el.Value, el.Callback
                 local sliderFrame = create("Frame", {
                     Size = UDim2.new(1, -10, 0, 38),
                     BackgroundTransparency = 1,
@@ -406,7 +416,6 @@ function GuiMenuLibrary:CreateMenu(options)
                 end)
 
             elseif el.Type == "DropdownButtonOnOff" then
-                -- Dropdown com botão on/off ao lado de cada opção
                 local open = false
                 local dropFrame = create("Frame", {
                     Size = UDim2.new(1, -10, 0, 38),
@@ -487,7 +496,6 @@ function GuiMenuLibrary:CreateMenu(options)
                 end)
 
             elseif el.Type == "DropdownButton" then
-                -- Dropdown com botão simples ao lado de cada opção
                 local open = false
                 local dropFrame = create("Frame", {
                     Size = UDim2.new(1, -10, 0, 38),
