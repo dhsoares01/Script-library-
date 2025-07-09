@@ -1,113 +1,72 @@
-ESP = {}
+-- PathESP.lua
+-- Biblioteca ESP simples para Delta executores
+-- Cria uma linha entre o jogador local e um objeto alvo
+-- Ativar/desativar: PathESP:Enable() e PathESP:Disable()
 
--- Estados de ativação
-ESP.Enabled = {
-    Box3D = true,
-    Path = true,
-    Outline2D = true
-}
+local PathESP = {}
+PathESP.Enabled = false
+PathESP.Target = nil -- endereço do objeto, ex: workspace.Part
+PathESP.Line = nil
 
--- Lista de objetos monitorados
-ESP.Objects = {}
-
--- Função para adicionar um objeto
-function ESP:AddObject(name, object)
-    self.Objects[name] = {
-        Object = object,
-        Connections = {}
-    }
-    self:SetupESP(name)
+-- Cria o objeto Line (Drawing API)
+function PathESP:CreateLine()
+    local line = Drawing.new("Line")
+    line.Color = Color3.fromRGB(255, 0, 0)
+    line.Thickness = 2
+    line.Transparency = 1
+    return line
 end
 
--- Função para remover um objeto
-function ESP:RemoveObject(name)
-    local data = self.Objects[name]
-    if data then
-        for _, conn in ipairs(data.Connections) do
-            conn:Disconnect()
-        end
-        self.Objects[name] = nil
-    end
-end
+-- Atualiza a linha a cada frame
+function PathESP:Update()
+    local RunService = game:GetService("RunService")
+    self.Connection = RunService.RenderStepped:Connect(function()
+        if not self.Enabled or not self.Line or not self.Target then return end
 
--- Ativar/desativar Box3D
-function ESP:ToggleBox3D(state)
-    self.Enabled.Box3D = state
-end
-
--- Ativar/desativar Path
-function ESP:TogglePath(state)
-    self.Enabled.Path = state
-end
-
--- Ativar/desativar Outline2D
-function ESP:ToggleOutline2D(state)
-    self.Enabled.Outline2D = state
-end
-
--- Configura as funcionalidades para um objeto
-function ESP:SetupESP(name)
-    local data = self.Objects[name]
-    local obj = data.Object
-
-    -- Box3D
-    if self.Enabled.Box3D then
-        local adorn = Instance.new("BoxHandleAdornment")
-        adorn.Adornee = obj
-        adorn.AlwaysOnTop = true
-        adorn.ZIndex = 10
-        adorn.Size = obj.Size
-        adorn.Color3 = Color3.new(1, 0, 0)
-        adorn.Transparency = 0.7
-        adorn.Parent = game.CoreGui
-        table.insert(data.Connections, adorn)
-    end
-
-    -- Path (linha até o jogador)
-    if self.Enabled.Path then
-        local runService = game:GetService("RunService")
         local player = game.Players.LocalPlayer
-        local pathLine = Drawing.new("Line")
-        pathLine.Color = Color3.new(0, 1, 0)
-        pathLine.Thickness = 2
+        if not player or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then return end
 
-        local conn = runService.RenderStepped:Connect(function()
-            if obj and obj.Position then
-                local objPos, objVisible = workspace.CurrentCamera:WorldToViewportPoint(obj.Position)
-                local playerPos = workspace.CurrentCamera.ViewportSize / 2
-                pathLine.From = playerPos
-                pathLine.To = Vector2.new(objPos.X, objPos.Y)
-                pathLine.Visible = objVisible
-            end
-        end)
-        table.insert(data.Connections, conn)
-        table.insert(data.Connections, pathLine)
+        local hrp = player.Character.HumanoidRootPart
+        local target = self.Target
+
+        -- Converte posições 3D para tela (viewport)
+        local camera = workspace.CurrentCamera
+        local screenPos1, onScreen1 = camera:WorldToViewportPoint(hrp.Position)
+        local screenPos2, onScreen2 = camera:WorldToViewportPoint(target.Position)
+
+        if onScreen1 and onScreen2 then
+            self.Line.Visible = true
+            self.Line.From = Vector2.new(screenPos1.X, screenPos1.Y)
+            self.Line.To = Vector2.new(screenPos2.X, screenPos2.Y)
+        else
+            self.Line.Visible = false
+        end
+    end)
+end
+
+-- Ativa o ESP
+function PathESP:Enable()
+    if self.Enabled then return end
+    if not self.Target then
+        warn("[PathESP] Defina um alvo primeiro usando PathESP.Target = workspace.Part")
+        return
     end
+    self.Line = self:CreateLine()
+    self.Enabled = true
+    self:Update()
+end
 
-    -- Contorno 2D (Outline)
-    if self.Enabled.Outline2D then
-        local runService = game:GetService("RunService")
-        local outline = Drawing.new("Square")
-        outline.Color = Color3.new(1, 1, 0)
-        outline.Thickness = 1
-        outline.Filled = false
-
-        local conn = runService.RenderStepped:Connect(function()
-            if obj and obj.Position then
-                local pos, visible = workspace.CurrentCamera:WorldToViewportPoint(obj.Position)
-                if visible then
-                    local size = obj.Size
-                    outline.Size = Vector2.new(size.X * 10, size.Y * 10)
-                    outline.Position = Vector2.new(pos.X - outline.Size.X/2, pos.Y - outline.Size.Y/2)
-                    outline.Visible = true
-                else
-                    outline.Visible = false
-                end
-            end
-        end)
-        table.insert(data.Connections, conn)
-        table.insert(data.Connections, outline)
+-- Desativa o ESP
+function PathESP:Disable()
+    self.Enabled = false
+    if self.Line then
+        self.Line:Remove()
+        self.Line = nil
+    end
+    if self.Connection then
+        self.Connection:Disconnect()
+        self.Connection = nil
     end
 end
 
-return ESP
+return PathESP
