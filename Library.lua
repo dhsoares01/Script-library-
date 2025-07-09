@@ -418,6 +418,87 @@ return {
 
 end
 
+        function tab:AddDropdown(title, items, default, callback)
+    local container = Instance.new("Frame", Page)
+    container.Size = UDim2.new(1, -10, 0, 36)
+    container.BackgroundColor3 = theme.Tab
+    container.BorderSizePixel = 0
+
+    local corner = Instance.new("UICorner", container)
+    corner.CornerRadius = UDim.new(0, 6)
+
+    local header = Instance.new("TextButton", container)
+    header.Size = UDim2.new(1, 0, 1, 0)
+    header.BackgroundTransparency = 1
+    header.TextColor3 = theme.Text
+    header.Font = Enum.Font.Gotham
+    header.TextSize = 16
+    header.TextXAlignment = Enum.TextXAlignment.Left
+
+    local dropdownFrame = Instance.new("Frame", Page)
+    dropdownFrame.Size = UDim2.new(1, -10, 0, #items * 30 + 4)
+    dropdownFrame.BackgroundColor3 = theme.Tab
+    dropdownFrame.Visible = false
+    dropdownFrame.BorderSizePixel = 0
+
+    local dropCorner = Instance.new("UICorner", dropdownFrame)
+    dropCorner.CornerRadius = UDim.new(0, 6)
+
+    local listLayout = Instance.new("UIListLayout", dropdownFrame)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 4)
+
+    local selected = default or items[1]
+    header.Text = "▸ " .. title .. ": " .. selected
+
+    for _, item in ipairs(items) do
+        local btn = Instance.new("TextButton", dropdownFrame)
+        btn.Size = UDim2.new(1, -8, 0, 28)
+        btn.Position = UDim2.new(0, 4, 0, 0)
+        btn.BackgroundColor3 = theme.Tab
+        btn.TextColor3 = theme.Text
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 14
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.Text = item
+
+        local btnCorner = Instance.new("UICorner", btn)
+        btnCorner.CornerRadius = UDim.new(0, 6)
+
+        btn.MouseButton1Click:Connect(function()
+            selected = item
+            header.Text = "▸ " .. title .. ": " .. selected
+            dropdownFrame.Visible = false
+            expanded = false
+            if callback then
+                callback(selected)
+            end
+        end)
+    end
+
+    local expanded = false
+    header.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        dropdownFrame.Visible = expanded
+        header.Text = (expanded and "▾ " or "▸ ") .. title .. ": " .. selected
+    end)
+
+    return {
+        Set = function(_, value)
+            if table.find(items, value) then
+                selected = value
+                header.Text = "▸ " .. title .. ": " .. selected
+                if callback then
+                    callback(selected)
+                end
+            end
+        end,
+        Get = function()
+            return selected
+        end
+    }
+end
+
 function tab:AddSlider(text, min, max, default, callback)      
     local SliderFrame = Instance.new("Frame", Page)      
     SliderFrame.Size = UDim2.new(1, -10, 0, 40)      
