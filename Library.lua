@@ -517,5 +517,3 @@ return window
 end
 
 return Library
-
-----------------------------------------------
