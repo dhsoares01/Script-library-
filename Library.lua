@@ -3,6 +3,7 @@
     Biblioteca para criar menus GUI em executores como Delta via loadstring.
     Design aprimorado, Slider, DropdownButtonOnOff, DropdownButton.
     Bugs corrigidos: sombra branca e arrasto touch.
+    Adaptado para dispositivos móveis.
     Desenvolvido por: dhsoares01
 --]]
 
@@ -102,11 +103,18 @@ function GuiMenuLibrary:CreateMenu(options)
     local ScreenGui = create("ScreenGui", {
         Name = "DGuiMenu",
         ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Global, -- Garante que o menu fique sempre na frente
         Parent = game:GetService("CoreGui")
     })
 
-    -- Sombra suave (correção: Shadow atrás do MainFrame)
-    local MainSize = UDim2.new(0, 410, 0, 280)
+    -- Definições de tamanho e posição responsivas
+    local screen_width = UserInputService:GetScreenSize().X
+    local screen_height = UserInputService:GetScreenSize().Y
+
+    local menu_width = math.min(410, screen_width * 0.8)  -- Largura máxima de 80% da tela
+    local menu_height = math.min(280, screen_height * 0.7) -- Altura máxima de 70% da tela
+
+    local MainSize = UDim2.new(0, menu_width, 0, menu_height)
     local MainAnchor = Vector2.new(0.5, 0.5)
     local MainPos = UDim2.new(0.5, 0, 0.5, 0)
 
@@ -115,7 +123,7 @@ function GuiMenuLibrary:CreateMenu(options)
         Image = "rbxassetid://1316045217",
         BackgroundTransparency = 1,
         ImageTransparency = 0.35,
-        Size = UDim2.new(0, 430, 0, 300),
+        Size = UDim2.new(0, menu_width + 20, 0, menu_height + 20), -- Ajuste a sombra ao tamanho do menu
         Position = MainPos,
         AnchorPoint = MainAnchor,
         ZIndex = 0,
