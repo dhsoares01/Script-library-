@@ -4,58 +4,177 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local theme = {
-Background = Color3.fromRGB(30, 30, 30),
-Tab = Color3.fromRGB(40, 40, 40),
-Accent = Color3.fromRGB(0, 120, 255),
-Text = Color3.fromRGB(255, 255, 255),
-Stroke = Color3.fromRGB(60, 60, 60),
-ScrollViewBackground = Color3.fromRGB(20, 20, 20), -- mais escuro para o background do ScrollView
+    Background = Color3.fromRGB(30, 30, 30),
+    Tab = Color3.fromRGB(40, 40, 40),
+    Accent = Color3.fromRGB(0, 120, 255),
+    Text = Color3.fromRGB(255, 255, 255),
+    Stroke = Color3.fromRGB(60, 60, 60),
+    ScrollViewBackground = Color3.fromRGB(20, 20, 20)
 }
 
 function Library:CreateWindow(name)
-local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
-ScreenGui.Name = name or "CustomUILib"
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-ScreenGui.ResetOnSpawn = false
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = name or "CustomUILib"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = game:GetService("CoreGui")
 
-local MainFrame = Instance.new("Frame", ScreenGui)
-MainFrame.Size = UDim2.new(0, 520, 0, 340)
-MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.BackgroundColor3 = theme.Background
-MainFrame.BorderSizePixel = 0
-MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-MainFrame.Active = true
+    local MainFrame = Instance.new("Frame", ScreenGui)
+    MainFrame.Size = UDim2.new(0, 520, 0, 340)
+    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    MainFrame.BackgroundColor3 = theme.Background
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Active = true
+    MainFrame.ClipsDescendants = true
 
--- Suporte a arrastar com toque e mouse
-local dragging = false
-local dragStart, startPos
+    Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UIStroke", MainFrame).Color = theme.Stroke
 
-local function updateDrag(input)
-local delta = input.Position - dragStart
-MainFrame.Position = UDim2.new(
-startPos.X.Scale, startPos.X.Offset + delta.X,
-startPos.Y.Scale, startPos.Y.Offset + delta.Y
-)
-end
+    -- Drag
+    local dragging = false
+    local dragStart, startPos
 
-MainFrame.InputBegan:Connect(function(input)
-if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-dragging = true
-dragStart = input.Position
-startPos = MainFrame.Position
-input.Changed:Connect(function()
-if input.UserInputState == Enum.UserInputState.End then
-dragging = false
-end
-end)
-end
-end)
+    local function updateDrag(input)
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
 
-UserInputService.InputChanged:Connect(function(input)
-if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-updateDrag(input)
-end
-end)
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = MainFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateDrag(input)
+        end
+    end)
+
+    -- Título
+    local Title = Instance.new("TextLabel", MainFrame)
+    Title.Size = UDim2.new(1, -40, 0, 40)
+    Title.Position = UDim2.new(0, 10, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = name or "Menu"
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 22
+    Title.TextColor3 = theme.Text
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Botão minimizar
+    local BtnMinimize = Instance.new("TextButton", MainFrame)
+    BtnMinimize.Size = UDim2.new(0, 30, 0, 30)
+    BtnMinimize.Position = UDim2.new(1, -40, 0, 5)
+    BtnMinimize.BackgroundColor3 = theme.Tab
+    BtnMinimize.Text = "–"
+    BtnMinimize.TextColor3 = theme.Text
+    BtnMinimize.Font = Enum.Font.GothamBold
+    BtnMinimize.TextSize = 24
+    BtnMinimize.AutoButtonColor = false
+    Instance.new("UICorner", BtnMinimize).CornerRadius = UDim.new(0, 6)
+
+    BtnMinimize.MouseEnter:Connect(function()
+        TweenService:Create(BtnMinimize, TweenInfo.new(0.15), { BackgroundColor3 = theme.Accent }):Play()
+    end)
+    BtnMinimize.MouseLeave:Connect(function()
+        TweenService:Create(BtnMinimize, TweenInfo.new(0.15), { BackgroundColor3 = theme.Tab }):Play()
+    end)
+
+    -- Containers
+    local TabContainer = Instance.new("Frame", MainFrame)
+    TabContainer.Position = UDim2.new(0, 0, 0, 40)
+    TabContainer.Size = UDim2.new(0, 130, 1, -40)
+    TabContainer.BackgroundColor3 = theme.Tab
+    Instance.new("UICorner", TabContainer).CornerRadius = UDim.new(0, 6)
+
+    local PageContainer = Instance.new("Frame", MainFrame)
+    PageContainer.Position = UDim2.new(0, 130, 0, 40)
+    PageContainer.Size = UDim2.new(1, -130, 1, -40)
+    PageContainer.BackgroundColor3 = theme.Background
+    PageContainer.ClipsDescendants = true
+
+    Instance.new("UIListLayout", TabContainer).Padding = UDim.new(0, 6)
+
+    local pages = {}
+    local minimized = false
+
+    BtnMinimize.MouseButton1Click:Connect(function()
+        minimized = not minimized
+        if minimized then
+            TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = UDim2.new(0, 130, 0, 40) }):Play()
+            PageContainer.Visible = false
+            TabContainer.Visible = false
+            BtnMinimize.Text = "+"
+        else
+            TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = UDim2.new(0, 520, 0, 340) }):Play()
+            PageContainer.Visible = true
+            TabContainer.Visible = true
+            BtnMinimize.Text = "–"
+        end
+    end)
+
+    local function switchToPage(name)
+        for pgName, pg in pairs(pages) do
+            if pgName == name then
+                pg.Visible = true
+                TweenService:Create(pg, TweenInfo.new(0.25), { BackgroundTransparency = 0 }):Play()
+            else
+                pg.Visible = false
+            end
+        end
+    end
+
+    local window = {}
+
+    -- Redimensionar
+    local resizeFrame = Instance.new("Frame", MainFrame)
+    resizeFrame.Size = UDim2.new(0, 20, 0, 20)
+    resizeFrame.Position = UDim2.new(1, -20, 1, -20)
+    resizeFrame.BackgroundTransparency = 1
+    resizeFrame.Active = true
+
+    local resizing = false
+    local lastPos
+
+    resizeFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = true
+            lastPos = UserInputService:GetMouseLocation()
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = UserInputService:GetMouseLocation() - lastPos
+            lastPos = UserInputService:GetMouseLocation()
+
+            local newWidth = math.clamp(MainFrame.AbsoluteSize.X + delta.X, 350, 900)
+            local newHeight = math.clamp(MainFrame.AbsoluteSize.Y + delta.Y, 220, 600)
+
+            MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = false
+        end
+    end)
+
+    -- Aqui segue com window:CreateTab...
 MainFrame.ClipsDescendants = true
 
 local UICorner = Instance.new("UICorner", MainFrame)
