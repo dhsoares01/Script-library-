@@ -34,12 +34,14 @@ Uma biblioteca de interface gráfica (GUI) em Lua projetada para executores de s
 ## 🚀 Começando
 
 ### 📥 Instalação
-```lua
+```
+lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
 ```
 
 ### 🧑‍💻 Exemplo Básico
-```lua
+```
+lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
 
 local MyMenu = Library:CreateWindow("Meu Menu Personalizado")
