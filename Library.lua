@@ -366,8 +366,8 @@ function GUI.new(titleText)
     self.screenGui = screenGui
 
     -- Container principal (frame arredondado)
-    local container = createRoundedFrame(screenGui, UDim2.new(0, 440, 0, 320), UDim2.new(0.5,-220,0.5,-160), THEME.bg, true)
-    container.AnchorPoint = Vector2.new(0.5, 0.5)
+    local container = createRoundedFrame(screenGui, UDim2.new(0, 440, 0, 320), UDim2.new(0.5, 0, 0.5, 0), THEME.bg, true)
+container.AnchorPoint = Vector2.new(0.5, 0.5)
     self.container = container
 
     -- Cabeçalho (height fixo, bg escuro)
