@@ -1,123 +1,110 @@
-📦 README.md (CustomUILib)
+# 🏗️ Roblox GUI Library
 
-# 🌙 CustomUILib — Roblox Menu Library
+**A lightweight and customizable GUI library for Roblox scripting**, designed to work with popular executors like Delta, Synapse, and others via `loadstring`.
 
-> A modern, lightweight UI library for creating beautiful, customizable menus in Lua scripts.  
-> Compatible with executors like **Delta**, **Hydrogen**, **Fluxus**, and more.
-
-![version](https://img.shields.io/badge/Version-1.0-blue)
-![license](https://img.shields.io/badge/License-MIT-green)
-![roblox](https://img.shields.io/badge/Roblox-Executor%20Compatible-red)
-
----
+## 📥 Installation
+```lua
+loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
+```
 
 ## ✨ Features
+- **Modern UI Components**: Tabs, buttons, sliders, toggles, and more
+- **Customizable Design**: Change colors, sizes, and layouts
+- **Notification System**: Built-in alert system
+- **ESP Integration**: Compatible with ESP modules
+- **Lightweight**: Optimized for performance
 
-- Dark theme with customizable colors
-- Tabs with optional icons
-- Minimize/expand the entire menu
-- Smooth drag, scroll & resize support
-- Tween animations for a modern feel
-- Widgets ready to use:
-  - Labels
-  - Buttons
-  - Toggles
-  - Sliders
-  - Dropdown buttons ON/OFF
+## 🛠️ Basic Usage
 
----
-
-## ⚙️ How to use
-
-Load the library via `loadstring`:
-
+### 1. Creating a Window
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
-
-
----
-
-🚀 Quick example
-
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
-
-local Window = Library:CreateWindow("My Script Menu")
-
-local Tab = Window:CreateTab("Main", "⭐")
-
-Tab:AddLabel("Welcome to my script!")
-
-Tab:AddButton("Click me", function()
-    print("Button clicked!")
-end)
-
-local toggle = Tab:AddToggle("Enable something", function(state)
-    print("Toggle:", state)
-end)
-
-Tab:AddSlider("Volume", 0, 100, 50, function(value)
-    print("Slider:", value)
-end)
-
-local dropdown = Tab:AddDropdownButtonOnOff("Features", {"Aimbot", "ESP", "AutoFarm"}, function(states)
-    print(states) -- table of selected features
-end)
-
--- Example of manual control:
--- toggle:Set(true)
--- print(toggle:Get())
--- dropdown:Set("Aimbot", true)
--- local currentStates = dropdown:GetAll()
-
-
----
-
-🎨 Custom theme
-
-Edit the colors at the start of your script:
-
-local theme = {
-    Background = Color3.fromRGB(30, 30, 30),
-    Tab = Color3.fromRGB(40, 40, 40),
-    Accent = Color3.fromRGB(0, 120, 255),
-    Text = Color3.fromRGB(255, 255, 255),
-    Stroke = Color3.fromRGB(60, 60, 60),
-    ScrollViewBackground = Color3.fromRGB(20, 20, 20),
-}
-
-
----
-
-📌 Requirements & notes
-
-Executor must support loadstring & HttpGet
-
-Tested on Delta, Hydrogen, Fluxus
-
-Fully script-rendered UI (no external assets)
-
-Only needs CoreGui permissions
-
-
-
----
-
-🤝 Contributing
-
-Feel free to open a pull request to add new widgets, fix bugs, or improve performance! 🚀
-
-
----
-
-📄 License
-
-Released under the MIT License — free to use, modify and share.
-
-
----
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/dhsoares01/Script-library-/main/banner.svg" alt="CustomUILib banner" />
-</p>
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
+local Window = Library:CreateWindow("My Script")
 ```
+
+### 2. Adding Tabs
+```lua
+local MainTab = Window:CreateTab("Main")
+local SettingsTab = Window:CreateTab("Settings")
+```
+
+### 3. Adding Controls
+
+#### Buttons
+```lua
+MainTab:AddButton("Teleport to Spawn", function()
+    -- Your code here
+end)
+```
+
+#### Sliders
+```lua
+MainTab:AddSlider("WalkSpeed", 16, 100, 16, function(value)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
+end)
+```
+
+#### Toggles
+```lua
+MainTab:AddToggle("God Mode", false, function(state)
+    _G.GodMode = state
+end)
+```
+
+#### Dropdowns
+```lua
+MainTab:AddDropdown("ESP Options", {"Box", "Name", "Distance"}, function(selections)
+    _G.ESPBox = selections["Box"]
+end)
+```
+
+## 🎨 Customization
+```lua
+-- Example of changing colors
+Library:SetTheme({
+    Primary = Color3.fromRGB(25, 25, 25),
+    Secondary = Color3.fromRGB(40, 40, 40),
+    Accent = Color3.fromRGB(0, 170, 255)
+})
+```
+
+## 📌 Example Script
+```lua
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
+
+local Window = Library:CreateWindow("Player Utilities")
+local PlayerTab = Window:CreateTab("Player")
+
+PlayerTab:AddSlider("Jump Power", 50, 200, 50, function(value)
+    game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
+end)
+
+PlayerTab:AddToggle("Noclip", false, function(state)
+    _G.Noclip = state
+    -- Noclip implementation would go here
+end)
+
+PlayerTab:AddButton("Reset Character", function()
+    game.Players.LocalPlayer.Character:BreakJoints()
+end)
+```
+
+## 📜 Documentation
+| Method | Description |
+|--------|-------------|
+| `CreateWindow(title)` | Creates main window |
+| `CreateTab(name, [icon])` | Adds a new tab |
+| `AddButton(text, callback)` | Creates a clickable button |
+| `AddSlider(text, min, max, default, callback)` | Creates adjustable slider |
+| `AddToggle(text, default, callback)` | Creates on/off toggle |
+| `AddDropdown(text, options, callback)` | Creates multi-select dropdown |
+
+## ⚠️ Disclaimer
+This library is intended for educational purposes only. Use at your own risk.
+
+## 🌟 Credits
+Developed by [@dhsoares01](https://github.com/dhsoares01)
+
 ---
+
+> 💡 **Tip**: Combine with other libraries from the [Script Library](https://github.com/dhsoares01/Script-library-) for enhanced functionality!
