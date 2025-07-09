@@ -1,3 +1,12 @@
+--[[
+    📦 ESP v1 (Orientado a Objeto)
+    Recursos:
+    - Line (tracer do jogador local até o alvo)
+    - Box (caixa 2D ao redor do alvo)
+    - Name (exibe o nome do alvo)
+    - Distance (exibe a distância do alvo em metros)
+]]--
+
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -70,6 +79,18 @@ local function CreateObjectHighlight(color, thickness)
     return lines
 end
 
+local function CreatePathLines(num, color, thickness)
+    local lines = {}
+    for i = 1, num do
+        local line = Drawing.new("Line")
+        line.Thickness = thickness or 2
+        line.Color = color or Color3.new(0,1,0)
+        line.Visible = false
+        table.insert(lines, line)
+    end
+    return lines
+end
+
 local function CalculatePath(startPos, endPos)
     local path = PathfindingService:CreatePath({AgentRadius=2, AgentHeight=5, AgentCanJump=true})
     path:ComputeAsync(startPos, endPos)
@@ -77,43 +98,6 @@ local function CalculatePath(startPos, endPos)
         return path:GetWaypoints()
     end
     return nil
-end
-
-local function getObjectPosition(object)
-    if typeof(object) ~= "Instance" then return nil end
-    if object:IsA("BasePart") then
-        return object.Position
-    elseif object:IsA("Model") then
-        local cf = select(1, object:GetBoundingBox())
-        if cf then return cf.Position end
-    end
-    return nil
-end
-
-local function getObjectSize(object)
-    if typeof(object) ~= "Instance" then return Vector3.new(1,1,1) end
-    if object:IsA("BasePart") then
-        return object.Size
-    elseif object:IsA("Model") then
-        local _, size = object:GetBoundingBox()
-        if size then return size end
-    end
-    return Vector3.new(1,1,1)
-end
-
-local function CreatePathParts(num, color)
-    local parts = {}
-    for i = 1, num do
-        local part = Instance.new("Part")
-        part.Size = Vector3.new(0.2,0.2,0.2)
-        part.Anchored = true
-        part.CanCollide = false
-        part.Transparency = 0
-        part.Color = color or Color3.new(0,1,0)
-        part.Parent = workspace
-        table.insert(parts, part)
-    end
-    return parts
 end
 
 function LibraryESP:CreateESP(object, options)
@@ -125,7 +109,7 @@ function LibraryESP:CreateESP(object, options)
         TracerLine = options.Tracer and DrawLine(options.Color or Color3.new(1,1,1)) or nil,
         Box = options.Box and DrawBox(options.Color or Color3.new(1,1,1)) or nil,
         Highlight = options.Highlight and CreateObjectHighlight(options.HighlightColor or Color3.new(1,0,0), options.HighlightThickness or 2) or nil,
-        PathLines = options.Path and CreatePathParts(0, options.PathColor or Color3.new(0,1,0)) or nil,
+        PathLines = options.Path and {} or nil,
     }
     table.insert(ESPObjects, esp)
     return esp
@@ -153,13 +137,47 @@ function LibraryESP:RemoveESP(object)
                 end
             end
             if esp.PathLines then
-                for _, part in ipairs(esp.PathLines) do
-                    part:Destroy()
+                for _, line in ipairs(esp.PathLines) do
+                    line:Remove()
                 end
             end
             table.remove(ESPObjects, i)
         end
     end
+end
+
+local function getTextPosition(basePos, offsetType)
+    local offset = Vector2.new(0, 0)
+    if offsetType == "Top" then offset = Vector2.new(0, -16)
+    elseif offsetType == "Center" then offset = Vector2.new(0, 0)
+    elseif offsetType == "Bottom" then offset = Vector2.new(0, 16)
+    elseif offsetType == "Below" then offset = Vector2.new(0, 26)
+    elseif offsetType == "LeftSide" then offset = Vector2.new(-40, 0)
+    elseif offsetType == "RightSide" then offset = Vector2.new(40, 0)
+    end
+    return basePos + offset
+end
+
+local function getObjectPosition(object)
+    if typeof(object) ~= "Instance" then return nil end
+    if object:IsA("BasePart") then
+        return object.Position
+    elseif object:IsA("Model") then
+        local cf = select(1, object:GetBoundingBox())
+        if cf then return cf.Position end
+    end
+    return nil
+end
+
+local function getObjectSize(object)
+    if typeof(object) ~= "Instance" then return Vector3.new(1,1,1) end
+    if object:IsA("BasePart") then
+        return object.Size
+    elseif object:IsA("Model") then
+        local _, size = object:GetBoundingBox()
+        if size then return size end
+    end
+    return Vector3.new(1,1,1)
 end
 
 RunService.RenderStepped:Connect(function()
@@ -173,11 +191,13 @@ RunService.RenderStepped:Connect(function()
             local objPos = getObjectPosition(obj)
             local pos, onScreen = objPos and Camera:WorldToViewportPoint(objPos) or {}, false
             if objPos then pos, onScreen = Camera:WorldToViewportPoint(objPos) end
+            local basePos = Vector2.new(pos.X or 0, pos.Y or 0)
             local distance = (Camera.CFrame.Position - objPos).Magnitude
 
-            -- (Aqui fica igual para NameText, DistanceText, TracerLine, Box, Highlight)
+            -- (Aqui permanece igual: atualiza NameText, DistanceText, TracerLine, Box, Highlight)
+            -- [omiti nesta resposta para encurtar, você mantém como já está]
 
-            -- ✅ NOVO: PathLines em 3D
+            -- ✅ NOVO: PathLines
             if esp.PathLines then
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -185,42 +205,37 @@ RunService.RenderStepped:Connect(function()
                     local waypoints = CalculatePath(hrp.Position, objPos)
                     local needed = waypoints and (#waypoints - 1) or 0
 
-                    -- Ajusta quantidade de parts
+                    -- Ajusta quantidade de linhas
                     while #esp.PathLines < needed do
-                        local part = Instance.new("Part")
-                        part.Size = Vector3.new(0.2,0.2,0.2)
-                        part.Anchored = true
-                        part.CanCollide = false
-                        part.Transparency = 0
-                        part.Color = esp.Options.PathColor or Color3.new(0,1,0)
-                        part.Parent = workspace
-                        table.insert(esp.PathLines, part)
+                        table.insert(esp.PathLines, Drawing.new("Line"))
                     end
                     while #esp.PathLines > needed do
-                        local part = table.remove(esp.PathLines)
-                        part:Destroy()
+                        table.remove(esp.PathLines):Remove()
                     end
 
                     if waypoints then
                         for idx = 1, #waypoints - 1 do
-                            local wp1 = waypoints[idx].Position
-                            local wp2 = waypoints[idx+1].Position
-                            local part = esp.PathLines[idx]
+                            local wp1, on1 = Camera:WorldToViewportPoint(waypoints[idx].Position)
+                            local wp2, on2 = Camera:WorldToViewportPoint(waypoints[idx+1].Position)
+                            local line = esp.PathLines[idx]
 
-                            local distance = (wp1 - wp2).Magnitude
-                            part.Size = Vector3.new(0.2, 0.2, distance)
-                            part.CFrame = CFrame.new(wp1, wp2) * CFrame.new(0,0,-distance/2)
-                            part.Color = esp.Options.PathColor or Color3.new(0,1,0)
-                            part.Transparency = 0
+                            if on1 and on2 then
+                                line.From = Vector2.new(wp1.X, wp1.Y)
+                                line.To = Vector2.new(wp2.X, wp2.Y)
+                                line.Color = esp.Options.PathColor or Color3.new(0,1,0)
+                                line.Visible = true
+                            else
+                                line.Visible = false
+                            end
                         end
                     else
-                        for _, part in ipairs(esp.PathLines) do
-                            part.Transparency = 1
+                        for _, line in ipairs(esp.PathLines) do
+                            line.Visible = false
                         end
                     end
                 else
-                    for _, part in ipairs(esp.PathLines) do
-                        part.Transparency = 1
+                    for _, line in ipairs(esp.PathLines) do
+                        line.Visible = false
                     end
                 end
             end
