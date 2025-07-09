@@ -376,7 +376,51 @@ container.AnchorPoint = Vector2.new(0.5, 0.5)
     header.Size = UDim2.new(1,0,0,28)
     header.Position = UDim2.new(0,0,0,0)
     header.BackgroundColor3 = THEME.bgLighter
-    header.BorderSizePixel = 0
+    header.BorderSizePixel = 1
+
+    -- Arrastar: mouse + toque
+local UserInputService = game:GetService("UserInputService")
+
+local dragging = false
+local dragStart
+local startPos
+
+local function updateInput(input)
+    local delta = input.Position - dragStart
+    container.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end
+
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = container.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+header.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+                     input.UserInputType == Enum.UserInputType.Touch) then
+        updateInput(input)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+                     input.UserInputType == Enum.UserInputType.Touch) then
+        updateInput(input)
+    end
+end)
 
     -- Bordas arredondadas apenas no topo
     local headerCorner = Instance.new("UICorner")
