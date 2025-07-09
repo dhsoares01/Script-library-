@@ -588,22 +588,37 @@ end)
     end
 
     -- Botão minimizar - recolhe/expande conteúdo
-    local minimized = false
-    btnMinimize.MouseButton1Click:Connect(function()
-        if minimized then
-            -- Expande
-            contentHolder.Visible = true
-            container.Size = UDim2.new(0, 440, 0, 320)
-            btnMinimize.Text = "–"
-            minimized = false
-        else
-            -- Minimiza
-            contentHolder.Visible = false
-            container.Size = UDim2.new(0, 440, 0, 28)
-            btnMinimize.Text = "□"
-            minimized = true
-        end
-    end)
+-- Botões no canto direito do header
+local btnExpand = createButton(header, "□", UDim2.new(0, 24, 1, 0), UDim2.new(1, -84, 0, 0))
+btnExpand.TextScaled = true
+btnExpand.Visible = false
+
+local btnMinimize = createButton(header, "–", UDim2.new(0, 24, 1, 0), UDim2.new(1, -56, 0, 0))
+local btnClose = createButton(header, "×", UDim2.new(0, 24, 1, 0), UDim2.new(1, -28, 0, 0))
+btnMinimize.TextScaled = true
+btnClose.TextScaled = true
+
+local expanded = true
+
+btnMinimize.MouseButton1Click:Connect(function()
+    if expanded then
+        contentHolder.Visible = false
+        container.Size = UDim2.new(0, 120, 0, 320)
+        btnMinimize.Visible = false
+        btnExpand.Visible = true
+        expanded = false
+    end
+end)
+
+btnExpand.MouseButton1Click:Connect(function()
+    if not expanded then
+        contentHolder.Visible = true
+        container.Size = UDim2.new(0, 440, 0, 320)
+        btnExpand.Visible = false
+        btnMinimize.Visible = true
+        expanded = true
+    end
+end)
 
     -- Botão fechar - destroi GUI e limpa referências
     btnClose.MouseButton1Click:Connect(function()
