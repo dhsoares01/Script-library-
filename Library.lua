@@ -1,303 +1,290 @@
-local DarkTabsLib = {}
+-- ScriptLibrary.lua
+local ScriptLibrary = {}
 
-local uis = game:GetService("UserInputService")
-local rs = game:GetService("RunService")
+-- Configuração geral
+local theme = {
+    background = Color3.fromRGB(25, 25, 25),
+    header = Color3.fromRGB(30, 30, 30),
+    accent = Color3.fromRGB(50, 50, 50),
+    text = Color3.fromRGB(240, 240, 240),
+    border = Color3.fromRGB(70, 70, 70),
+    highlight = Color3.fromRGB(100, 100, 100)
+}
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "ScriptLibrary"
-gui.ResetOnSpawn = false
-pcall(function() gui.Parent = game:GetService("CoreGui") end)
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
--- Janela
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ScriptLibrary"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+
+-- Variáveis internas
+local minimized = false
+
+-- Função para arrastar
+local function MakeDraggable(frame)
+    local dragging, dragInput, dragStart, startPos
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+                                       startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- Cabeçalho elegante
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 500, 0, 350)
-frame.Position = UDim2.new(0.5, -250, 0.5, -175)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.BorderColor3 = Color3.fromRGB(50,50,50)
+frame.Name = "MainFrame"
+frame.Size = UDim2.new(0, 450, 0, 300)
+frame.Position = UDim2.new(0.5, -225, 0.5, -150)
+frame.BackgroundColor3 = theme.background
 frame.BorderSizePixel = 1
-frame.Parent = gui
+frame.BorderColor3 = theme.border
+frame.Parent = screenGui
 
--- Drag (mobile e PC)
-local dragging, dragInput, dragStart, startPos
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = frame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then dragging = false end
-		end)
-	end
-end)
-frame.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-end)
-rs.RenderStepped:Connect(function()
-	if dragging and dragInput then
-		local delta = dragInput.Position - dragStart
-		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
+MakeDraggable(frame)
 
--- Cabeçalho
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1,0,0,30)
-header.BackgroundColor3 = Color3.fromRGB(20,20,20)
+header.Size = UDim2.new(1, 0, 0, 30)
+header.BackgroundColor3 = theme.header
 header.BorderSizePixel = 0
 header.Parent = frame
 
 local title = Instance.new("TextLabel")
-title.Text = "DarkTabs Library"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 16
-title.TextColor3 = Color3.fromRGB(220,220,220)
+title.Text = "ScriptLibrary"
+title.TextColor3 = theme.text
 title.BackgroundTransparency = 1
-title.Size = UDim2.new(1,-60,1,0)
-title.Position = UDim2.new(0,0,0,0)
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 16
+title.Position = UDim2.new(0.5, -50, 0, 0)
+title.Size = UDim2.new(0, 100, 1, 0)
 title.Parent = header
+
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Text = "–"
+minimizeBtn.Size = UDim2.new(0, 30, 1, 0)
+minimizeBtn.Position = UDim2.new(1, -60, 0, 0)
+minimizeBtn.BackgroundColor3 = theme.accent
+minimizeBtn.BorderSizePixel = 0
+minimizeBtn.TextColor3 = theme.text
+minimizeBtn.Parent = header
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Text = "×"
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 16
-closeBtn.TextColor3 = Color3.fromRGB(200,200,200)
-closeBtn.Size = UDim2.new(0,30,1,0)
-closeBtn.Position = UDim2.new(1,-30,0,0)
-closeBtn.BackgroundTransparency = 1
+closeBtn.Size = UDim2.new(0, 30, 1, 0)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.BackgroundColor3 = theme.accent
+closeBtn.BorderSizePixel = 0
+closeBtn.TextColor3 = theme.text
 closeBtn.Parent = header
-closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
-local minBtn = Instance.new("TextButton")
-minBtn.Text = "–"
-minBtn.Font = Enum.Font.GothamBold
-minBtn.TextSize = 16
-minBtn.TextColor3 = Color3.fromRGB(200,200,200)
-minBtn.Size = UDim2.new(0,30,1,0)
-minBtn.Position = UDim2.new(1,-60,0,0)
-minBtn.BackgroundTransparency = 1
-minBtn.Parent = header
+local tabsContainer = Instance.new("Frame")
+tabsContainer.Position = UDim2.new(0, 0, 0, 30)
+tabsContainer.Size = UDim2.new(1, 0, 0, 30)
+tabsContainer.BackgroundColor3 = theme.accent
+tabsContainer.BorderSizePixel = 0
+tabsContainer.Parent = frame
 
-local contentVisible = true
-minBtn.MouseButton1Click:Connect(function()
-	contentVisible = not contentVisible
-	for _,v in pairs(frame:GetChildren()) do
-		if v~=header then v.Visible=contentVisible end
-	end
+local contentFrame = Instance.new("Frame")
+contentFrame.Position = UDim2.new(0, 0, 0, 60)
+contentFrame.Size = UDim2.new(1, 0, 1, -60)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = frame
+
+-- Botão de minimizar
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        contentFrame.Visible = false
+        tabsContainer.Visible = false
+        minimizeBtn.Text = "□"
+        frame.Size = UDim2.new(0, 450, 0, 30)
+    else
+        contentFrame.Visible = true
+        tabsContainer.Visible = true
+        minimizeBtn.Text = "–"
+        frame.Size = UDim2.new(0, 450, 0, 300)
+    end
 end)
 
--- Tabs
-local tabs = Instance.new("Frame")
-tabs.Size = UDim2.new(0,100,1,-30)
-tabs.Position = UDim2.new(0,0,0,30)
-tabs.BackgroundColor3=Color3.fromRGB(30,30,30)
-tabs.BorderSizePixel=0
-tabs.Parent=frame
+-- Botão de fechar
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
 
-local pages = Instance.new("Frame")
-pages.Size = UDim2.new(1,-100,1,-30)
-pages.Position=UDim2.new(0,100,0,30)
-pages.BackgroundTransparency=1
-pages.Parent=frame
+-- Função para criar abas
+function ScriptLibrary:AddTab(tabName)
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Text = tabName
+    tabBtn.Size = UDim2.new(0, 100, 1, 0)
+    tabBtn.BackgroundColor3 = theme.accent
+    tabBtn.BorderSizePixel = 0
+    tabBtn.TextColor3 = theme.text
+    tabBtn.Parent = tabsContainer
 
-local UIPageLayout = Instance.new("UIPageLayout")
-UIPageLayout.SortOrder=Enum.SortOrder.LayoutOrder
-UIPageLayout.Parent=pages
+    local tabContent = Instance.new("Frame")
+    tabContent.Size = UDim2.new(1, 0, 1, 0)
+    tabContent.BackgroundTransparency = 1
+    tabContent.Visible = false
+    tabContent.Parent = contentFrame
 
-function DarkTabsLib:CreateTab(name)
-	local tabBtn=Instance.new("TextButton")
-	tabBtn.Text=name
-	tabBtn.Font=Enum.Font.Gotham
-	tabBtn.TextSize=14
-	tabBtn.TextColor3=Color3.fromRGB(220,220,220)
-	tabBtn.BackgroundColor3=Color3.fromRGB(45,45,45)
-	tabBtn.Size=UDim2.new(1,0,0,30)
-	tabBtn.BorderSizePixel=0
-	tabBtn.Parent=tabs
+    local uiList = Instance.new("UIListLayout")
+    uiList.Padding = UDim.new(0, 4)
+    uiList.Parent = tabContent
 
-	local page=Instance.new("Frame")
-	page.Name=name
-	page.Size=UDim2.new(1,0,1,0)
-	page.BackgroundTransparency=1
-	page.Parent=pages
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, child in ipairs(contentFrame:GetChildren()) do
+            if child:IsA("Frame") then
+                child.Visible = false
+            end
+        end
+        tabContent.Visible = true
+    end)
 
-	local list=Instance.new("UIListLayout")
-	list.Padding=UDim.new(0,4)
-	list.Parent=page
+    local tabAPI = {}
 
-	tabBtn.MouseButton1Click:Connect(function() UIPageLayout:JumpTo(page) end)
+    function tabAPI:CreateLabel(text)
+        local label = Instance.new("TextLabel")
+        label.Text = text
+        label.TextColor3 = theme.text
+        label.BackgroundColor3 = theme.background
+        label.BorderColor3 = theme.border
+        label.Size = UDim2.new(1, -10, 0, 25)
+        label.Parent = tabContent
+        return label
+    end
 
-	local elements={}
+    function tabAPI:CreateToggle(text, callback)
+        local toggle = Instance.new("TextButton")
+        toggle.Text = text.." [OFF]"
+        toggle.TextColor3 = theme.text
+        toggle.BackgroundColor3 = theme.background
+        toggle.BorderColor3 = theme.border
+        toggle.Size = UDim2.new(1, -10, 0, 25)
+        toggle.Parent = tabContent
 
-	function elements:Toggle(text,callback)
-		local btn=Instance.new("TextButton")
-		btn.Text=text
-		btn.Font=Enum.Font.Gotham
-		btn.TextSize=14
-		btn.TextColor3=Color3.fromRGB(220,220,220)
-		btn.BackgroundColor3=Color3.fromRGB(50,50,50)
-		btn.Size=UDim2.new(1,-10,0,25)
-		btn.BorderSizePixel=1
-		btn.BorderColor3=Color3.fromRGB(70,70,70)
-		btn.Parent=page
-		local on=false
-		btn.MouseButton1Click:Connect(function()
-			on=not on
-			btn.BackgroundColor3=on and Color3.fromRGB(70,100,70) or Color3.fromRGB(50,50,50)
-			pcall(callback,on)
-		end)
-	end
+        local state = false
+        toggle.MouseButton1Click:Connect(function()
+            state = not state
+            toggle.Text = text..(state and " [ON]" or " [OFF]")
+            if callback then callback(state) end
+        end)
+        return toggle
+    end
 
-	function elements:ButtonOnOff(text,callback)
-		local btn=Instance.new("TextButton")
-		btn.Text=text
-		btn.Font=Enum.Font.Gotham
-		btn.TextSize=14
-		btn.TextColor3=Color3.fromRGB(220,220,220)
-		btn.BackgroundColor3=Color3.fromRGB(50,50,50)
-		btn.Size=UDim2.new(1,-10,0,25)
-		btn.BorderSizePixel=1
-		btn.BorderColor3=Color3.fromRGB(70,70,70)
-		btn.Parent=page
-		local on=false
-		btn.MouseButton1Click:Connect(function()
-			on=not on
-			btn.Text=text..(on and" [ON]" or" [OFF]")
-			pcall(callback,on)
-		end)
-	end
+    function tabAPI:CreateButtonOnOff(text, callback)
+        return tabAPI:CreateToggle(text, callback)
+    end
 
-	function elements:Slider(text,min,max,callback)
-		local holder=Instance.new("Frame")
-		holder.Size=UDim2.new(1,-10,0,40)
-		holder.BackgroundTransparency=1
-		holder.Parent=page
+    function tabAPI:CreateSlider(text, min, max, callback)
+        local holder = Instance.new("Frame")
+        holder.Size = UDim2.new(1, -10, 0, 25)
+        holder.BackgroundColor3 = theme.background
+        holder.BorderColor3 = theme.border
+        holder.Parent = tabContent
 
-		local label=Instance.new("TextLabel")
-		label.Text=text
-		label.Font=Enum.Font.Gotham
-		label.TextSize=14
-		label.TextColor3=Color3.fromRGB(220,220,220)
-		label.BackgroundTransparency=1
-		label.Size=UDim2.new(1,0,0,20)
-		label.Parent=holder
+        local label = Instance.new("TextLabel")
+        label.Text = text..": "..min
+        label.TextColor3 = theme.text
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.Parent = holder
 
-		local slider=Instance.new("Frame")
-		slider.Size=UDim2.new(1,0,0,10)
-		slider.Position=UDim2.new(0,0,0,25)
-		slider.BackgroundColor3=Color3.fromRGB(50,50,50)
-		slider.BorderSizePixel=1
-		slider.BorderColor3=Color3.fromRGB(70,70,70)
-		slider.Parent=holder
+        local value = min
+        holder.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+               input.UserInputType == Enum.UserInputType.Touch then
+                local con
+                con = UserInputService.InputChanged:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseMovement or 
+                       inp.UserInputType == Enum.UserInputType.Touch then
+                        local rel = inp.Position.X - holder.AbsolutePosition.X
+                        local percent = math.clamp(rel / holder.AbsoluteSize.X, 0, 1)
+                        value = math.floor(min + (max - min) * percent)
+                        label.Text = text..": "..value
+                        if callback then callback(value) end
+                    end
+                end)
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        con:Disconnect()
+                    end
+                end)
+            end
+        end)
+        return holder
+    end
 
-		local fill=Instance.new("Frame")
-		fill.Size=UDim2.new(0,0,1,0)
-		fill.BackgroundColor3=Color3.fromRGB(100,100,100)
-		fill.BorderSizePixel=0
-		fill.Parent=slider
+    function tabAPI:CreateDropdown(text, items, callback)
+        local btn = Instance.new("TextButton")
+        btn.Text = text.." ▼"
+        btn.TextColor3 = theme.text
+        btn.BackgroundColor3 = theme.background
+        btn.BorderColor3 = theme.border
+        btn.Size = UDim2.new(1, -10, 0, 25)
+        btn.Parent = tabContent
 
-		local dragging=false
-		local function setValue(pos)
-			local scale=math.clamp((pos-slider.AbsolutePosition.X)/slider.AbsoluteSize.X,0,1)
-			fill.Size=UDim2.new(scale,0,1,0)
-			local value=math.floor(min+(max-min)*scale)
-			pcall(callback,value)
-		end
-		slider.InputBegan:Connect(function(input)
-			if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-				dragging=true;setValue(input.Position.X)
-			end
-		end)
-		slider.InputEnded:Connect(function(input)
-			if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then dragging=false end
-		end)
-		slider.InputChanged:Connect(function(input)
-			if dragging and(input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch) then
-				setValue(input.Position.X)
-			end
-		end)
-	end
+        local open = false
+        local list = {}
 
-	function elements:Dropdown(text,options,callback)
-		local btn=Instance.new("TextButton")
-		btn.Text=text
-		btn.Font=Enum.Font.Gotham
-		btn.TextSize=14
-		btn.TextColor3=Color3.fromRGB(220,220,220)
-		btn.BackgroundColor3=Color3.fromRGB(50,50,50)
-		btn.Size=UDim2.new(1,-10,0,25)
-		btn.Parent=page
-		local open=false
-		local items={}
-		btn.MouseButton1Click:Connect(function()
-			open=not open
-			for _,v in ipairs(items) do v.Visible=open end
-		end)
-		for _,opt in ipairs(options) do
-			local optBtn=Instance.new("TextButton")
-			optBtn.Text=opt
-			optBtn.Font=Enum.Font.Gotham
-			optBtn.TextSize=14
-			optBtn.TextColor3=Color3.fromRGB(220,220,220)
-			optBtn.BackgroundColor3=Color3.fromRGB(40,40,40)
-			optBtn.Size=UDim2.new(1,-20,0,20)
-			optBtn.Visible=false
-			optBtn.Parent=page
-			table.insert(items,optBtn)
-			optBtn.MouseButton1Click:Connect(function()
-				pcall(callback,opt)
-				open=false
-				for _,v in ipairs(items)do v.Visible=false end
-			end)
-		end
-	end
+        btn.MouseButton1Click:Connect(function()
+            open = not open
+            btn.Text = text..(open and " ▲" or " ▼")
+            for _, i in ipairs(list) do i.Visible = open end
+        end)
 
-	function elements:DropdownButtonOnOff(text,options,callback)
-		local btn=Instance.new("TextButton")
-		btn.Text=text
-		btn.Font=Enum.Font.Gotham
-		btn.TextSize=14
-		btn.TextColor3=Color3.fromRGB(220,220,220)
-		btn.BackgroundColor3=Color3.fromRGB(50,50,50)
-		btn.Size=UDim2.new(1,-10,0,25)
-		btn.Parent=page
-		local open=false
-		local items={}
-		btn.MouseButton1Click:Connect(function()
-			open=not open
-			for _,v in ipairs(items) do v.Visible=open end
-		end)
-		for _,opt in ipairs(options) do
-			local optBtn=Instance.new("TextButton")
-			optBtn.Text=opt
-			optBtn.Font=Enum.Font.Gotham
-			optBtn.TextSize=14
-			optBtn.TextColor3=Color3.fromRGB(220,220,220)
-			optBtn.BackgroundColor3=Color3.fromRGB(40,40,40)
-			optBtn.Size=UDim2.new(1,-20,0,20)
-			optBtn.Visible=false
-			optBtn.Parent=page
-			table.insert(items,optBtn)
-			local on=false
-			optBtn.MouseButton1Click:Connect(function()
-				on=not on
-				optBtn.Text=opt..(on and" [ON]"or" [OFF]")
-				pcall(callback,opt,on)
-			end)
-		end
-	end
+        for _, item in ipairs(items) do
+            local opt = Instance.new("TextButton")
+            opt.Text = item
+            opt.TextColor3 = theme.text
+            opt.BackgroundColor3 = theme.background
+            opt.BorderColor3 = theme.border
+            opt.Size = UDim2.new(1, -20, 0, 25)
+            opt.Visible = false
+            opt.Parent = tabContent
+            table.insert(list, opt)
 
-	function elements:Label(text)
-		local lbl=Instance.new("TextLabel")
-		lbl.Text=text
-		lbl.Font=Enum.Font.Gotham
-		lbl.TextSize=14
-		lbl.TextColor3=Color3.fromRGB(200,200,200)
-		lbl.BackgroundTransparency=1
-		lbl.Size=UDim2.new(1,-10,0,20)
-		lbl.Parent=page
-	end
+            opt.MouseButton1Click:Connect(function()
+                if callback then callback(item) end
+                open = false
+                btn.Text = text.." ▼"
+                for _, i in ipairs(list) do i.Visible = false end
+            end)
+        end
+        return btn
+    end
 
-	return elements
+    function tabAPI:CreateDropdownButtonOnOff(text, items, callback)
+        return tabAPI:CreateDropdown(text, items, callback)
+    end
+
+    return tabAPI
 end
 
-return DarkTabsLib
+return ScriptLibrary
