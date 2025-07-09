@@ -1,170 +1,109 @@
 
----
+```markdown
+# 📚 Script GUI Menu Library
 
-Script GUI Menu Library
+![Library Preview](https://via.placeholder.com/800x400/2d3748/ffffff?text=Script+GUI+Menu+Library+Preview)  
+*(Adicione uma imagem real da sua biblioteca aqui)*
 
+Uma biblioteca de interface gráfica (GUI) em Lua projetada para executores de scripts Roblox como Delta, Fluxus e outros. Crie menus interativos com facilidade e estilo profissional.
 
+## ✨ Recursos Principais
 
+### 🎨 Design Moderno
+- Tema escuro com cantos arredondados
+- Interface limpa e profissional
+- Totalmente responsiva
 
----
+### 🖱️ Interatividade Avançada
+- ✅ Arrastar e mover janelas
+- ↔️ Redimensionamento dinâmico
+- 📌 Minimizar/Restaurar
+- 🔄 Animações suaves
 
-📖 Sobre a Biblioteca
+### 🧩 Componentes Ricos
+| Componente            | Descrição                                      |
+|-----------------------|-----------------------------------------------|
+| **Label**             | Texto informativo                             |
+| **Button**            | Botões clicáveis com ações personalizadas     |
+| **Toggle**            | Interruptores ON/OFF                          |
+| **DropdownButtonOnOff**| Menu expansível com múltiplas opções         |
+| **SelectDropdown**    | Seleção única em lista expansível             |
+| **Slider**           | Controle deslizante para valores numéricos    |
 
-Biblioteca de interface gráfica (GUI) em Lua, projetada para executores de scripts Roblox como Delta, Fluxus e outros. Facilita a criação de menus interativos, modernos e responsivos, para que você foque na lógica do seu script enquanto a biblioteca gerencia a interface.
+## 🚀 Começando
 
-
----
-
-✨ Funcionalidades Principais
-
-Design Sofisticado: Tema escuro com cantos arredondados, para uma experiência profissional e agradável.
-
-Interatividade Completa:
-
-Arrastar — Mova a janela pela tela facilmente.
-
-Redimensionar — Ajuste o tamanho da janela pelo canto inferior direito.
-
-Minimizar/Restaurar — Controle a visibilidade da janela com um clique.
-
-
-Organização Lógica: Sistema de abas para categorizar opções.
-
-Controles Abrangentes:
-
-Label: Texto informativo.
-
-Button: Executa funções customizadas.
-
-Toggle: Ativa/desativa recursos (ON/OFF).
-
-DropdownButtonOnOff: Menu expansível com múltiplas opções independentes.
-
-SelectDropdown: Seleção única em lista expansível.
-
-Slider: Ajuste valores numéricos com feedback instantâneo.
-
-
-Compatibilidade Ampla: Leve e eficiente, ideal para carregamento via loadstring.
-
-
-
----
-
-🚀 Instalação e Uso Rápido
-
-Carregue a biblioteca direto do GitHub com a linha abaixo (atualize o link conforme seu uso):
-
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
-
-
----
-
-🛠️ Exemplo Rápido
+### 📥 Instalação
+```lua
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
 ```
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
-local MyMenu = Library:CreateWindow("Meu Script Cheats")
-local MainOptions = MyMenu:CreateTab("Geral", "⭐")
+### 🧑‍💻 Exemplo Básico
+```lua
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
 
-MainOptions:AddLabel("Opções Rápidas:")
+local MyMenu = Library:CreateWindow("Meu Menu Personalizado")
+local MainTab = MyMenu:CreateTab("Principal", "⭐")
 
-MainOptions:AddButton("Resetar Personagem", function()
+-- Adicionando componentes
+MainTab:AddLabel("Configurações Gerais:")
+
+MainTab:AddButton("Resetar Personagem", function()
     game.Players.LocalPlayer.Character.Humanoid.Health = 0
-    warn("Personagem resetado!")
+    print("Personagem resetado!")
 end)
 
-local noClipToggle = MainOptions:AddToggle("NoClip", function(state)
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = state and 50 or 16
-    print("NoClip está: " .. (state and "ATIVADO" or "DESATIVADO"))
+local toggle = MainTab:AddToggle("Voar", function(state)
+    print("Modo voo:", state and "ATIVADO" or "DESATIVADO")
 end)
 
-MainOptions:AddSlider("Jump Power", 10, 200, 50, function(value)
-    game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
-    print("Jump Power definido para: " .. value)
+MainTab:AddSlider("Velocidade", 10, 200, 50, function(value)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
 end)
-
-print("Menu carregado com sucesso!")
-
 ```
----
 
-📚 API (Interface de Programação de Aplicações)
+## 📚 Documentação da API
 
-Library
+### `Library`
+| Método               | Parâmetros                          | Descrição                |
+|----------------------|------------------------------------|--------------------------|
+| `CreateWindow`       | `name` (string)                    | Cria nova janela GUI     |
 
-CreateWindow(name: string)
-Cria e retorna uma janela GUI.
+### `Window`
+| Método               | Parâmetros                          | Descrição                |
+|----------------------|------------------------------------|--------------------------|
+| `CreateTab`          | `name` (string), `icon` (optional) | Adiciona nova aba        |
 
-name: título da janela (padrão: "CustomUILib").
+### `Tab`
+| Método                     | Parâmetros                                      | Retorno       |
+|----------------------------|------------------------------------------------|---------------|
+| `AddLabel`                | `text` (string)                                | -             |
+| `AddButton`               | `text` (string), `callback` (function)         | -             |
+| `AddToggle`               | `text` (string), `callback` (function)         | Toggle object |
+| `AddDropdownButtonOnOff`  | `title` (string), `items` (table), `callback`  | Dropdown obj  |
+| `AddSelectDropdown`       | `title` (string), `items` (table), `callback`  | Dropdown obj  |
+| `AddSlider`               | `text`, `min`, `max`, `default`, `callback`    | Slider obj    |
 
-retorna: objeto window.
+## 🛠️ Estrutura Técnica
+- **Arquitetura**: Single-file library
+- **Dependências**: Roblox engine services
+- **Performance**: Otimizada para carregamento rápido
+- **Animations**: TweenService para transições suaves
 
+## 🤝 Contribuição
+Contribuições são bem-vindas! Siga estes passos:
+1. Fork o repositório
+2. Crie um branch (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para o branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
 
-
-window (objeto retornado)
-
-CreateTab(tabName: string, icon?: string)
-Cria uma aba dentro da janela.
-
-tabName: nome da aba.
-
-icon (opcional): emoji ou caractere para ícone.
-
-retorna: objeto tab.
-
-
-
-tab (objeto retornado)
-
-AddLabel(text: string) — adiciona texto informativo.
-
-AddButton(text: string, callback: function) — adiciona botão clicável.
-
-AddToggle(text: string, callback: function(state: boolean)) — botão ON/OFF. Retorna objeto com .Set(value), .Get().
-
-AddDropdownButtonOnOff(title: string, items: table, callback: function(states: table)) — menu expansível multi-toggle. Retorna objeto com .Set(item, value), .GetAll().
-
-AddSelectDropdown(title: string, items: table, callback: function(selectedItem: string)) — menu expansível single-select. Retorna objeto com .Set(item), .Get().
-
-AddSlider(text: string, min: number, max: number, default: number, callback: function(value: number)) — slider numérico. Retorna objeto com .Set(value), .Get().
-
-
+## 📄 Licença
+Distribuído sob licença MIT. Veja `LICENSE` para mais informações.
 
 ---
 
-🛠️ Desenvolvimento
-
-Código contido em um único arquivo .lua.
-
-Layouts e tamanhos gerenciados via UDim2 e UIListLayout.
-
-Usa TweenService para animações suaves.
-
-UserInputService para funcionalidades de arrastar e redimensionar.
-
-
-
----
-
-🤝 Contribuição
-
-Contribuições são bem-vindas!
-
-Abra uma Issue para bugs ou sugestões.
-
-Crie um Pull Request com melhorias, seguindo o estilo do código.
-
-
-
----
-
-📄 Licença
-
-Este projeto está licenciado sob a Licença MIT. Consulte o arquivo LICENSE no repositório para detalhes.
-
-
----
-
-
----
+<div align="center">
+  <p>Feito com ❤️ por <a href="https://github.com/dhsoares01">dhsoares01</a></p>
+  <img src="https://img.shields.io/github/stars/dhsoares01/Script-library-?style=social" alt="GitHub stars">
+</div>
+```
