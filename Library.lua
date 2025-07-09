@@ -2,7 +2,7 @@
     GuiMenuLibrary.lua
     Biblioteca para criar menus GUI em executores como Delta via loadstring.
     Design aprimorado, Slider, DropdownButtonOnOff, DropdownButton.
-    Bugs corrigidos: sombra branca, arrasto touch, scrollview e dropdowns, arrasto só no cabeçalho.
+    Bugs corrigidos: sombra branca e arrasto touch.
     Desenvolvido por: dhsoares01
 --]]
 
@@ -19,37 +19,57 @@ local function create(class, props)
     return inst
 end
 
--- Arrasto apenas no cabeçalho (TopBar), mouse e touch
-local function setupTopBarDrag(MainFrame, TopBar)
-    local dragging, dragStart, startPos, dragTouchId
+-- Arrasto só no fundo do menu, não nas abas/conteúdo/topbar/botões, suportando mouse e toque (dedo)
+local function setupSmartDrag(MainFrame, disallowAreas)
+    local dragging = false
+    local dragStart, startPos
+    local dragTouchId = nil
 
-    TopBar.InputBegan:Connect(function(input)
+    local function isInDisallowArea(pos)
+        for _, area in ipairs(disallowAreas) do
+            if area and area.Visible ~= false then
+                local absPos = area.AbsolutePosition
+                local absSize = area.AbsoluteSize
+                if pos.X >= absPos.X and pos.X <= absPos.X + absSize.X
+                and pos.Y >= absPos.Y and pos.Y <= absPos.Y + absSize.Y then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
+    MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = MainFrame.Position
-            local conn; conn = input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    if conn then conn:Disconnect() end
-                end
-            end)
-        elseif input.UserInputType == Enum.UserInputType.Touch and not dragging then
-            dragging = true
-            dragTouchId = input.TouchId
-            dragStart = input.Position
-            startPos = MainFrame.Position
-            local conn; conn = input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    dragTouchId = nil
-                    if conn then conn:Disconnect() end
-                end
-            end)
+            if not isInDisallowArea(input.Position) then
+                dragging = true
+                dragStart = input.Position
+                startPos = MainFrame.Position
+                local conn; conn = input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                        if conn then conn:Disconnect() end
+                    end
+                end)
+            end
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            if not isInDisallowArea(input.Position) and not dragging then
+                dragging = true
+                dragTouchId = input.TouchId
+                dragStart = input.Position
+                startPos = MainFrame.Position
+                local conn; conn = input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                        dragTouchId = nil
+                        if conn then conn:Disconnect() end
+                    end
+                end)
+            end
         end
     end)
 
-    TopBar.InputChanged:Connect(function(input)
+    MainFrame.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(
@@ -85,9 +105,8 @@ function GuiMenuLibrary:CreateMenu(options)
         Parent = game:GetService("CoreGui")
     })
 
-    -- Sombra suave (sempre acompanha o menu, inclusive minimizado)
+    -- Sombra suave (correção: Shadow atrás do MainFrame)
     local MainSize = UDim2.new(0, 410, 0, 280)
-    local CollapsedSize = UDim2.new(0, 410, 0, 36)
     local MainAnchor = Vector2.new(0.5, 0.5)
     local MainPos = UDim2.new(0.5, 0, 0.5, 0)
 
@@ -121,8 +140,7 @@ function GuiMenuLibrary:CreateMenu(options)
         BackgroundColor3 = Color3.fromRGB(30, 32, 50),
         BorderSizePixel = 0,
         Size = UDim2.new(1, 0, 0, 36),
-        Parent = MainFrame,
-        ZIndex = 2
+        Parent = MainFrame
     })
     create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = TopBar})
 
@@ -171,8 +189,7 @@ function GuiMenuLibrary:CreateMenu(options)
         BorderSizePixel = 0,
         Size = UDim2.new(0, 110, 1, -36),
         Position = UDim2.new(0, 0, 0, 36),
-        Parent = MainFrame,
-        ZIndex = 2
+        Parent = MainFrame
     })
     create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = TabsFrame})
 
@@ -190,12 +207,11 @@ function GuiMenuLibrary:CreateMenu(options)
         BorderSizePixel = 0,
         Position = UDim2.new(0, 120, 0, 46),
         Size = UDim2.new(1, -130, 1, -56),
-        Parent = MainFrame,
-        ZIndex = 2
+        Parent = MainFrame
     })
     create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = ContentFrame})
 
-    -- Scroll (corrigido: CanvasGroup para dropdowns renderizados acima do scroll)
+    -- Scroll
     local Scroll = create("ScrollingFrame", {
         Name = "Scroll",
         BackgroundTransparency = 1,
@@ -208,9 +224,7 @@ function GuiMenuLibrary:CreateMenu(options)
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
         TopImage = "rbxassetid://7445543660",
         BottomImage = "rbxassetid://7445543660",
-        ZIndex = 2
     })
-    local scrollGroup = create("CanvasGroup", {Parent = Scroll})
 
     local tabButtons = {}
     local pages = {}
@@ -221,16 +235,6 @@ function GuiMenuLibrary:CreateMenu(options)
             tabButtons[i].TextColor3 = i == tabIndex and Color3.fromRGB(255,255,255) or Color3.fromRGB(170,170,200)
         end
     end
-
-    -- Dropdowns parent para garantir renderização acima do scroll
-    local DropdownsParent = create("Frame", {
-        Name = "DropdownsParent",
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 1, 0),
-        Position = UDim2.new(0,0,0,0),
-        Parent = ScreenGui,
-        ZIndex = 100,
-    })
 
     for i, tab in ipairs(options.Tabs or { {Name = "Aba 1", Elements = {}} }) do
         local btn = create("TextButton", {
@@ -412,7 +416,6 @@ function GuiMenuLibrary:CreateMenu(options)
                 end)
 
             elseif el.Type == "DropdownButtonOnOff" then
-                -- Para evitar bug no scroll, renderizar dropdown fora do scroll e sempre fechar outros abertos
                 local open = false
                 local dropFrame = create("Frame", {
                     Size = UDim2.new(1, -10, 0, 38),
@@ -433,23 +436,16 @@ function GuiMenuLibrary:CreateMenu(options)
                 })
                 create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = mainBtn})
 
-                -- Dropdown na camada superior
                 local optsFrame = create("Frame", {
                     BackgroundColor3 = Color3.fromRGB(30, 32, 50),
-                    Size = UDim2.new(0, dropFrame.AbsoluteSize.X, 0, #el.Options*38),
-                    Position = UDim2.new(0, dropFrame.AbsolutePosition.X, 0, dropFrame.AbsolutePosition.Y + dropFrame.AbsoluteSize.Y),
+                    Size = UDim2.new(1, 0, 0, #(el.Options or {})*38),
+                    Position = UDim2.new(0,0,1,0),
                     Visible = false,
-                    Parent = DropdownsParent,
-                    ZIndex = 200
+                    Parent = dropFrame,
+                    ZIndex = 10
                 })
                 create("UICorner", {CornerRadius = UDim.new(0,8), Parent = optsFrame})
                 create("UIStroke", {Color = Color3.fromRGB(40,90,255), Transparency=0.7, Thickness=1, Parent = optsFrame})
-
-                -- Atualizar posição do dropdown quando aberto (p/ scroll)
-                local function updateDropdownPos()
-                    optsFrame.Size = UDim2.new(0, dropFrame.AbsoluteSize.X, 0, #el.Options*38)
-                    optsFrame.Position = UDim2.new(0, dropFrame.AbsolutePosition.X, 0, dropFrame.AbsolutePosition.Y + dropFrame.AbsoluteSize.Y)
-                end
 
                 for i, opt in ipairs(el.Options or {}) do
                     local optFrame = create("Frame", {
@@ -457,7 +453,7 @@ function GuiMenuLibrary:CreateMenu(options)
                         Size = UDim2.new(1, 0, 0, 38),
                         Position = UDim2.new(0,0,0,(i-1)*38),
                         Parent = optsFrame,
-                        ZIndex = 201
+                        ZIndex = 11
                     })
                     local btn = create("TextButton", {
                         Text = opt,
@@ -468,7 +464,7 @@ function GuiMenuLibrary:CreateMenu(options)
                         Size = UDim2.new(1, -40, 1, 0),
                         Position = UDim2.new(0, 0, 0, 0),
                         Parent = optFrame,
-                        ZIndex = 202
+                        ZIndex = 12
                     })
                     local onoffBtn = create("TextButton", {
                         Text = "OFF",
@@ -480,7 +476,7 @@ function GuiMenuLibrary:CreateMenu(options)
                         Position = UDim2.new(1, -36, 0.5, -13),
                         AnchorPoint = Vector2.new(0,0),
                         Parent = optFrame,
-                        ZIndex = 202,
+                        ZIndex = 12,
                         AutoButtonColor = true,
                     })
                     create("UICorner", {CornerRadius = UDim.new(1,0), Parent = onoffBtn})
@@ -495,31 +491,9 @@ function GuiMenuLibrary:CreateMenu(options)
                 end
 
                 mainBtn.MouseButton1Click:Connect(function()
-                    for _, child in ipairs(DropdownsParent:GetChildren()) do
-                        if child ~= optsFrame then child.Visible = false end
-                    end
                     open = not open
-                    if open then
-                        updateDropdownPos()
-                        optsFrame.Visible = true
-                    else
-                        optsFrame.Visible = false
-                    end
+                    optsFrame.Visible = open
                 end)
-                -- Fecha ao clicar fora
-                UserInputService.InputBegan:Connect(function(input)
-                    if optsFrame.Visible and input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        local mouse = UserInputService:GetMouseLocation()
-                        if not (mouse.X >= optsFrame.AbsolutePosition.X and mouse.X <= optsFrame.AbsolutePosition.X + optsFrame.AbsoluteSize.X
-                             and mouse.Y >= optsFrame.AbsolutePosition.Y and mouse.Y <= optsFrame.AbsolutePosition.Y + optsFrame.AbsoluteSize.Y)
-                        then
-                            optsFrame.Visible = false
-                            open = false
-                        end
-                    end
-                end)
-                dropFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateDropdownPos)
-                dropFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateDropdownPos)
 
             elseif el.Type == "DropdownButton" then
                 local open = false
@@ -544,19 +518,14 @@ function GuiMenuLibrary:CreateMenu(options)
 
                 local optsFrame = create("Frame", {
                     BackgroundColor3 = Color3.fromRGB(30, 32, 50),
-                    Size = UDim2.new(0, dropFrame.AbsoluteSize.X, 0, #el.Options*38),
-                    Position = UDim2.new(0, dropFrame.AbsolutePosition.X, 0, dropFrame.AbsolutePosition.Y + dropFrame.AbsoluteSize.Y),
+                    Size = UDim2.new(1, 0, 0, #(el.Options or {})*38),
+                    Position = UDim2.new(0,0,1,0),
                     Visible = false,
-                    Parent = DropdownsParent,
-                    ZIndex = 200
+                    Parent = dropFrame,
+                    ZIndex = 10
                 })
                 create("UICorner", {CornerRadius = UDim.new(0,8), Parent = optsFrame})
                 create("UIStroke", {Color = Color3.fromRGB(40,90,255), Transparency=0.7, Thickness=1, Parent = optsFrame})
-
-                local function updateDropdownPos()
-                    optsFrame.Size = UDim2.new(0, dropFrame.AbsoluteSize.X, 0, #el.Options*38)
-                    optsFrame.Position = UDim2.new(0, dropFrame.AbsolutePosition.X, 0, dropFrame.AbsolutePosition.Y + dropFrame.AbsoluteSize.Y)
-                end
 
                 for i, opt in ipairs(el.Options or {}) do
                     local optFrame = create("Frame", {
@@ -564,7 +533,7 @@ function GuiMenuLibrary:CreateMenu(options)
                         Size = UDim2.new(1, 0, 0, 38),
                         Position = UDim2.new(0,0,0,(i-1)*38),
                         Parent = optsFrame,
-                        ZIndex = 201
+                        ZIndex = 11
                     })
                     local btn = create("TextButton", {
                         Text = opt,
@@ -575,7 +544,7 @@ function GuiMenuLibrary:CreateMenu(options)
                         Size = UDim2.new(1, -40, 1, 0),
                         Position = UDim2.new(0, 0, 0, 0),
                         Parent = optFrame,
-                        ZIndex = 202
+                        ZIndex = 12
                     })
                     local goBtn = create("TextButton", {
                         Text = ">",
@@ -587,7 +556,7 @@ function GuiMenuLibrary:CreateMenu(options)
                         Position = UDim2.new(1, -36, 0.5, -13),
                         AnchorPoint = Vector2.new(0,0),
                         Parent = optFrame,
-                        ZIndex = 202,
+                        ZIndex = 12,
                         AutoButtonColor = true,
                     })
                     create("UICorner", {CornerRadius = UDim.new(1,0), Parent = goBtn})
@@ -597,74 +566,43 @@ function GuiMenuLibrary:CreateMenu(options)
                 end
 
                 mainBtn.MouseButton1Click:Connect(function()
-                    for _, child in ipairs(DropdownsParent:GetChildren()) do
-                        if child ~= optsFrame then child.Visible = false end
-                    end
                     open = not open
-                    if open then
-                        updateDropdownPos()
-                        optsFrame.Visible = true
-                    else
-                        optsFrame.Visible = false
-                    end
+                    optsFrame.Visible = open
                 end)
-                UserInputService.InputBegan:Connect(function(input)
-                    if optsFrame.Visible and input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        local mouse = UserInputService:GetMouseLocation()
-                        if not (mouse.X >= optsFrame.AbsolutePosition.X and mouse.X <= optsFrame.AbsolutePosition.X + optsFrame.AbsoluteSize.X
-                             and mouse.Y >= optsFrame.AbsolutePosition.Y and mouse.Y <= optsFrame.AbsolutePosition.Y + optsFrame.AbsoluteSize.Y)
-                        then
-                            optsFrame.Visible = false
-                            open = false
-                        end
-                    end
-                end)
-                dropFrame:GetPropertyChangedSignal("AbsolutePosition"):Connect(updateDropdownPos)
-                dropFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateDropdownPos)
             end
         end
         pages[i] = page
     end
     switchTab(1)
 
-    -- Arrasto só no TopBar
-    setupTopBarDrag(MainFrame, TopBar)
+    -- Áreas que NÃO permitem drag
+    local disallowAreas = {TopBar, TabsFrame, ContentFrame, CloseBtn, MinBtn}
+    setupSmartDrag(MainFrame, disallowAreas)
 
-    -- Minimizar/maximizar, sombra acompanha
+    -- Função de recolher/expandir menu
     local expanded = true
+    local originalSize = MainFrame.Size
+    local collapsedSize = UDim2.new(originalSize.X.Scale, originalSize.X.Offset, 0, TopBar.Size.Y.Offset or 36)
     local originalTabsVisible = true
     local originalContentVisible = true
 
     MinBtn.MouseButton1Click:Connect(function()
         expanded = not expanded
         if not expanded then
+            -- Recolher: esconder abas e conteúdo, diminuir tamanho
             originalTabsVisible = TabsFrame.Visible
             originalContentVisible = ContentFrame.Visible
             TabsFrame.Visible = false
             ContentFrame.Visible = false
-            MainFrame.Size = CollapsedSize
-            Shadow.Size = UDim2.new(0, 430, 0, 56)
+            MainFrame.Size = collapsedSize
+            MinBtn.Text = "+"
         else
+            -- Expandir: mostrar abas e conteúdo, restaurar tamanho
             TabsFrame.Visible = originalTabsVisible
             ContentFrame.Visible = originalContentVisible
-            MainFrame.Size = MainSize
-            Shadow.Size = UDim2.new(0, 430, 0, 300)
+            MainFrame.Size = originalSize
+            MinBtn.Text = "—"
         end
-    end)
-
-    -- Garantir que Shadow sempre acompanha o menu
-    MainFrame:GetPropertyChangedSignal("Position"):Connect(function()
-        Shadow.Position = MainFrame.Position
-    end)
-    MainFrame:GetPropertyChangedSignal("Size"):Connect(function()
-        if expanded then
-            Shadow.Size = UDim2.new(0, 430, 0, 300)
-        else
-            Shadow.Size = UDim2.new(0, 430, 0, 56)
-        end
-    end)
-    MainFrame:GetPropertyChangedSignal("AnchorPoint"):Connect(function()
-        Shadow.AnchorPoint = MainFrame.AnchorPoint
     end)
 
     return ScreenGui
