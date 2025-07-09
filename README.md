@@ -60,9 +60,8 @@ end)
 
 print("Menu carregado com sucesso!")
 
-
+```
 ---
-
 📚 API (Interface de Programação de Aplicações)
 
 Library
