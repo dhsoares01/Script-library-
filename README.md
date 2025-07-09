@@ -1,4 +1,4 @@
----
+
 # 📚 Script GUI Menu Library
 
 ![Prévia da Biblioteca](https://via.placeholder.com/1000x500/2d3748/ffffff?text=Adicione+aqui+uma+imagem+atraente+da+sua+GUI!)
@@ -122,4 +122,4 @@ Este projeto é distribuído sob a licença MIT. Para mais detalhes, consulte o 
 <p>Feito com ❤️ por <a href="https://github.com/dhsoares01">dhsoares01</a></p>
 <img src="https://img.shields.io/github/stars/dhsoares01/Script-library-?style=social" alt="GitHub stars">
 </div>
----
+
