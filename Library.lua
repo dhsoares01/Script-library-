@@ -438,96 +438,100 @@ function Library:CreateWindow(name)
         end
 
         function tab:AddSelectDropdown(title, items, callback)
-            local container = Instance.new("Frame", Page)
-            container.Size = UDim2.new(1, -10, 0, 36)
-            container.BackgroundColor3 = theme.Tab
-            container.BorderSizePixel = 0
+    local container = Instance.new("Frame", Page)
+    container.Size = UDim2.new(1, -10, 0, 36)
+    container.BackgroundColor3 = theme.Tab
+    container.BorderSizePixel = 0
 
-            local corner = Instance.new("UICorner", container)
-            corner.CornerRadius = UDim.new(0, 6)
+    local corner = Instance.new("UICorner", container)
+    corner.CornerRadius = UDim.new(0, 6)
 
-            local header = Instance.new("TextButton", container)
-            header.Size = UDim2.new(1, 0, 1, 0)
-            header.BackgroundTransparency = 1
-            header.Text = "▸ " .. title -- Initial text, will be updated
-            header.TextColor3 = theme.Text
-            header.TextSize = 16
-            header.Font = Enum.Font.Gotham
-            header.TextXAlignment = Enum.TextXAlignment.Left
+    local header = Instance.new("TextButton", container)
+    header.Size = UDim2.new(1, 0, 1, 0)
+    header.BackgroundTransparency = 1
+    header.Text = "▸ " .. title  -- Texto inicial
+    header.TextColor3 = theme.Text
+    header.TextSize = 16
+    header.Font = Enum.Font.Gotham
+    header.TextXAlignment = Enum.TextXAlignment.Left
 
-            local dropdownFrame = Instance.new("Frame", Page)
-            dropdownFrame.Size = UDim2.new(1, -10, 0, #items * 32 + 4)
-            dropdownFrame.BackgroundColor3 = theme.Tab
-            dropdownFrame.Visible = false
+    local dropdownFrame = Instance.new("Frame", Page)
+    dropdownFrame.Size = UDim2.new(1, -10, 0, #items * 32 + 4)
+    dropdownFrame.BackgroundColor3 = theme.Tab
+    dropdownFrame.Visible = false
 
-            local dropCorner = Instance.new("UICorner", dropdownFrame)
-            dropCorner.CornerRadius = UDim.new(0, 6)
+    local dropCorner = Instance.new("UICorner", dropdownFrame)
+    dropCorner.CornerRadius = UDim.new(0, 6)
 
-            local listLayout = Instance.new("UIListLayout", dropdownFrame)
-            listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            listLayout.Padding = UDim.new(0, 4)
+    local listLayout = Instance.new("UIListLayout", dropdownFrame)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 4)
 
-            local selectedItem = nil
+    local selectedItem = nil
+    local expanded = false
 
-            local function updateHeaderText()
-                header.Text = (expanded and "▾ " or "▸ ") .. (selectedItem or title)
-            end
-
-            for _, name in ipairs(items) do
-                local btn = Instance.new("TextButton", dropdownFrame)
-                btn.Size = UDim2.new(1, -8, 0, 28)
-                btn.Position = UDim2.new(0, 4, 0, 0)
-                btn.BackgroundColor3 = theme.Tab
-                btn.TextColor3 = theme.Text
-                btn.Font = Enum.Font.Gotham
-                btn.TextSize = 14
-                btn.TextXAlignment = Enum.TextXAlignment.Left
-                btn.Text = name
-
-                local btnCorner = Instance.new("UICorner", btn)
-                btnCorner.CornerRadius = UDim.new(0, 6)
-
-                btn.MouseButton1Click:Connect(function()
-                    selectedItem = name
-                    expanded = false
-                    dropdownFrame.Visible = false
-                    updateHeaderText()
-                    if callback then
-                        callback(selectedItem)
-                    end
-                end)
-
-                btn.MouseEnter:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Accent }):Play()
-                end)
-                btn.MouseLeave:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Tab }):Play()
-                end)
-            end
-
-            local expanded = false
-
-            header.MouseButton1Click:Connect(function()
-                expanded = not expanded
-                dropdownFrame.Visible = expanded
-                updateHeaderText()
-            end)
-
-            return {
-                Set = function(_, item)
-                    if table.find(items, item) then
-                        selectedItem = item
-                        updateHeaderText()
-                        if callback then
-                            callback(selectedItem)
-                        end
-                    end
-                end,
-                Get = function()
-                    return selectedItem
-                end
-            }
+    -- Atualiza o texto do header com title: selectedItem
+    local function updateHeaderText()
+        if selectedItem then
+            header.Text = (expanded and "▾ " or "▸ ") .. title .. ": " .. selectedItem
+        else
+            header.Text = (expanded and "▾ " or "▸ ") .. title
         end
+    end
+
+    for _, name in ipairs(items) do
+        local btn = Instance.new("TextButton", dropdownFrame)
+        btn.Size = UDim2.new(1, -8, 0, 28)
+        btn.Position = UDim2.new(0, 4, 0, 0)
+        btn.BackgroundColor3 = theme.Tab
+        btn.TextColor3 = theme.Text
+        btn.Font = Enum.Font.Gotham
+        btn.TextSize = 14
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        btn.Text = name
+
+        local btnCorner = Instance.new("UICorner", btn)
+        btnCorner.CornerRadius = UDim.new(0, 6)
+
+        btn.MouseButton1Click:Connect(function()
+            selectedItem = name
+            expanded = false
+            dropdownFrame.Visible = false
+            updateHeaderText()
+            if callback then
+                callback(selectedItem)
+            end
+        end)
+
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Accent }):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Tab }):Play()
+        end)
+    end
+
+    header.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        dropdownFrame.Visible = expanded
+        updateHeaderText()
+    end)
+
+    return {
+        Set = function(_, item)
+            if table.find(items, item) then
+                selectedItem = item
+                updateHeaderText()
+                if callback then
+                    callback(selectedItem)
+                end
+            end
+        end,
+        Get = function()
+            return selectedItem
+        end
+    }
+end
 
         function tab:AddSlider(text, min, max, default, callback)
             local SliderFrame = Instance.new("Frame", Page)
