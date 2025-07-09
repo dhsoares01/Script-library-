@@ -1,85 +1,84 @@
----
-
-🎮 Script GUI Menu Library
-
-> Biblioteca para criação rápida e moderna de menus no Roblox, ideal para executores como Delta, Fluxus e outros.
-
-
-
 
 ---
 
-📦 Instalação
+Script GUI Menu Library
 
-Adicione esta linha ao início do seu script Roblox:
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
+
+
+---
+
+📖 Sobre a Biblioteca
+
+Biblioteca de interface gráfica (GUI) em Lua, projetada para executores de scripts Roblox como Delta, Fluxus e outros. Facilita a criação de menus interativos, modernos e responsivos, para que você foque na lógica do seu script enquanto a biblioteca gerencia a interface.
 
 
 ---
 
 ✨ Funcionalidades Principais
 
-🎨 Design Moderno: Tema escuro elegante com cantos arredondados.
+Design Sofisticado: Tema escuro com cantos arredondados, para uma experiência profissional e agradável.
 
-🖱 Interatividade Completa:
+Interatividade Completa:
 
-Arrastar a janela
+Arrastar — Mova a janela pela tela facilmente.
 
-Redimensionar dinamicamente
+Redimensionar — Ajuste o tamanho da janela pelo canto inferior direito.
 
-Minimizar/restaurar
-
-
-🧩 Sistema de Abas: Organização intuitiva.
-
-🛠 Controles Disponíveis:
-
-Label – Exibe texto
-
-Button – Executa funções
-
-Toggle – Liga/desliga recursos
-
-DropdownButtonOnOff – Menu para múltiplas opções ON/OFF
-
-SelectDropdown – Seleção única
-
-Slider – Ajusta valores numéricos
+Minimizar/Restaurar — Controle a visibilidade da janela com um clique.
 
 
-⚡ Leve e compatível: Ideal para loadstring em vários executores.
+Organização Lógica: Sistema de abas para categorizar opções.
+
+Controles Abrangentes:
+
+Label: Texto informativo.
+
+Button: Executa funções customizadas.
+
+Toggle: Ativa/desativa recursos (ON/OFF).
+
+DropdownButtonOnOff: Menu expansível com múltiplas opções independentes.
+
+SelectDropdown: Seleção única em lista expansível.
+
+Slider: Ajuste valores numéricos com feedback instantâneo.
+
+
+Compatibilidade Ampla: Leve e eficiente, ideal para carregamento via loadstring.
 
 
 
 ---
 
-🚀 Exemplo de Uso Rápido
+🚀 Instalação e Uso Rápido
+
+Carregue a biblioteca direto do GitHub com a linha abaixo (atualize o link conforme seu uso):
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
--- Cria a janela principal
-local MyMenu = Library:CreateWindow("Meu Script Cheats")
 
--- Aba principal
+---
+
+🛠️ Exemplo Rápido
+
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
+
+local MyMenu = Library:CreateWindow("Meu Script Cheats")
 local MainOptions = MyMenu:CreateTab("Geral", "⭐")
 
--- Label
 MainOptions:AddLabel("Opções Rápidas:")
 
--- Botão
 MainOptions:AddButton("Resetar Personagem", function()
     game.Players.LocalPlayer.Character.Humanoid.Health = 0
     warn("Personagem resetado!")
 end)
 
--- Toggle
 local noClipToggle = MainOptions:AddToggle("NoClip", function(state)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = state and 50 or 16
-    print("NoClip: " .. (state and "ATIVADO" or "DESATIVADO"))
+    print("NoClip está: " .. (state and "ATIVADO" or "DESATIVADO"))
 end)
 
--- Slider
 MainOptions:AddSlider("Jump Power", 10, 200, 50, function(value)
     game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
     print("Jump Power definido para: " .. value)
@@ -90,106 +89,59 @@ print("Menu carregado com sucesso!")
 
 ---
 
-🧰 API Completa
+📚 API (Interface de Programação de Aplicações)
 
-📦 Library:CreateWindow(name: string)
+Library
 
-Cria uma nova janela GUI.
+CreateWindow(name: string)
+Cria e retorna uma janela GUI.
 
-name: Título (opcional). Padrão: "CustomUILib".
+name: título da janela (padrão: "CustomUILib").
 
-Retorna: window (objeto)
-
-
-
----
-
-🗂 Métodos do window
-
-➕ window:CreateTab(tabName: string, icon: string?)
-
-Cria uma aba.
-
-tabName: Nome da aba
-
-icon: (opcional) Emoji ou caractere
-
-Retorna: tab (objeto)
+retorna: objeto window.
 
 
 
----
+window (objeto retornado)
 
-🛠 Métodos do tab
+CreateTab(tabName: string, icon?: string)
+Cria uma aba dentro da janela.
 
-🏷 tab:AddLabel(text: string)
+tabName: nome da aba.
 
-Adiciona um label.
+icon (opcional): emoji ou caractere para ícone.
 
-🔘 tab:AddButton(text: string, callback: function)
-
-Botão clicável.
-
-✅ tab:AddToggle(text: string, callback: function(state: boolean))
-
-Toggle ON/OFF.
-
-Retorna:
-
-Set(value: boolean)
-
-Get()
+retorna: objeto tab.
 
 
 
-📥 tab:AddDropdownButtonOnOff(title: string, items: table, callback: function(states: table))
+tab (objeto retornado)
 
-Dropdown com múltiplas opções ON/OFF.
+AddLabel(text: string) — adiciona texto informativo.
 
-Retorna:
+AddButton(text: string, callback: function) — adiciona botão clicável.
 
-Set(item: string, value: boolean)
+AddToggle(text: string, callback: function(state: boolean)) — botão ON/OFF. Retorna objeto com .Set(value), .Get().
 
-GetAll()
+AddDropdownButtonOnOff(title: string, items: table, callback: function(states: table)) — menu expansível multi-toggle. Retorna objeto com .Set(item, value), .GetAll().
 
+AddSelectDropdown(title: string, items: table, callback: function(selectedItem: string)) — menu expansível single-select. Retorna objeto com .Set(item), .Get().
 
-
-☑ tab:AddSelectDropdown(title: string, items: table, callback: function(selectedItem: string))
-
-Dropdown seleção única.
-
-Retorna:
-
-Set(item: string)
-
-Get()
-
-
-
-🎚 tab:AddSlider(text: string, min, max, default, callback)
-
-Slider numérico.
-
-Retorna:
-
-Set(value: number)
-
-Get()
-
+AddSlider(text: string, min: number, max: number, default: number, callback: function(value: number)) — slider numérico. Retorna objeto com .Set(value), .Get().
 
 
 
 ---
 
-⚙️ Desenvolvimento
+🛠️ Desenvolvimento
 
-Código inteiro em um único arquivo .lua.
+Código contido em um único arquivo .lua.
 
-Layout automático usando UIListLayout.
+Layouts e tamanhos gerenciados via UDim2 e UIListLayout.
 
-Transições com TweenService.
+Usa TweenService para animações suaves.
 
-Drag & resize usando UserInputService.
+UserInputService para funcionalidades de arrastar e redimensionar.
 
 
 
@@ -197,9 +149,11 @@ Drag & resize usando UserInputService.
 
 🤝 Contribuição
 
+Contribuições são bem-vindas!
+
 Abra uma Issue para bugs ou sugestões.
 
-Faça um Pull Request seguindo o estilo do código.
+Crie um Pull Request com melhorias, seguindo o estilo do código.
 
 
 
@@ -207,7 +161,10 @@ Faça um Pull Request seguindo o estilo do código.
 
 📄 Licença
 
-Distribuído sob a Licença MIT.
+Este projeto está licenciado sob a Licença MIT. Consulte o arquivo LICENSE no repositório para detalhes.
+
+
+---
 
 
 ---
