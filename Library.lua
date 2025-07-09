@@ -17,23 +17,28 @@ local function create(class, props)
     return inst
 end
 
--- Função para arrastar frames
+-- Função para arrastar frames (mouse e toque)
 local function makeDraggable(frame, dragHandle)
     local dragging, dragInput, mousePos, framePos
-    dragHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            mousePos = input.Position
-            framePos = frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    dragHandle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+
+    -- Função que inicia o arrasto
+    local function startDrag(input)
+        dragging = true
+        mousePos = input.Position
+        framePos = frame.Position
+
+        local conn
+        conn = input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+                if conn then conn:Disconnect() end
+            end
+        end)
+    end
+
+    -- Função que move o frame
+    local function doDrag(input)
+        if dragging then
             local delta = input.Position - mousePos
             frame.Position = UDim2.new(
                 framePos.X.Scale,
@@ -41,6 +46,22 @@ local function makeDraggable(frame, dragHandle)
                 framePos.Y.Scale,
                 framePos.Y.Offset + delta.Y
             )
+        end
+    end
+
+    -- Mouse (PC)
+    dragHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            startDrag(input)
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            startDrag(input)
+        end
+    end)
+    dragHandle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            doDrag(input)
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            doDrag(input)
         end
     end)
 end
@@ -110,7 +131,7 @@ function GuiMenuLibrary:CreateMenu(options)
         ScreenGui:Destroy()
     end)
 
-    -- Drag
+    -- Drag (mouse e toque)
     makeDraggable(MainFrame, TopBar)
 
     -- Container lateral de abas
