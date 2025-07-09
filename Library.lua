@@ -1,298 +1,323 @@
--- ScriptLibrary.lua
+--[[
+📦 ScriptLibrary v1.0
+GUI em Lua com Tema Escuro, Menu em Abas, Suporte Mobile/Desktop
+Elementos: Toggle, ButtonOnOff, Slider, Dropdown, Dropdown+ButtonOnOff, Label
+Carregamento via: loadstring(game:HttpGet("URL"))()
+
+Desenvolvido para executores como Delta, Synapse, etc.
+Documentação embutida abaixo.
+--]]
+
 local ScriptLibrary = {}
 
--- Tema dark refinado
+--// Serviços
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+--// Tema e estilos
 local theme = {
-    background = Color3.fromRGB(28, 28, 28),
-    header = Color3.fromRGB(35, 35, 35),
-    accent = Color3.fromRGB(50, 50, 50),
-    text = Color3.fromRGB(230, 230, 230),
-    border = Color3.fromRGB(60, 60, 60),
-    highlight = Color3.fromRGB(90, 90, 90)
+    Background = Color3.fromRGB(25, 25, 25),
+    Header = Color3.fromRGB(35, 35, 35),
+    Accent = Color3.fromRGB(70, 130, 180),
+    Text = Color3.fromRGB(220, 220, 220),
+    Border = Color3.fromRGB(50, 50, 50),
+    ButtonOn = Color3.fromRGB(70, 130, 180),
+    ButtonOff = Color3.fromRGB(80, 80, 80),
 }
 
-local UIS = game:GetService("UserInputService")
-local player = game:GetService("Players").LocalPlayer
-
+--// Variáveis internas
 local gui = Instance.new("ScreenGui")
 gui.Name = "ScriptLibrary"
-gui.Parent = player:WaitForChild("PlayerGui")
-gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
 
-local minimized = false
-
--- Função para permitir arrastar (mobile e PC)
-local function MakeDraggable(frame)
-    local dragging, dragStart, startPos
-
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
-                         input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-                                       startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+--// Função utilitária: Criar cantos arredondados quando isolado
+local function addCornerRadius(obj, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = obj
 end
 
--- 🖼 Main Frame
-local frame = Instance.new("Frame")
-frame.Name = "MainFrame"
-frame.Size = UDim2.new(0, 480, 0, 320)
-frame.Position = UDim2.new(0.5, -240, 0.5, -160)
-frame.BackgroundColor3 = theme.background
-frame.BorderColor3 = theme.border
-frame.BorderSizePixel = 1
-frame.Parent = gui
-MakeDraggable(frame)
+--// Função utilitária: Bordas
+local function addBorder(obj)
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1
+    stroke.Color = theme.Border
+    stroke.Parent = obj
+end
 
--- Header
+--// Cabeçalho
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 400, 0, 300)
+frame.Position = UDim2.new(0.5, -200, 0.5, -150)
+frame.BackgroundColor3 = theme.Background
+frame.BorderSizePixel = 0
+addBorder(frame)
+frame.Parent = gui
+
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 32)
-header.BackgroundColor3 = theme.header
+header.Size = UDim2.new(1, 0, 0, 30)
+header.BackgroundColor3 = theme.Header
+addBorder(header)
 header.Parent = frame
 
 local title = Instance.new("TextLabel")
 title.Text = "ScriptLibrary"
-title.TextColor3 = theme.text
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBold
+title.TextColor3 = theme.Text
+title.Font = Enum.Font.SourceSansBold
 title.TextSize = 16
-title.AnchorPoint = Vector2.new(0.5, 0)
-title.Position = UDim2.new(0.5, 0, 0, 0)
-title.Size = UDim2.new(0, 120, 1, 0)
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
 title.Parent = header
 
--- Botões
-local minimizeBtn = Instance.new("TextButton")
-minimizeBtn.Text = "–"
-minimizeBtn.Font = Enum.Font.GothamBold
-minimizeBtn.TextSize = 16
-minimizeBtn.Size = UDim2.new(0, 30, 1, 0)
-minimizeBtn.Position = UDim2.new(1, -60, 0, 0)
-minimizeBtn.BackgroundColor3 = theme.accent
-minimizeBtn.BorderSizePixel = 0
-minimizeBtn.TextColor3 = theme.text
-minimizeBtn.Parent = header
+-- Botões minimizar e fechar
+local minimize = Instance.new("TextButton")
+minimize.Text = "–"
+minimize.TextColor3 = theme.Text
+minimize.Font = Enum.Font.SourceSansBold
+minimize.TextSize = 16
+minimize.Size = UDim2.new(0, 30, 1, 0)
+minimize.Position = UDim2.new(1, -60, 0, 0)
+minimize.BackgroundColor3 = theme.Header
+addBorder(minimize)
+minimize.Parent = header
 
-local closeBtn = minimizeBtn:Clone()
-closeBtn.Text = "×"
-closeBtn.Position = UDim2.new(1, -30, 0, 0)
-closeBtn.Parent = header
+local close = Instance.new("TextButton")
+close.Text = "×"
+close.TextColor3 = theme.Text
+close.Font = Enum.Font.SourceSansBold
+close.TextSize = 16
+close.Size = UDim2.new(0, 30, 1, 0)
+close.Position = UDim2.new(1, -30, 0, 0)
+close.BackgroundColor3 = theme.Header
+addBorder(close)
+close.Parent = header
 
--- Tabs Container
-local tabs = Instance.new("Frame")
-tabs.Position = UDim2.new(0, 0, 0, 32)
-tabs.Size = UDim2.new(1, 0, 0, 28)
-tabs.BackgroundColor3 = theme.accent
-tabs.Parent = frame
+-- Conteúdo das abas
+local tabsFrame = Instance.new("Frame")
+tabsFrame.Size = UDim2.new(1, 0, 1, -30)
+tabsFrame.Position = UDim2.new(0, 0, 0, 30)
+tabsFrame.BackgroundTransparency = 1
+tabsFrame.Parent = frame
 
-local content = Instance.new("Frame")
-content.Position = UDim2.new(0, 0, 0, 60)
-content.Size = UDim2.new(1, 0, 1, -60)
-content.BackgroundTransparency = 1
-content.Parent = frame
+-- Lista de abas
+local tabs = {}
 
--- Layout mais flat e minimalista
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 6)
-uiCorner.Parent = frame
+function ScriptLibrary:CreateTab(name)
+    local tab = Instance.new("ScrollingFrame")
+    tab.Name = name
+    tab.Size = UDim2.new(1, 0, 1, 0)
+    tab.BackgroundTransparency = 1
+    tab.ScrollBarThickness = 6
+    tab.CanvasSize = UDim2.new(0,0,0,0)
+    tab.Parent = tabsFrame
+    tabs[name] = tab
+    return tab
+end
 
 -- Minimizar
-minimizeBtn.MouseButton1Click:Connect(function()
+local minimized = false
+minimize.MouseButton1Click:Connect(function()
     minimized = not minimized
     if minimized then
-        content.Visible = false
-        tabs.Visible = false
-        minimizeBtn.Text = "□"
-        frame.Size = UDim2.new(0, 480, 0, 32)
+        tabsFrame.Visible = false
+        minimize.Text = "□"
+        frame.Size = UDim2.new(0, 400, 0, 30)
     else
-        content.Visible = true
-        tabs.Visible = true
-        minimizeBtn.Text = "–"
-        frame.Size = UDim2.new(0, 480, 0, 320)
+        tabsFrame.Visible = true
+        minimize.Text = "–"
+        frame.Size = UDim2.new(0, 400, 0, 300)
     end
 end)
 
 -- Fechar
-closeBtn.MouseButton1Click:Connect(function()
+close.MouseButton1Click:Connect(function()
     gui:Destroy()
+    ScriptLibrary = nil
 end)
 
--- Função para criar tabs
-function ScriptLibrary:AddTab(name)
-    local tabBtn = Instance.new("TextButton")
-    tabBtn.Text = name
-    tabBtn.Font = Enum.Font.Gotham
-    tabBtn.TextSize = 14
-    tabBtn.TextColor3 = theme.text
-    tabBtn.BackgroundColor3 = theme.accent
-    tabBtn.BorderSizePixel = 0
-    tabBtn.Size = UDim2.new(0, 100, 1, 0)
-    tabBtn.Parent = tabs
+-- Drag mobile/desktop
+local dragging, dragInput, dragStart, startPos
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+header.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or
+       input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        frame.Position = startPos + UDim2.new(0, delta.X, 0, delta.Y)
+    end
+end)
 
-    local tabContent = Instance.new("Frame")
-    tabContent.Size = UDim2.new(1, 0, 1, 0)
-    tabContent.BackgroundTransparency = 1
-    tabContent.Visible = false
-    tabContent.Parent = content
+----------------------------------------------------------------
+-- ELEMENTOS
+----------------------------------------------------------------
 
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 6)
-    listLayout.Parent = tabContent
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+-- Toggle
+function ScriptLibrary:CreateToggle(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Text = text
+    btn.TextColor3 = theme.Text
+    btn.BackgroundColor3 = theme.ButtonOff
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 14
+    addBorder(btn)
+    btn.Parent = parent
 
-    tabBtn.MouseButton1Click:Connect(function()
-        for _, c in pairs(content:GetChildren()) do
-            if c:IsA("Frame") then c.Visible = false end
-        end
-        tabContent.Visible = true
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.BackgroundColor3 = state and theme.ButtonOn or theme.ButtonOff
+        if callback then callback(state) end
     end)
+end
 
-    -- API da aba
-    local api = {}
+-- ButtonOnOff (sem manter estado)
+function ScriptLibrary:CreateButtonOnOff(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Text = text
+    btn.TextColor3 = theme.Text
+    btn.BackgroundColor3 = theme.ButtonOff
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 14
+    addBorder(btn)
+    btn.Parent = parent
 
-    function api:CreateLabel(txt)
-        local lbl = Instance.new("TextLabel")
-        lbl.Text = txt
-        lbl.TextColor3 = theme.text
-        lbl.Font = Enum.Font.Gotham
-        lbl.TextSize = 14
-        lbl.BackgroundColor3 = theme.background
-        lbl.BorderColor3 = theme.border
-        lbl.Size = UDim2.new(1, -12, 0, 24)
-        lbl.Parent = tabContent
-        return lbl
-    end
+    btn.MouseButton1Click:Connect(function()
+        callback()
+    end)
+end
 
-    function api:CreateToggle(txt, cb)
-        local btn = Instance.new("TextButton")
-        btn.Text = txt.." [OFF]"
-        btn.Font = Enum.Font.Gotham
-        btn.TextSize = 14
-        btn.TextColor3 = theme.text
-        btn.BackgroundColor3 = theme.background
-        btn.BorderColor3 = theme.border
-        btn.Size = UDim2.new(1, -12, 0, 24)
-        btn.Parent = tabContent
+-- Slider
+function ScriptLibrary:CreateSlider(parent, text, min, max, callback)
+    local label = Instance.new("TextLabel")
+    label.Text = text..": "..tostring(min)
+    label.TextColor3 = theme.Text
+    label.Font = Enum.Font.SourceSans
+    label.TextSize = 14
+    label.Size = UDim2.new(1, -10, 0, 20)
+    label.Position = UDim2.new(0, 5, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Parent = parent
 
-        local state = false
-        btn.MouseButton1Click:Connect(function()
-            state = not state
-            btn.Text = txt..(state and " [ON]" or " [OFF]")
-            if cb then cb(state) end
-        end)
-        return btn
-    end
+    local slider = Instance.new("Frame")
+    slider.Size = UDim2.new(1, -10, 0, 8)
+    slider.Position = UDim2.new(0, 5, 0, 25)
+    slider.BackgroundColor3 = theme.ButtonOff
+    addBorder(slider)
+    slider.Parent = parent
 
-    function api:CreateButtonOnOff(txt, cb)
-        return api:CreateToggle(txt, cb)
-    end
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new(0,0,1,0)
+    fill.BackgroundColor3 = theme.ButtonOn
+    fill.Parent = slider
 
-    function api:CreateSlider(txt, min, max, cb)
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, -12, 0, 24)
-        frame.BackgroundColor3 = theme.background
-        frame.BorderColor3 = theme.border
-        frame.Parent = tabContent
-
-        local lbl = Instance.new("TextLabel")
-        lbl.Text = txt..": "..min
-        lbl.Font = Enum.Font.Gotham
-        lbl.TextSize = 14
-        lbl.TextColor3 = theme.text
-        lbl.BackgroundTransparency = 1
-        lbl.Size = UDim2.new(1, 0, 1, 0)
-        lbl.Parent = frame
-
-        local value = min
-        frame.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or
-               input.UserInputType == Enum.UserInputType.Touch then
-                local con
-                con = UIS.InputChanged:Connect(function(inp)
-                    if inp.UserInputType == Enum.UserInputType.MouseMovement or
-                       inp.UserInputType == Enum.UserInputType.Touch then
-                        local rel = inp.Position.X - frame.AbsolutePosition.X
-                        local pct = math.clamp(rel / frame.AbsoluteSize.X, 0, 1)
-                        value = math.floor(min + (max - min) * pct)
-                        lbl.Text = txt..": "..value
-                        if cb then cb(value) end
-                    end
-                end)
-                input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        con:Disconnect()
-                    end
-                end)
-            end
-        end)
-        return frame
-    end
-
-    function api:CreateDropdown(txt, items, cb)
-        local mainBtn = Instance.new("TextButton")
-        mainBtn.Text = txt.." ▼"
-        mainBtn.Font = Enum.Font.Gotham
-        mainBtn.TextSize = 14
-        mainBtn.TextColor3 = theme.text
-        mainBtn.BackgroundColor3 = theme.background
-        mainBtn.BorderColor3 = theme.border
-        mainBtn.Size = UDim2.new(1, -12, 0, 24)
-        mainBtn.Parent = tabContent
-
-        local open = false
-        local opts = {}
-
-        mainBtn.MouseButton1Click:Connect(function()
-            open = not open
-            mainBtn.Text = txt..(open and " ▲" or " ▼")
-            for _, o in ipairs(opts) do o.Visible = open end
-        end)
-
-        for _, item in ipairs(items) do
-            local opt = Instance.new("TextButton")
-            opt.Text = item
-            opt.Font = Enum.Font.Gotham
-            opt.TextSize = 14
-            opt.TextColor3 = theme.text
-            opt.BackgroundColor3 = theme.background
-            opt.BorderColor3 = theme.border
-            opt.Size = UDim2.new(1, -24, 0, 22)
-            opt.Visible = false
-            opt.Parent = tabContent
-            table.insert(opts, opt)
-
-            opt.MouseButton1Click:Connect(function()
-                if cb then cb(item) end
-                open = false
-                mainBtn.Text = txt.." ▼"
-                for _, o in ipairs(opts) do o.Visible = false end
-            end)
+    local dragging = false
+    slider.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
         end
-        return mainBtn
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging then
+            local pos = input.Position.X - slider.AbsolutePosition.X
+            local ratio = math.clamp(pos / slider.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(ratio, 0, 1, 0)
+            local value = math.floor(min + (max - min) * ratio)
+            label.Text = text..": "..tostring(value)
+            if callback then callback(value) end
+        end
+    end)
+end
+
+-- Dropdown simples
+function ScriptLibrary:CreateDropdown(parent, text, options, callback)
+    local btn = Instance.new("TextButton")
+    btn.Text = text.." ▼"
+    btn.TextColor3 = theme.Text
+    btn.BackgroundColor3 = theme.ButtonOff
+    btn.Size = UDim2.new(1, -10, 0, 30)
+    btn.Position = UDim2.new(0, 5, 0, 0)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 14
+    addBorder(btn)
+    btn.Parent = parent
+
+    local list = Instance.new("Frame")
+    list.Size = UDim2.new(1, -10, 0, #options*25)
+    list.Position = UDim2.new(0, 5, 0, 30)
+    list.BackgroundColor3 = theme.Background
+    addBorder(list)
+    list.Visible = false
+    list.Parent = parent
+
+    for _,opt in ipairs(options) do
+        local optBtn = Instance.new("TextButton")
+        optBtn.Text = opt
+        optBtn.TextColor3 = theme.Text
+        optBtn.BackgroundColor3 = theme.ButtonOff
+        optBtn.Size = UDim2.new(1, 0, 0, 25)
+        optBtn.Font = Enum.Font.SourceSans
+        optBtn.TextSize = 14
+        addBorder(optBtn)
+        optBtn.Parent = list
+        optBtn.MouseButton1Click:Connect(function()
+            btn.Text = text.." ▼ "..opt
+            list.Visible = false
+            if callback then callback(opt) end
+        end)
     end
 
-    function api:CreateDropdownButtonOnOff(txt, items, cb)
-        return api:CreateDropdown(txt, items, cb)
-    end
+    btn.MouseButton1Click:Connect(function()
+        list.Visible = not list.Visible
+    end)
+end
 
-    return api
+-- Dropdown com botão extra
+function ScriptLibrary:CreateDropdownWithButton(parent, text, options, buttonText, buttonCallback)
+    self:CreateDropdown(parent, text, options, nil)
+    self:CreateButtonOnOff(parent, buttonText, buttonCallback)
+end
+
+-- Label
+function ScriptLibrary:CreateLabel(parent, text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = text
+    lbl.TextColor3 = theme.Text
+    lbl.BackgroundTransparency = 1
+    lbl.Size = UDim2.new(1, -10, 0, 20)
+    lbl.Position = UDim2.new(0, 5, 0, 0)
+    lbl.Font = Enum.Font.SourceSans
+    lbl.TextSize = 14
+    lbl.Parent = parent
 end
 
 return ScriptLibrary
