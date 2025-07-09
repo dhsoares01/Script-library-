@@ -1,0 +1,113 @@
+ESP = {}
+
+-- Estados de ativação
+ESP.Enabled = {
+    Box3D = true,
+    Path = true,
+    Outline2D = true
+}
+
+-- Lista de objetos monitorados
+ESP.Objects = {}
+
+-- Função para adicionar um objeto
+function ESP:AddObject(name, object)
+    self.Objects[name] = {
+        Object = object,
+        Connections = {}
+    }
+    self:SetupESP(name)
+end
+
+-- Função para remover um objeto
+function ESP:RemoveObject(name)
+    local data = self.Objects[name]
+    if data then
+        for _, conn in ipairs(data.Connections) do
+            conn:Disconnect()
+        end
+        self.Objects[name] = nil
+    end
+end
+
+-- Ativar/desativar Box3D
+function ESP:ToggleBox3D(state)
+    self.Enabled.Box3D = state
+end
+
+-- Ativar/desativar Path
+function ESP:TogglePath(state)
+    self.Enabled.Path = state
+end
+
+-- Ativar/desativar Outline2D
+function ESP:ToggleOutline2D(state)
+    self.Enabled.Outline2D = state
+end
+
+-- Configura as funcionalidades para um objeto
+function ESP:SetupESP(name)
+    local data = self.Objects[name]
+    local obj = data.Object
+
+    -- Box3D
+    if self.Enabled.Box3D then
+        local adorn = Instance.new("BoxHandleAdornment")
+        adorn.Adornee = obj
+        adorn.AlwaysOnTop = true
+        adorn.ZIndex = 10
+        adorn.Size = obj.Size
+        adorn.Color3 = Color3.new(1, 0, 0)
+        adorn.Transparency = 0.7
+        adorn.Parent = game.CoreGui
+        table.insert(data.Connections, adorn)
+    end
+
+    -- Path (linha até o jogador)
+    if self.Enabled.Path then
+        local runService = game:GetService("RunService")
+        local player = game.Players.LocalPlayer
+        local pathLine = Drawing.new("Line")
+        pathLine.Color = Color3.new(0, 1, 0)
+        pathLine.Thickness = 2
+
+        local conn = runService.RenderStepped:Connect(function()
+            if obj and obj.Position then
+                local objPos, objVisible = workspace.CurrentCamera:WorldToViewportPoint(obj.Position)
+                local playerPos = workspace.CurrentCamera.ViewportSize / 2
+                pathLine.From = playerPos
+                pathLine.To = Vector2.new(objPos.X, objPos.Y)
+                pathLine.Visible = objVisible
+            end
+        end)
+        table.insert(data.Connections, conn)
+        table.insert(data.Connections, pathLine)
+    end
+
+    -- Contorno 2D (Outline)
+    if self.Enabled.Outline2D then
+        local runService = game:GetService("RunService")
+        local outline = Drawing.new("Square")
+        outline.Color = Color3.new(1, 1, 0)
+        outline.Thickness = 1
+        outline.Filled = false
+
+        local conn = runService.RenderStepped:Connect(function()
+            if obj and obj.Position then
+                local pos, visible = workspace.CurrentCamera:WorldToViewportPoint(obj.Position)
+                if visible then
+                    local size = obj.Size
+                    outline.Size = Vector2.new(size.X * 10, size.Y * 10)
+                    outline.Position = Vector2.new(pos.X - outline.Size.X/2, pos.Y - outline.Size.Y/2)
+                    outline.Visible = true
+                else
+                    outline.Visible = false
+                end
+            end
+        end)
+        table.insert(data.Connections, conn)
+        table.insert(data.Connections, outline)
+    end
+end
+
+return ESP
