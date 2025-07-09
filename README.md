@@ -28,14 +28,13 @@ Biblioteca de interface gráfica (GUI) em **Lua**, projetada para executores de 
 ---
 
 ## 🚀 Instalação e Uso Rápido
+---
+
+🛠️ Exemplo Rápido
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
-
----
-
-🛠️ Exemplo Rápido
 
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
