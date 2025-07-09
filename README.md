@@ -61,7 +61,7 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoa
 ---
 
 🛠️ Exemplo Rápido
-
+```
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
 local MyMenu = Library:CreateWindow("Meu Script Cheats")
@@ -86,7 +86,7 @@ end)
 
 print("Menu carregado com sucesso!")
 
-
+```
 ---
 
 📚 API (Interface de Programação de Aplicações)
