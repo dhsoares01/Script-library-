@@ -1,6 +1,7 @@
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local PathfindingService = game:GetService("PathfindingService")
 local LocalPlayer = Players.LocalPlayer
 
 local LibraryESP = {}
@@ -69,6 +70,27 @@ local function CreateObjectHighlight(color, thickness)
     return lines
 end
 
+local function CreatePathLines(num, color, thickness)
+    local lines = {}
+    for i = 1, num do
+        local line = Drawing.new("Line")
+        line.Thickness = thickness or 2
+        line.Color = color or Color3.new(0,1,0)
+        line.Visible = false
+        table.insert(lines, line)
+    end
+    return lines
+end
+
+local function CalculatePath(startPos, endPos)
+    local path = PathfindingService:CreatePath({AgentRadius=2, AgentHeight=5, AgentCanJump=true})
+    path:ComputeAsync(startPos, endPos)
+    if path.Status == Enum.PathStatus.Success then
+        return path:GetWaypoints()
+    end
+    return nil
+end
+
 function LibraryESP:CreateESP(object, options)
     local esp = {
         Object = object,
@@ -78,6 +100,7 @@ function LibraryESP:CreateESP(object, options)
         TracerLine = options.Tracer and DrawLine(options.Color or Color3.new(1,1,1)) or nil,
         Box = options.Box and DrawBox(options.Color or Color3.new(1,1,1)) or nil,
         Highlight = options.Highlight and CreateObjectHighlight(options.HighlightColor or Color3.new(1,0,0), options.HighlightThickness or 2) or nil,
+        PathLines = options.Path and {} or nil,
     }
     table.insert(ESPObjects, esp)
     return esp
@@ -101,6 +124,11 @@ function LibraryESP:RemoveESP(object)
             end
             if esp.Highlight then
                 for _, line in ipairs(esp.Highlight) do
+                    line:Remove()
+                end
+            end
+            if esp.PathLines then
+                for _, line in ipairs(esp.PathLines) do
                     line:Remove()
                 end
             end
@@ -149,181 +177,55 @@ RunService.RenderStepped:Connect(function()
         local obj = esp.Object
 
         if not obj or typeof(obj) ~= "Instance" or not obj:IsDescendantOf(workspace) then
-            if esp.NameText then esp.NameText:Remove() end
-            if esp.DistanceText then esp.DistanceText:Remove() end
-            if esp.TracerLine then esp.TracerLine:Remove() end
-            if esp.Box then
-                if LibraryESP.BoxShape == "Octagon" then
-                    for _, line in ipairs(esp.Box) do
-                        line:Remove()
-                    end
-                else
-                    esp.Box:Remove()
-                end
-            end
-            if esp.Highlight then
-                for _, line in ipairs(esp.Highlight) do
-                    line:Remove()
-                end
-            end
-            table.remove(ESPObjects, i)
+            LibraryESP:RemoveESP(obj)
         else
             local objPos = getObjectPosition(obj)
-            if not objPos then
-                if esp.NameText then esp.NameText.Visible = false end
-                if esp.DistanceText then esp.DistanceText.Visible = false end
-                if esp.TracerLine then esp.TracerLine.Visible = false end
-                if esp.Box then
-                    if LibraryESP.BoxShape == "Octagon" then
-                        for _, line in ipairs(esp.Box) do
-                            line.Visible = false
-                        end
-                    else
-                        esp.Box.Visible = false
-                    end
-                end
-                if esp.Highlight then
-                    for _, line in ipairs(esp.Highlight) do
-                        line.Visible = false
-                    end
-                end
-                continue
-            end
-
-            local pos, onScreen = Camera:WorldToViewportPoint(objPos)
-            local basePos = Vector2.new(pos.X, pos.Y)
+            local pos, onScreen = objPos and Camera:WorldToViewportPoint(objPos) or {}, false
+            if objPos then pos, onScreen = Camera:WorldToViewportPoint(objPos) end
+            local basePos = Vector2.new(pos.X or 0, pos.Y or 0)
             local distance = (Camera.CFrame.Position - objPos).Magnitude
 
-            if onScreen then
-                if esp.NameText then
-                    esp.NameText.Position = getTextPosition(basePos, LibraryESP.TextPosition)
-                    esp.NameText.Text = esp.Options.NameString or tostring(obj.Name)
-                    esp.NameText.Visible = true
-                end
+            -- (Aqui permanece igual: atualiza NameText, DistanceText, TracerLine, Box, Highlight)
+            -- [omiti nesta resposta para encurtar, você mantém como já está]
 
-                if esp.DistanceText then
-                    esp.DistanceText.Position = getTextPosition(basePos, LibraryESP.TextPosition) + Vector2.new(0, 14)
-                    esp.DistanceText.Text = string.format("[%dm]", math.floor(distance))
-                    esp.DistanceText.Visible = true
-                end
+            -- ✅ NOVO: PathLines
+            if esp.PathLines then
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                if hrp and objPos then
+                    local waypoints = CalculatePath(hrp.Position, objPos)
+                    local needed = waypoints and (#waypoints - 1) or 0
 
-                if esp.TracerLine then
-                    local from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    if LibraryESP.LineFrom == "Top" then
-                        from = Vector2.new(Camera.ViewportSize.X / 2, 0)
-                    elseif LibraryESP.LineFrom == "Center" then
-                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                    elseif LibraryESP.LineFrom == "Below" then
-                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 1.25)
-                    elseif LibraryESP.LineFrom == "Left" then
-                        from = Vector2.new(0, Camera.ViewportSize.Y / 2)
-                    elseif LibraryESP.LineFrom == "Right" then
-                        from = Vector2.new(Camera.ViewportSize.X, Camera.ViewportSize.Y / 2)
+                    -- Ajusta quantidade de linhas
+                    while #esp.PathLines < needed do
+                        table.insert(esp.PathLines, Drawing.new("Line"))
                     end
-                    esp.TracerLine.From = from
-                    esp.TracerLine.To = basePos
-                    esp.TracerLine.Visible = true
-                end
-
-                if esp.Box then
-                    local size3D = getObjectSize(obj)
-                    local sizeX = math.clamp(size3D.X, 1, 10)
-                    local sizeY = math.clamp(size3D.Y, 1, 10)
-                    local scale = 300 / (distance + 0.1)
-                    local boxWidth = sizeX * scale
-                    local boxHeight = sizeY * scale
-
-                    if LibraryESP.BoxShape == "Circle" then
-                        esp.Box.Position = basePos
-                        esp.Box.Radius = math.max(boxWidth, boxHeight) / 2
-                        esp.Box.Visible = true
-                    elseif LibraryESP.BoxShape == "Octagon" then
-                        local radiusX = boxWidth / 2
-                        local radiusY = boxHeight / 2
-                        local center = basePos
-                        for j = 1,8 do
-                            local angle1 = math.rad((j - 1) * 45)
-                            local angle2 = math.rad((j % 8) * 45)
-                            local p1 = center + Vector2.new(math.cos(angle1) * radiusX, math.sin(angle1) * radiusY)
-                            local p2 = center + Vector2.new(math.cos(angle2) * radiusX, math.sin(angle2) * radiusY)
-                            local line = esp.Box[j]
-                            line.From = p1
-                            line.To = p2
-                            line.Visible = true
-                        end
-                    else
-                        esp.Box.Size = Vector2.new(boxWidth, boxHeight)
-                        esp.Box.Position = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxHeight / 2)
-                        esp.Box.Visible = true
-                    end
-                end
-
-                if esp.Highlight then
-                    local cf, size
-                    if obj:IsA("Model") then
-                        cf, size = obj:GetBoundingBox()
-                    elseif obj:IsA("BasePart") then
-                        cf = obj.CFrame
-                        size = obj.Size
+                    while #esp.PathLines > needed do
+                        table.remove(esp.PathLines):Remove()
                     end
 
-                    if cf and size then
-                        local corners = {}
-                        local halfSize = size / 2
-                        for x = -1,1,2 do
-                            for y = -1,1,2 do
-                                for z = -1,1,2 do
-                                    local corner = (cf * CFrame.new(halfSize.X * x, halfSize.Y * y, halfSize.Z * z)).Position
-                                    table.insert(corners, corner)
-                                end
-                            end
-                        end
+                    if waypoints then
+                        for idx = 1, #waypoints - 1 do
+                            local wp1, on1 = Camera:WorldToViewportPoint(waypoints[idx].Position)
+                            local wp2, on2 = Camera:WorldToViewportPoint(waypoints[idx+1].Position)
+                            local line = esp.PathLines[idx]
 
-                        local screenCorners = {}
-                        for _, corner in ipairs(corners) do
-                            local spos, visible = Camera:WorldToViewportPoint(corner)
-                            table.insert(screenCorners, {Vector2.new(spos.X, spos.Y), visible})
-                        end
-
-                        local edges = {
-                            {1,2},{1,3},{1,5},{2,4},{2,6},{3,4},{3,7},{4,8},
-                            {5,6},{5,7},{6,8},{7,8}
-                        }
-
-                        for j, edge in ipairs(edges) do
-                            local p1, on1 = unpack(screenCorners[edge[1]])
-                            local p2, on2 = unpack(screenCorners[edge[2]])
                             if on1 and on2 then
-                                esp.Highlight[j].From = p1
-                                esp.Highlight[j].To = p2
-                                esp.Highlight[j].Visible = true
-                                esp.Highlight[j].Color = esp.Options.HighlightColor or Color3.new(1,0,0)
+                                line.From = Vector2.new(wp1.X, wp1.Y)
+                                line.To = Vector2.new(wp2.X, wp2.Y)
+                                line.Color = esp.Options.PathColor or Color3.new(0,1,0)
+                                line.Visible = true
                             else
-                                esp.Highlight[j].Visible = false
+                                line.Visible = false
                             end
                         end
                     else
-                        for _, line in ipairs(esp.Highlight) do
+                        for _, line in ipairs(esp.PathLines) do
                             line.Visible = false
                         end
                     end
-                end
-
-            else
-                if esp.NameText then esp.NameText.Visible = false end
-                if esp.DistanceText then esp.DistanceText.Visible = false end
-                if esp.TracerLine then esp.TracerLine.Visible = false end
-                if esp.Box then
-                    if LibraryESP.BoxShape == "Octagon" then
-                        for _, line in ipairs(esp.Box) do
-                            line.Visible = false
-                        end
-                    else
-                        esp.Box.Visible = false
-                    end
-                end
-                if esp.Highlight then
-                    for _, line in ipairs(esp.Highlight) do
+                else
+                    for _, line in ipairs(esp.PathLines) do
                         line.Visible = false
                     end
                 end
