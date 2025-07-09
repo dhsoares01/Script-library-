@@ -1,125 +1,132 @@
-
-# 📚 Script GUI Menu Library
-
-![Prévia da Biblioteca](https://via.placeholder.com/1000x500/2d3748/ffffff?text=Adicione+aqui+uma+imagem+atraente+da+sua+GUI!)
+# 🎛️ Script GUI Menu Library
 
 ---
 
-Uma **poderosa e moderna biblioteca GUI em Lua**, desenvolvida especificamente para executores de scripts Roblox como Delta, Fluxus e outros. Com ela, você pode criar menus interativos com facilidade, profissionalismo e um design impecável.
+## 📖 Sobre a Biblioteca
+
+Biblioteca de interface gráfica (GUI) em **Lua**, projetada para executores de scripts Roblox como **Delta**, **Fluxus** e outros. Facilita a criação de menus interativos, modernos e responsivos, para que você foque na lógica do seu script enquanto a biblioteca gerencia a interface.
 
 ---
 
-## ✨ Recursos Em Destaque
+## ✨ Funcionalidades Principais
 
-Nossa biblioteca foi pensada para oferecer a melhor experiência, tanto para desenvolvedores quanto para usuários finais.
-
-### 🎨 Design Intuitivo e Moderno
-- **Tema Escuro Sofisticado:** Confortável para os olhos e com um visual profissional.
-- **Cantos Arredondados e Interface Limpa:** Detalhes que fazem a diferença na estética.
-- **Totalmente Responsiva:** Adapta-se perfeitamente a diferentes resoluções e tamanhos de tela.
-
-### 🖱️ Interatividade Avançada
-- **Arrastar e Mover:** Liberdade total para posicionar as janelas onde desejar.
-- **Redimensionamento Dinâmico:** Ajuste o tamanho das janelas em tempo real.
-- **Minimizar/Restaurar:** Organize seu espaço de trabalho facilmente.
-- **Animações Suaves:** Transições fluidas que enriquecem a experiência do usuário.
-
-### 🧩 Componentes Ricos e Versáteis
-Construa interfaces complexas com uma variedade de componentes pré-fabricados:
-
-| Componente           | Descrição                                                              | Exemplo de Uso                                           |
-|----------------------|------------------------------------------------------------------------|----------------------------------------------------------|
-| **Label** | Exibe texto informativo simples.                                       | `MainTab:AddLabel("Informações do Jogo")`              |
-| **Button** | Botões clicáveis que executam ações personalizadas.                    | `MainTab:AddButton("Comprar Item")`                      |
-| **Toggle** | Interruptor ON/OFF para alternar estados.                              | `MainTab:AddToggle("Modo Deus")`                         |
-| **DropdownButtonOnOff**| Menu expansível com múltiplas opções de ligar/desligar.              | `MainTab:AddDropdownButtonOnOff("Habilidades", {...})`  |
-| **SelectDropdown** | Lista expansível para seleção única de itens.                          | `MainTab:AddSelectDropdown("Classes", {...})`           |
-| **Slider** | Controle deslizante para ajustar valores numéricos dentro de um intervalo. | `MainTab:AddSlider("Volume", 0, 100, 50)`               |
+- **Design Sofisticado:** Tema escuro com cantos arredondados para uma experiência profissional e agradável.
+- **Interatividade Completa:**
+  - **Arrastar:** Mova a janela pela tela facilmente.
+  - **Redimensionar:** Ajuste o tamanho da janela pelo canto inferior direito.
+  - **Minimizar/Restaurar:** Controle a visibilidade da janela com um clique.
+- **Organização Lógica:** Sistema de abas para categorizar opções.
+- **Controles Abrangentes:**
+  - `Label`: Texto informativo.
+  - `Button`: Executa funções customizadas.
+  - `Toggle`: Ativa/desativa recursos (ON/OFF).
+  - `DropdownButtonOnOff`: Menu expansível com múltiplas opções independentes.
+  - `SelectDropdown`: Seleção única em lista expansível.
+  - `Slider`: Ajusta valores numéricos com feedback instantâneo.
+- **Compatibilidade Ampla:** Leve e eficiente, ideal para carregamento via `loadstring`.
 
 ---
 
-## 🚀 Como Começar (Instalação e Uso)
-
-### 📥 Instalação Rápida
-
-Para começar a usar a `Script GUI Menu Library`, basta carregar o script diretamente no seu executor:
+## 🚀 Instalação e Uso Rápido
 
 ```lua
-local Library = loadstring(game:HttpGet("[https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua](https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua)"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
-🧑‍💻 Exemplo de Uso Básico
-Veja como é simples criar e personalizar seu primeiro menu interativo:
-local Library = loadstring(game:HttpGet("[https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua](https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua)"))()
 
--- Criação da Janela Principal
-local MyMenu = Library:CreateWindow("Meu Menu Personalizado")
+---
 
--- Criação de uma Aba na Janela
-local MainTab = MyMenu:CreateTab("Principal", "⭐") -- O segundo argumento é opcional e adiciona um ícone à aba
+🛠️ Exemplo Rápido
 
--- Adicionando Componentes à Aba:
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
--- Adiciona um rótulo informativo
-MainTab:AddLabel("Configurações Gerais:")
+local MyMenu = Library:CreateWindow("Meu Script Cheats")
+local MainOptions = MyMenu:CreateTab("Geral", "⭐")
 
--- Adiciona um botão que reseta o personagem ao ser clicado
-MainTab:AddButton("Resetar Personagem", function()
+MainOptions:AddLabel("Opções Rápidas:")
+
+MainOptions:AddButton("Resetar Personagem", function()
     game.Players.LocalPlayer.Character.Humanoid.Health = 0
-    print("Personagem resetado!")
+    warn("Personagem resetado!")
 end)
 
--- Adiciona um interruptor (toggle) para o modo voo
-local toggleVoo = MainTab:AddToggle("Voar", function(state)
-    print("Modo voo:", state and "ATIVADO" or "DESATIVADO")
-    -- Lógica para ativar/desativar o voo
+local noClipToggle = MainOptions:AddToggle("NoClip", function(state)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = state and 50 or 16
+    print("NoClip está: " .. (state and "ATIVADO" or "DESATIVADO"))
 end)
 
--- Adiciona um slider para controlar a velocidade do personagem
-MainTab:AddSlider("Velocidade", 10, 200, 50, function(value)
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
-    print("Velocidade definida para:", value)
+MainOptions:AddSlider("Jump Power", 10, 200, 50, function(value)
+    game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
+    print("Jump Power definido para: " .. value)
 end)
 
-📚 Documentação da API (Referência Rápida)
-Explore as principais funções e métodos disponíveis na biblioteca para construir suas interfaces.
-Library - O Objeto Principal
-| Método | Parâmetros | Descrição |
-|---|---|---|
-| CreateWindow | name (string) | Cria uma nova janela GUI. Retorna um objeto Window. |
-Window - Manipulando Janelas
-| Método | Parâmetros | Descrição |
-|---|---|---|
-| CreateTab | name (string), icon (string, opcional) | Adiciona uma nova aba à janela. Retorna um objeto Tab. |
-Tab - Adicionando Componentes às Abas
-| Método | Parâmetros | Retorno |
-|---|---|---|
-| AddLabel | text (string) | nil |
-| AddButton | text (string), callback (function) | nil |
-| AddToggle | text (string), callback (function state -> boolean) | Toggle object |
-| AddDropdownButtonOnOff | title (string), items (table), callback (function item_name, state -> boolean) | Dropdown object |
-| AddSelectDropdown | title (string), items (table), callback (function selected_item_name -> string) | Dropdown object |
-| AddSlider | text (string), min (number), max (number), default (number), callback (function value -> number) | Slider object |
-🛠️ Detalhes Técnicos
- * Arquitetura: Biblioteca de arquivo único para fácil integração.
- * Dependências: Utiliza apenas serviços nativos do Roblox (sem dependências externas complexas).
- * Performance: Otimizada para carregamento rápido e fluidez.
- * Animações: Impulsionada por TweenService para transições suaves e responsivas.
+print("Menu carregado com sucesso!")
+
+
+---
+
+📚 API (Interface de Programação de Aplicações)
+
+Library
+
+Método	Parâmetros	Descrição	Retorno
+
+CreateWindow(name)	name: string	Cria e retorna uma janela GUI.	objeto window
+
+
+Window (objeto retornado)
+
+Método	Parâmetros	Descrição	Retorno
+
+CreateTab(tabName, icon?)	tabName: string, icon?: string	Cria uma aba dentro da janela.	objeto tab
+
+
+Tab (objeto retornado)
+
+Método	Parâmetros	Descrição	Retorno
+
+AddLabel(text)	text: string	Adiciona texto informativo.	—
+AddButton(text, callback)	text: string, callback: function	Adiciona botão clicável.	—
+AddToggle(text, callback)	text: string, callback: function(state: boolean)	Botão ON/OFF. Retorna objeto com .Set(), .Get().	objeto toggle
+AddDropdownButtonOnOff(title, items, callback)	title: string, items: table, callback: function(states: table)	Menu expansível multi-toggle. Retorna objeto com .Set(), .GetAll().	objeto dropdown multi-toggle
+AddSelectDropdown(title, items, callback)	title: string, items: table, callback: function(selectedItem: string)	Menu expansível single-select. Retorna objeto com .Set(), .Get().	objeto dropdown single-select
+AddSlider(text, min, max, default, callback)	text: string, min: number, max: number, default: number, callback: function(value: number)	Slider numérico. Retorna objeto com .Set(), .Get().	objeto slider
+
+
+
+---
+
+🛠️ Desenvolvimento
+
+Código contido em um único arquivo .lua.
+
+Layouts e tamanhos gerenciados via UDim2 e UIListLayout.
+
+Usa TweenService para animações suaves.
+
+Usa UserInputService para funcionalidades de arrastar e redimensionar.
+
+
+
+---
+
 🤝 Contribuição
-Sua ajuda é muito bem-vinda para tornar esta biblioteca ainda melhor! Se você tem ideias, encontrou um bug ou quer adicionar novos recursos, siga estes passos:
- * Fork este repositório.
- * Crie um novo branch para sua funcionalidade ou correção:
-   git checkout -b feature/minha-nova-funcionalidade
-   (ou fix/correcao-de-bug)
- * Faça suas alterações e commit-as:
-   git commit -m 'feat: Adiciona nova funcionalidade X'
-   (use prefixos como feat:, fix:, docs:, etc.)
- * Faça o push do seu branch para o seu fork:
-   git push origin feature/minha-nova-funcionalidade
- * Abra um Pull Request para este repositório, descrevendo suas mudanças.
+
+Contribuições são bem-vindas!
+
+Abra uma Issue para bugs ou sugestões.
+
+Crie um Pull Request com melhorias, seguindo o estilo do código.
+
+
+
+---
+
 📄 Licença
-Este projeto é distribuído sob a licença MIT. Para mais detalhes, consulte o arquivo LICENSE.
-<div align="center">
-<p>Feito com ❤️ por <a href="https://github.com/dhsoares01">dhsoares01</a></p>
-<img src="https://img.shields.io/github/stars/dhsoares01/Script-library-?style=social" alt="GitHub stars">
-</div>
+
+Este projeto está licenciado sob a Licença MIT. Consulte o arquivo LICENSE no repositório para detalhes.
+
+
+---
+
+Se quiser, posso também criar um README com badges, links para o repositório, imagens/screenshots, ou gerar um sumário automático — é só pedir! Quer adicionar algo do tipo?
 
