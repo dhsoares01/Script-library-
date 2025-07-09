@@ -18,50 +18,75 @@ local function create(class, props)
 end
 
 -- Função para arrastar frames (mouse e toque)
-local function makeDraggable(frame, dragHandle)
-    local dragging, dragInput, mousePos, framePos
+local function makeDraggable(frame, dragAreas)
+    local UserInputService = game:GetService("UserInputService")
+    local dragging = false
+    local dragInput, dragStart, startPos
+    local function inputInDragArea(input)
+        for _, area in ipairs(dragAreas) do
+            if area and area.Visible ~= false then
+                local absPos = area.AbsolutePosition
+                local absSize = area.AbsoluteSize
+                if input.Position.X >= absPos.X and input.Position.X <= absPos.X + absSize.X
+                and input.Position.Y >= absPos.Y and input.Position.Y <= absPos.Y + absSize.Y then
+                    return true
+                end
+            end
+        end
+        return false
+    end
 
-    -- Função que inicia o arrasto
-    local function startDrag(input)
+    local function canDrag(input)
+        -- Não permitir drag se for botão de fechar ou minimizar
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            return inputInDragArea(input)
+        end
+        return false
+    end
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+
+    local function begin(input)
+        if not canDrag(input) then return end
         dragging = true
-        mousePos = input.Position
-        framePos = frame.Position
+        dragStart = input.Position
+        startPos = frame.Position
 
-        local conn
-        conn = input.Changed:Connect(function()
+        local connection
+        connection = input.Changed:Connect(function()
             if input.UserInputState == Enum.UserInputState.End then
                 dragging = false
-                if conn then conn:Disconnect() end
+                if connection then connection:Disconnect() end
             end
         end)
     end
 
-    -- Função que move o frame
-    local function doDrag(input)
-        if dragging then
-            local delta = input.Position - mousePos
-            frame.Position = UDim2.new(
-                framePos.X.Scale,
-                framePos.X.Offset + delta.X,
-                framePos.Y.Scale,
-                framePos.Y.Offset + delta.Y
-            )
-        end
-    end
-
-    -- Mouse (PC)
-    dragHandle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            startDrag(input)
-        elseif input.UserInputType == Enum.UserInputType.Touch then
-            startDrag(input)
+    -- Mouse e toque
+    frame.InputBegan:Connect(function(input)
+        if canDrag(input) then
+            begin(input)
         end
     end)
-    dragHandle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            doDrag(input)
-        elseif input.UserInputType == Enum.UserInputType.Touch then
-            doDrag(input)
+    frame.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            update(input)
+        end
+    end)
+    -- Suporte multi-toque: drag pelo dedo
+    UserInputService.TouchMoved:Connect(function(input)
+        if dragging then update(input) end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement) then
+            update(input)
         end
     end)
 end
@@ -80,13 +105,13 @@ function GuiMenuLibrary:CreateMenu(options)
         Parent = game:GetService("CoreGui")
     })
 
-    -- Frame do menu
+    -- Frame do menu (centralizado na tela)
     local MainFrame = create("Frame", {
         Name = "MainFrame",
         BackgroundColor3 = Color3.fromRGB(25, 25, 25),
         BorderSizePixel = 0,
         Size = UDim2.new(0, 410, 0, 280),
-        Position = UDim2.new(0.5, -205, 0.5, -140),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Parent = ScreenGui
     })
@@ -96,9 +121,11 @@ function GuiMenuLibrary:CreateMenu(options)
 
     -- Barra superior
     local TopBar = create("Frame", {
+        Name = "TopBar",
         BackgroundColor3 = Color3.fromRGB(35, 35, 35),
         BorderSizePixel = 0,
         Size = UDim2.new(1, 0, 0, 34),
+        Position = UDim2.new(0, 0, 0, 0),
         Parent = MainFrame
     })
     create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = TopBar})
@@ -110,7 +137,7 @@ function GuiMenuLibrary:CreateMenu(options)
         TextColor3 = Color3.fromRGB(255, 255, 255),
         BackgroundTransparency = 1,
         TextSize = 18,
-        Size = UDim2.new(1, -32, 1, 0),
+        Size = UDim2.new(1, -64, 1, 0),
         Position = UDim2.new(0, 12, 0, 0),
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = TopBar
@@ -118,6 +145,7 @@ function GuiMenuLibrary:CreateMenu(options)
 
     -- Botão fechar
     local CloseBtn = create("TextButton", {
+        Name = "CloseBtn",
         Text = "×",
         Font = Enum.Font.GothamBold,
         TextColor3 = Color3.fromRGB(255, 80, 80),
@@ -131,11 +159,23 @@ function GuiMenuLibrary:CreateMenu(options)
         ScreenGui:Destroy()
     end)
 
-    -- Drag (mouse e toque)
-    makeDraggable(MainFrame, TopBar)
+    -- Botão minimizar (opcional, não implementado função, só reserva visual)
+    local MinBtn = create("TextButton", {
+        Name = "MinBtn",
+        Text = "—",
+        Font = Enum.Font.GothamBold,
+        TextColor3 = Color3.fromRGB(180, 180, 180),
+        TextSize = 22,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 34, 1, 0),
+        Position = UDim2.new(1, -68, 0, 0),
+        Parent = TopBar
+    })
+    -- MinBtn.MouseButton1Click:Connect(function() --[[minimizar se desejar]] end)
 
     -- Container lateral de abas
     local TabsFrame = create("Frame", {
+        Name = "TabsFrame",
         BackgroundColor3 = Color3.fromRGB(35, 35, 35),
         BorderSizePixel = 0,
         Size = UDim2.new(0, 110, 1, -34),
@@ -155,6 +195,7 @@ function GuiMenuLibrary:CreateMenu(options)
 
     -- Frame de conteúdo
     local ContentFrame = create("Frame", {
+        Name = "ContentFrame",
         BackgroundColor3 = Color3.fromRGB(28, 28, 28),
         BorderSizePixel = 0,
         Position = UDim2.new(0, 120, 0, 44),
@@ -276,6 +317,82 @@ function GuiMenuLibrary:CreateMenu(options)
     end
     -- Mostra a primeira aba por padrão
     switchTab(1)
+
+    -- Áreas válidas para drag: MainFrame - exceto TopBar, TabsFrame, ContentFrame, CloseBtn, MinBtn
+    -- Vamos criar uma "DragArea" invisível que cobre só o fundo do MainFrame exceto as zonas de conteúdo/topbar/tabs
+    -- Prático: basta considerar MainFrame inteiro, mas ignorar eventos se forem dentro de TopBar, TabsFrame, ContentFrame, CloseBtn, MinBtn
+
+    -- Áreas que NÃO permitem drag:
+    local noDragAreas = {TopBar, TabsFrame, ContentFrame, CloseBtn, MinBtn}
+
+    -- Áreas que PODEM iniciar drag: MainFrame, mas ignorando as acima
+    -- Adaptar makeDraggable para só permitir drag se não estiver nessas áreas
+    local UserInputService = game:GetService("UserInputService")
+    local dragging = false
+    local dragStart, startPos
+
+    MainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local pos = input.Position
+            local insideNoDrag = false
+            for _, area in ipairs(noDragAreas) do
+                if area and area.Visible ~= false then
+                    local absPos = area.AbsolutePosition
+                    local absSize = area.AbsoluteSize
+                    if pos.X >= absPos.X and pos.X <= absPos.X + absSize.X
+                    and pos.Y >= absPos.Y and pos.Y <= absPos.Y + absSize.Y then
+                        insideNoDrag = true
+                        break
+                    end
+                end
+            end
+            if not insideNoDrag then
+                dragging = true
+                dragStart = input.Position
+                startPos = MainFrame.Position
+                local conn; conn = input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                        if conn then conn:Disconnect() end
+                    end
+                end)
+            end
+        end
+    end)
+    MainFrame.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    UserInputService.TouchMoved:Connect(function(input)
+        if dragging then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            MainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
     return ScreenGui
 end
 
