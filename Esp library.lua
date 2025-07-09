@@ -2,9 +2,9 @@
     📦 ESP v1 (Orientado a Objeto)
     Recursos:
     - Line (tracer do jogador local até o alvo)
-    - Box (caixa 2D ao redor do alvo)
+    - Box (caixa 2D ou 3D ao redor do alvo)
     - Name (exibe o nome do alvo)
-    - Distance (exibe a distância do alvo em metros)
+    - Distance (exibe a distância do alvo em studs)
 ]]--
 
 local Camera = workspace.CurrentCamera
