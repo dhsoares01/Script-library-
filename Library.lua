@@ -18,10 +18,11 @@ local function create(class, props)
     return inst
 end
 
--- Arrasto só no fundo do menu, não nas abas/conteúdo/topbar/botões
+-- Arrasto só no fundo do menu, não nas abas/conteúdo/topbar/botões, suportando mouse e toque (dedo)
 local function setupSmartDrag(MainFrame, disallowAreas)
     local dragging = false
     local dragStart, startPos
+    local dragTouchId = nil
 
     local function isInDisallowArea(pos)
         for _, area in ipairs(disallowAreas) do
@@ -38,14 +39,18 @@ local function setupSmartDrag(MainFrame, disallowAreas)
     end
 
     MainFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
             if not isInDisallowArea(input.Position) then
                 dragging = true
                 dragStart = input.Position
                 startPos = MainFrame.Position
+                if input.UserInputType == Enum.UserInputType.Touch then
+                    dragTouchId = input.TouchId
+                end
                 local conn; conn = input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         dragging = false
+                        dragTouchId = nil
                         if conn then conn:Disconnect() end
                     end
                 end)
@@ -55,6 +60,9 @@ local function setupSmartDrag(MainFrame, disallowAreas)
 
     MainFrame.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            if input.UserInputType == Enum.UserInputType.Touch and dragTouchId and input.TouchId ~= dragTouchId then
+                return
+            end
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(
                 startPos.X.Scale,
@@ -66,7 +74,7 @@ local function setupSmartDrag(MainFrame, disallowAreas)
     end)
 
     UserInputService.TouchMoved:Connect(function(input)
-        if dragging then
+        if dragging and dragTouchId and input.TouchId == dragTouchId then
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(
                 startPos.X.Scale,
