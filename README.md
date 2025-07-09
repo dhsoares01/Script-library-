@@ -1,5 +1,3 @@
-Here's an improved version of your README.md with better organization, clearer language, and enhanced visual presentation:
-
 ```markdown
 # 📚 Script GUI Menu Library for Roblox
 
