@@ -1,139 +1,92 @@
 --[[
-    📦 ESP v2 (Orientado a Objeto, Design Aprimorado)
+    📦 ESP v2 (Orientado a Objeto + sistema de objetos ESP)
     Recursos:
     - Line (tracer do jogador local até o alvo)
-    - Box (caixa 2D ou 3D ao redor do alvo, formas aprimoradas e centralizadas)
-    - Name (exibe o nome do alvo com melhor fonte e alinhamento)
-    - Distance (exibe a distância do alvo em studs, tooltip elegante)
-    - Suporte fácil para personalização global (cor, fonte, espessura, transparência)
-    - Ocultação automática para objetos fora da tela ou obstruídos
-    - Limpeza automática de recursos (anti-leak)
+    - Box (caixa 2D ou 3D ao redor do alvo)
+    - Name (exibe o nome do alvo)
+    - Distance (exibe a distância do alvo em studs)
+    - Sistema de objetos ESP para controle individual (enable/disable/update)
 ]]--
 
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
 local LibraryESP = {}
+LibraryESP.__index = LibraryESP
+LibraryESP.TextPosition = "Top"
+LibraryESP.LineFrom = "Bottom"
+LibraryESP.BoxShape = "Square"
+
 local ESPObjects = {}
 
--- Configurações Globais
-LibraryESP.TextPosition = "Top"      -- "Top", "Center", "Bottom", "Below", "LeftSide", "RightSide"
-LibraryESP.LineFrom = "Bottom"       -- "Top", "Center", "Bottom", "Below", "Left", "Right"
-LibraryESP.BoxShape = "Square"       -- "Square", "Circle", "Octagon"
-LibraryESP.GlobalColor = Color3.fromRGB(18, 194, 233)
-LibraryESP.GlobalThickness = 2
-LibraryESP.GlobalTransparency = 0.9
-LibraryESP.GlobalFont = 2            -- 1 = UI, 2 = System, 3 = Plex, 4 = Monospace
-
-local function ApplyDrawingDefaults(draw)
-    draw.Color = LibraryESP.GlobalColor
-    draw.Transparency = LibraryESP.GlobalTransparency
-    if draw.Thickness then draw.Thickness = LibraryESP.GlobalThickness end
-    if draw.Font then draw.Font = LibraryESP.GlobalFont end
-    return draw
-end
-
+--=== Utilidades de desenho ===--
 local function DrawText(size, color)
     local text = Drawing.new("Text")
     text.Size = size
     text.Center = true
     text.Outline = true
-    text.Color = color or LibraryESP.GlobalColor
-    text.Font = LibraryESP.GlobalFont
-    text.Transparency = LibraryESP.GlobalTransparency
+    text.Font = 2
+    text.Color = color
     text.Visible = false
     return text
 end
 
 local function DrawLine(color)
     local line = Drawing.new("Line")
-    line.Thickness = LibraryESP.GlobalThickness
-    line.Color = color or LibraryESP.GlobalColor
-    line.Transparency = LibraryESP.GlobalTransparency
+    line.Thickness = 1.5
+    line.Color = color
     line.Visible = false
     return line
 end
 
-local function DrawBox(color)
-    local shape
-    if LibraryESP.BoxShape == "Circle" then
-        shape = Drawing.new("Circle")
-        shape.Radius = 50
-        shape.Thickness = LibraryESP.GlobalThickness
-        shape.Filled = false
-        shape.Color = color or LibraryESP.GlobalColor
-        shape.Transparency = LibraryESP.GlobalTransparency
-        shape.Visible = false
-    elseif LibraryESP.BoxShape == "Octagon" then
-        shape = {}
+local function DrawBox(color, shape)
+    shape = shape or LibraryESP.BoxShape
+    local box
+    if shape == "Circle" then
+        box = Drawing.new("Circle")
+        box.Radius = 50
+        box.Thickness = 1
+        box.Filled = false
+        box.Color = color
+        box.Visible = false
+    elseif shape == "Octagon" then
+        box = {}
         for i = 1,8 do
             local line = Drawing.new("Line")
-            line.Thickness = LibraryESP.GlobalThickness
-            line.Color = color or LibraryESP.GlobalColor
-            line.Transparency = LibraryESP.GlobalTransparency
+            line.Thickness = 1
+            line.Color = color
             line.Visible = false
-            table.insert(shape, line)
+            table.insert(box, line)
         end
-    else -- Square
-        shape = Drawing.new("Square")
-        shape.Thickness = LibraryESP.GlobalThickness
-        shape.Filled = false
-        shape.Color = color or LibraryESP.GlobalColor
-        shape.Transparency = LibraryESP.GlobalTransparency
-        shape.Visible = false
+    else
+        box = Drawing.new("Square")
+        box.Thickness = 1
+        box.Filled = false
+        box.Color = color
+        box.Visible = false
     end
-    return shape
+    return box
 end
 
-function LibraryESP:CreateESP(object, options)
-    options = options or {}
-    local color = options.Color or LibraryESP.GlobalColor
-    local esp = {
-        Object = object,
-        Options = options,
-        NameText = options.Name and DrawText(options.TextSize or 14, color) or nil,
-        DistanceText = options.Distance and DrawText(options.TextSize or 13, color) or nil,
-        TracerLine = options.Tracer and DrawLine(color) or nil,
-        Box = options.Box and DrawBox(color) or nil,
-        _removed = false
-    }
-    table.insert(ESPObjects, esp)
-    return esp
-end
-
-function LibraryESP:RemoveESP(object)
-    for i = #ESPObjects, 1, -1 do
-        local esp = ESPObjects[i]
-        if esp.Object == object or object == nil then
-            local function safeRemove(draw)
-                if draw and draw.Remove then pcall(function() draw:Remove() end) end
-            end
-            safeRemove(esp.NameText)
-            safeRemove(esp.DistanceText)
-            safeRemove(esp.TracerLine)
-            if esp.Box then
-                if LibraryESP.BoxShape == "Octagon" then
-                    for _, line in ipairs(esp.Box) do safeRemove(line) end
-                else
-                    safeRemove(esp.Box)
-                end
-            end
-            table.remove(ESPObjects, i)
-        end
-    end
-end
-
-local textOffsets = {
-    Top      = Vector2.new(0, -18),
-    Center   = Vector2.new(0, 0),
-    Bottom   = Vector2.new(0, 18),
-    Below    = Vector2.new(0, 28),
-    LeftSide = Vector2.new(-44, 0),
-    RightSide= Vector2.new(44, 0)
-}
+--=== Utilidades de cálculo ===--
 local function getTextPosition(basePos, offsetType)
-    return basePos + (textOffsets[offsetType] or Vector2.new(0, 0))
+    local offset = Vector2.new(0, 0)
+    if offsetType == "Top" then
+        offset = Vector2.new(0, -16)
+    elseif offsetType == "Center" then
+        offset = Vector2.new(0, 0)
+    elseif offsetType == "Bottom" then
+        offset = Vector2.new(0, 16)
+    elseif offsetType == "Below" then
+        offset = Vector2.new(0, 26)
+    elseif offsetType == "LeftSide" then
+        offset = Vector2.new(-40, 0)
+    elseif offsetType == "RightSide" then
+        offset = Vector2.new(40, 0)
+    end
+    return basePos + offset
 end
 
 local function getObjectPosition(object)
@@ -172,58 +125,155 @@ local function getObjectSize(object)
     return Vector3.new(1,1,1)
 end
 
--- Função para ocultar ESP se objeto estiver obstruído
-local function isObstructed(objPos)
-    local origin = Camera.CFrame.Position
-    local ray = Ray.new(origin, (objPos - origin).Unit * (objPos - origin).Magnitude)
-    local part = workspace:FindPartOnRayWithIgnoreList(ray, {Players.LocalPlayer.Character, Camera})
-    return (part ~= nil)
+--=== ESP Object Class ===--
+local ESPObject = {}
+ESPObject.__index = ESPObject
+
+function ESPObject.new(object, options)
+    options = options or {}
+    local self = setmetatable({}, ESPObject)
+    self.Object = object
+    self.Options = options
+    self.Enabled = true
+    self.Color = options.Color or Color3.new(1,1,1)
+    self.NameString = options.NameString or (object and object.Name or "NoName")
+
+    -- Drawing objects
+    self.NameText = options.Name and DrawText(13, self.Color) or nil
+    self.DistanceText = options.Distance and DrawText(13, self.Color) or nil
+    self.TracerLine = options.Tracer and DrawLine(self.Color) or nil
+    self.Box = options.Box and DrawBox(self.Color, options.BoxShape or LibraryESP.BoxShape) or nil
+
+    return self
 end
 
+function ESPObject:Update(options)
+    options = options or {}
+    for k, v in pairs(options) do
+        self.Options[k] = v
+    end
+    if options.Color then
+        self.Color = options.Color
+        if self.NameText then self.NameText.Color = options.Color end
+        if self.DistanceText then self.DistanceText.Color = options.Color end
+        if self.TracerLine then self.TracerLine.Color = options.Color end
+        if self.Box then
+            if type(self.Box) == "table" then
+                for _, l in ipairs(self.Box) do l.Color = options.Color end
+            else
+                self.Box.Color = options.Color
+            end
+        end
+    end
+    if options.NameString then
+        self.NameString = options.NameString
+    end
+end
+
+function ESPObject:SetEnabled(enabled)
+    self.Enabled = enabled
+    if self.NameText then self.NameText.Visible = false end
+    if self.DistanceText then self.DistanceText.Visible = false end
+    if self.TracerLine then self.TracerLine.Visible = false end
+    if self.Box then
+        if type(self.Box) == "table" then
+            for _, l in ipairs(self.Box) do l.Visible = false end
+        else
+            self.Box.Visible = false
+        end
+    end
+end
+
+function ESPObject:Remove()
+    if self.NameText then self.NameText:Remove() end
+    if self.DistanceText then self.DistanceText:Remove() end
+    if self.TracerLine then self.TracerLine:Remove() end
+    if self.Box then
+        if type(self.Box) == "table" then
+            for _, l in ipairs(self.Box) do l:Remove() end
+        else
+            self.Box:Remove()
+        end
+    end
+    self.Enabled = false
+end
+
+--=== Métodos da LibraryESP ===--
+
+function LibraryESP:AddESP(object, options)
+    local esp = ESPObject.new(object, options)
+    table.insert(ESPObjects, esp)
+    return esp
+end
+
+function LibraryESP:RemoveESP(objectOrESP)
+    for i = #ESPObjects, 1, -1 do
+        local esp = ESPObjects[i]
+        if esp == objectOrESP or esp.Object == objectOrESP then
+            esp:Remove()
+            table.remove(ESPObjects, i)
+        end
+    end
+end
+
+function LibraryESP:RemoveAll()
+    for i = #ESPObjects, 1, -1 do
+        ESPObjects[i]:Remove()
+        table.remove(ESPObjects, i)
+    end
+end
+
+function LibraryESP:GetAll()
+    return ESPObjects
+end
+
+--=== Loop de renderização ===--
 RunService.RenderStepped:Connect(function()
     for i = #ESPObjects, 1, -1 do
         local esp = ESPObjects[i]
-        local obj = esp.Object
+        if not esp.Enabled then
+            if esp.NameText then esp.NameText.Visible = false end
+            if esp.DistanceText then esp.DistanceText.Visible = false end
+            if esp.TracerLine then esp.TracerLine.Visible = false end
+            if esp.Box then
+                if type(esp.Box) == "table" then
+                    for _, l in ipairs(esp.Box) do l.Visible = false end
+                else
+                    esp.Box.Visible = false
+                end
+            end
+            continue
+        end
 
+        local obj = esp.Object
         if not obj or typeof(obj) ~= "Instance" or not obj:IsDescendantOf(workspace) then
-            LibraryESP:RemoveESP(obj)
+            esp:Remove()
+            table.remove(ESPObjects, i)
         else
             local objPos = getObjectPosition(obj)
             if not objPos then
-                if esp.NameText then esp.NameText.Visible = false end
-                if esp.DistanceText then esp.DistanceText.Visible = false end
-                if esp.TracerLine then esp.TracerLine.Visible = false end
-                if esp.Box then
-                    if LibraryESP.BoxShape == "Octagon" then
-                        for _, line in ipairs(esp.Box) do line.Visible = false end
-                    else
-                        esp.Box.Visible = false
-                    end
-                end
+                esp:SetEnabled(false)
                 continue
             end
 
             local pos, onScreen = Camera:WorldToViewportPoint(objPos)
             local basePos = Vector2.new(pos.X, pos.Y)
-            local isBlocked = not onScreen or isObstructed(objPos)
+            local distance = (Camera.CFrame.Position - objPos).Magnitude
 
-            if not isBlocked then
-                local distance = (Camera.CFrame.Position - objPos).Magnitude
-
+            if onScreen then
+                -- Name
                 if esp.NameText then
                     esp.NameText.Position = getTextPosition(basePos, LibraryESP.TextPosition)
-                    esp.NameText.Text = esp.Options.NameString or tostring(obj.Name)
-                    esp.NameText.Color = esp.Options.Color or LibraryESP.GlobalColor
+                    esp.NameText.Text = esp.NameString
                     esp.NameText.Visible = true
                 end
-
+                -- Distance
                 if esp.DistanceText then
-                    esp.DistanceText.Position = getTextPosition(basePos, LibraryESP.TextPosition) + Vector2.new(0, 16)
+                    esp.DistanceText.Position = getTextPosition(basePos, LibraryESP.TextPosition) + Vector2.new(0, 14)
                     esp.DistanceText.Text = string.format("[%dm]", math.floor(distance))
-                    esp.DistanceText.Color = esp.Options.Color or LibraryESP.GlobalColor
                     esp.DistanceText.Visible = true
                 end
-
+                -- Tracer
                 if esp.TracerLine then
                     local from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                     if LibraryESP.LineFrom == "Top" then
@@ -231,7 +281,7 @@ RunService.RenderStepped:Connect(function()
                     elseif LibraryESP.LineFrom == "Center" then
                         from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                     elseif LibraryESP.LineFrom == "Below" then
-                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 1.2)
+                        from = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 1.25)
                     elseif LibraryESP.LineFrom == "Left" then
                         from = Vector2.new(0, Camera.ViewportSize.Y / 2)
                     elseif LibraryESP.LineFrom == "Right" then
@@ -239,26 +289,22 @@ RunService.RenderStepped:Connect(function()
                     end
                     esp.TracerLine.From = from
                     esp.TracerLine.To = basePos
-                    esp.TracerLine.Color = esp.Options.Color or LibraryESP.GlobalColor
                     esp.TracerLine.Visible = true
                 end
-
+                -- Box
                 if esp.Box then
                     local size3D = getObjectSize(obj)
                     local sizeX = math.clamp(size3D.X, 1, 10)
                     local sizeY = math.clamp(size3D.Y, 1, 10)
-                    local scale = 320 / (distance + 1)
-
+                    local scale = 300 / (distance + 0.1)
                     local boxWidth = sizeX * scale
                     local boxHeight = sizeY * scale
 
-                    if LibraryESP.BoxShape == "Circle" then
+                    if type(esp.Box) == "userdata" and esp.Box.ClassName == "Circle" then
                         esp.Box.Position = basePos
                         esp.Box.Radius = math.max(boxWidth, boxHeight) / 2
-                        esp.Box.Color = esp.Options.Color or LibraryESP.GlobalColor
                         esp.Box.Visible = true
-
-                    elseif LibraryESP.BoxShape == "Octagon" then
+                    elseif type(esp.Box) == "table" then -- Octagon
                         local radiusX = boxWidth / 2
                         local radiusY = boxHeight / 2
                         local center = basePos
@@ -270,32 +316,20 @@ RunService.RenderStepped:Connect(function()
                             local line = esp.Box[j]
                             line.From = p1
                             line.To = p2
-                            line.Color = esp.Options.Color or LibraryESP.GlobalColor
                             line.Visible = true
                         end
-
                     else -- Square
                         esp.Box.Size = Vector2.new(boxWidth, boxHeight)
                         esp.Box.Position = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxHeight / 2)
-                        esp.Box.Color = esp.Options.Color or LibraryESP.GlobalColor
                         esp.Box.Visible = true
                     end
                 end
-
             else
-                if esp.NameText then esp.NameText.Visible = false end
-                if esp.DistanceText then esp.DistanceText.Visible = false end
-                if esp.TracerLine then esp.TracerLine.Visible = false end
-                if esp.Box then
-                    if LibraryESP.BoxShape == "Octagon" then
-                        for _, line in ipairs(esp.Box) do line.Visible = false end
-                    else
-                        esp.Box.Visible = false
-                    end
-                end
+                esp:SetEnabled(false)
             end
         end
     end
 end)
 
+LibraryESP.ESPObject = ESPObject
 return LibraryESP
