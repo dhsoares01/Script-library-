@@ -266,11 +266,12 @@ function FloatingUILibrary:New(title)
 	local main = Instance.new("Frame")
 	main.Name = "MainMenu"
 	main.Size = UDim2.new(0,420,0,320)
-	main.Position = UDim2.new(0.5,-210,0.4,-160)
+	main.Position = UDim2.new(0.5, 0, 0.5, 0)
 	main.BackgroundColor3 = Color3.fromRGB(28,28,32)
 	main.BorderSizePixel = 0
-	main.AnchorPoint = Vector2.new(0.5,0.5)
+	main.AnchorPoint = Vector2.new(0.5, 0.5)
 	main.Parent = sg
+	
 
 	main.Active = true
 	main.Draggable = false
