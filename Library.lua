@@ -14,7 +14,7 @@ local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 
 -- Nome do arquivo de configuração
-local CONFIG_FILENAME = "custom_menu_config.json" -- Nome mais específico
+local CONFIG_FILENAME = "custom_menu_config.json"
 
 -- Utilitários para leitura e escrita de arquivos
 local function writeConfigFile(filename, content)
@@ -22,7 +22,7 @@ local function writeConfigFile(filename, content)
         if typeof(writefile) == "function" then
             writefile(filename, content)
             return true
-        elseif typeof(savefile) == "function" then -- Synapse X legacy
+        elseif typeof(savefile) == "function" then
             savefile(filename, content)
             return true
         else
@@ -40,7 +40,7 @@ local function readConfigFile(filename)
     local success, err = pcall(function()
         if typeof(readfile) == "function" then
             content = readfile(filename)
-        elseif typeof(loadfile) == "function" then -- Fallback, though less ideal for pure config
+        elseif typeof(loadfile) == "function" then
             local res = loadfile(filename)
             if typeof(res) == "string" then content = res end
         else
@@ -54,23 +54,39 @@ local function readConfigFile(filename)
     return content
 end
 
--- 1. Refatoração do Tema: Mais opções e clareza
+-- Paleta de cores: Tons modernos, contraste e acessibilidade
+local palette = {
+    Dark = Color3.fromRGB(27, 29, 35),
+    MediumDark = Color3.fromRGB(36, 38, 49),
+    Accent = Color3.fromRGB(0, 170, 255),
+    Accent2 = Color3.fromRGB(0, 200, 130),
+    Accent3 = Color3.fromRGB(255, 92, 92),
+    Light = Color3.fromRGB(235, 235, 245),
+    Text = Color3.fromRGB(235, 235, 245),
+    Warning = Color3.fromRGB(255, 80, 80),
+    Orange = Color3.fromRGB(255, 157, 77),
+    Purple = Color3.fromRGB(112, 70, 255),
+    Green = Color3.fromRGB(60, 210, 100),
+    Yellow = Color3.fromRGB(255, 220, 50),
+}
+
+-- Tema usando a paleta acima
 local theme = {
-    Background = Color3.fromRGB(30, 30, 30),
-    TabBackground = Color3.fromRGB(40, 40, 40),
-    Accent = Color3.fromRGB(0, 120, 255),
-    Text = Color3.fromRGB(255, 255, 255),
-    Stroke = Color3.fromRGB(60, 60, 60),
-    ScrollViewBackground = Color3.fromRGB(20, 20, 20),
-    ButtonBackground = Color3.fromRGB(50, 50, 50),
-    Warning = Color3.fromRGB(255, 60, 60),
+    Background = palette.Dark,
+    TabBackground = palette.MediumDark,
+    Accent = palette.Accent,
+    Text = palette.Text,
+    Stroke = palette.Accent,
+    ScrollViewBackground = palette.MediumDark,
+    ButtonBackground = palette.Dark,
+    Warning = palette.Warning,
     CornerRadius = UDim.new(0, 8),
     SmallCornerRadius = UDim.new(0, 6),
     Padding = 8,
     TabButtonHeight = 34,
     ControlHeight = 32,
     ControlPadding = 6,
-    Opacity = 0.95, -- Opacidade padrão ajustada
+    Opacity = 0.96,
     Font = Enum.Font.Gotham,
     FontSize = 16,
     HeaderFontSize = 22,
@@ -80,15 +96,10 @@ local themeConfigKeys = {"Background", "TabBackground", "Accent", "Text", "Strok
 
 -- Função para aplicar opacidade a todos os descendentes do frame principal
 local function setMenuOpacity(mainFrame, opacityValue)
-    -- Define a transparência de fundo diretamente usando a opacidade inversa
-    -- Isso garante que a opacidade seja aplicada apenas a elementos que a suportam
     local function applyTransparency(obj)
         if obj:IsA("Frame") or obj:IsA("TextButton") or obj:IsA("TextLabel") or obj:IsA("ScrollingFrame") then
-            -- Note: BackgroundTransparency é 1 para totalmente transparente, 0 para totalmente opaco
             obj.BackgroundTransparency = 1 - opacityValue
         end
-        -- Para TextLabels, Color3.new(R,G,B, A) é o ideal, mas Roblox UI elements
-        -- usam TextTransparency para texto e BackgroundTransparency para fundo.
         if obj:IsA("TextLabel") or obj:IsA("TextButton") then
             obj.TextTransparency = 1 - opacityValue
         end
@@ -99,22 +110,11 @@ local function setMenuOpacity(mainFrame, opacityValue)
     applyTransparency(mainFrame)
 end
 
--- Funções utilitárias para criar elementos de UI
 local function createCorner(parent, radius)
     local UICorner = Instance.new("UICorner")
     UICorner.CornerRadius = radius or theme.CornerRadius
     UICorner.Parent = parent
     return UICorner
-end
-
-local function createPadding(parent, allPadding)
-    local UIPadding = Instance.new("UIPadding")
-    UIPadding.PaddingLeft = UDim.new(0, allPadding)
-    UIPadding.PaddingRight = UDim.new(0, allPadding)
-    UIPadding.PaddingTop = UDim.new(0, allPadding)
-    UIPadding.PaddingBottom = UDim.new(0, allPadding)
-    UIPadding.Parent = parent
-    return UIPadding
 end
 
 local function createTextLabel(parent, text, textSize, textColor, font, alignment)
@@ -143,7 +143,6 @@ local function createTextButton(parent, text, callback, bgColor, textColor, font
 
     createCorner(button, theme.SmallCornerRadius)
 
-    -- Efeitos de hover
     local defaultBgColor = bgColor or theme.ButtonBackground
     button.MouseEnter:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.15), { BackgroundColor3 = theme.Accent }):Play()
@@ -158,40 +157,45 @@ local function createTextButton(parent, text, callback, bgColor, textColor, font
     return button
 end
 
--- CUSTOMIZAÇÃO: Cria controles extras de customização no menu de opções/config
+-- Corrigido: controles de cor e dropdown melhores
 local function createCustomizationTab(windowInstance, mainFrame, applyThemeCallback)
-    local tab = windowInstance:CreateTab("Configurações", "⚙️") -- Nome da aba mais descritivo
+    local tab = windowInstance:CreateTab("Configurações", "⚙️")
 
     tab:AddLabel("Cor de Fundo do Menu")
-    -- Adicionando mais opções de cores ou um ColorPicker mais avançado se possível
-    local bgPicker = tab:AddSelectDropdown("Cor de Fundo", {"Padrão", "Vermelho", "Verde", "Azul", "Roxo", "Laranja"}, function(opt)
+    tab:AddSelectDropdown("Cor de Fundo", {
+        "Dark", "Accent2", "Accent3", "Orange", "Purple", "Green"
+    }, function(opt)
         local colors = {
-            ["Padrão"] = Color3.fromRGB(30, 30, 30),
-            ["Vermelho"] = Color3.fromRGB(120, 30, 30),
-            ["Verde"] = Color3.fromRGB(30, 120, 30),
-            ["Azul"] = Color3.fromRGB(30, 30, 120),
-            ["Roxo"] = Color3.fromRGB(80, 30, 120),
-            ["Laranja"] = Color3.fromRGB(120, 80, 30),
+            ["Dark"] = palette.Dark,
+            ["Accent2"] = palette.Accent2,
+            ["Accent3"] = palette.Accent3,
+            ["Orange"] = palette.Orange,
+            ["Purple"] = palette.Purple,
+            ["Green"] = palette.Green,
         }
-        theme.Background = colors[opt] or theme.Background
+        theme.Background = colors[opt] or palette.Dark
         if applyThemeCallback then applyThemeCallback() end
     end)
 
     tab:AddLabel("Cor de Destaque (Accent)")
-    local accentPicker = tab:AddSelectDropdown("Cor de Destaque", {"Padrão", "Cyan", "Magenta", "Amarelo"}, function(opt)
+    tab:AddSelectDropdown("Cor de Destaque", {
+        "Padrão", "Accent2", "Accent3", "Orange", "Purple", "Green", "Yellow"
+    }, function(opt)
         local colors = {
-            ["Padrão"] = Color3.fromRGB(0, 120, 255),
-            ["Cyan"] = Color3.fromRGB(0, 200, 200),
-            ["Magenta"] = Color3.fromRGB(200, 0, 200),
-            ["Amarelo"] = Color3.fromRGB(200, 200, 0),
+            ["Padrão"] = palette.Accent,
+            ["Accent2"] = palette.Accent2,
+            ["Accent3"] = palette.Accent3,
+            ["Orange"] = palette.Orange,
+            ["Purple"] = palette.Purple,
+            ["Green"] = palette.Green,
+            ["Yellow"] = palette.Yellow,
         }
-        theme.Accent = colors[opt] or theme.Accent
+        theme.Accent = colors[opt] or palette.Accent
         if applyThemeCallback then applyThemeCallback() end
     end)
 
-
     tab:AddLabel("Opacidade Global do Menu")
-    local sliderOpacity = tab:AddSlider("Opacidade", 30, 100, math.floor(theme.Opacity * 100), function(val)
+    tab:AddSlider("Opacidade", 30, 100, math.floor(theme.Opacity * 100), function(val)
         theme.Opacity = val / 100
         setMenuOpacity(mainFrame, theme.Opacity)
     end)
@@ -254,7 +258,7 @@ function Library:CreateWindow(name)
     MainFrame.BorderSizePixel = 0
     MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     MainFrame.Active = true
-    MainFrame.Draggable = false -- Custom drag implemented
+    MainFrame.Draggable = false
     MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
 
@@ -264,13 +268,11 @@ function Library:CreateWindow(name)
     UIStroke.Color = theme.Stroke
     UIStroke.Thickness = 1
 
-    -- Título
     local Title = createTextLabel(MainFrame, name or "Menu", theme.HeaderFontSize, theme.Text, theme.Font, Enum.TextXAlignment.Left)
     Title.Size = UDim2.new(1, -40, 0, 40)
     Title.Position = UDim2.new(0, 10, 0, 0)
     Title.ZIndex = 2
 
-    -- Botão minimizar
     local BtnMinimize = Instance.new("TextButton", MainFrame)
     BtnMinimize.Size = UDim2.new(0, 30, 0, 30)
     BtnMinimize.Position = UDim2.new(1, -40, 0, 5)
@@ -290,7 +292,6 @@ function Library:CreateWindow(name)
         TweenService:Create(BtnMinimize, TweenInfo.new(0.15), { BackgroundColor3 = theme.TabBackground }):Play()
     end)
 
-    -- Contêiner de abas e página
     local TabContainer = Instance.new("Frame", MainFrame)
     TabContainer.Position = UDim2.new(0, 0, 0, 40)
     TabContainer.Size = UDim2.new(0, 130, 1, -40)
@@ -310,17 +311,16 @@ function Library:CreateWindow(name)
     UIList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
     local pages = {}
+    local tabButtons = {}
     local firstTabName = nil
     local currentActiveTabButton = nil
-
     local minimized = false
-
-    local dragConnections = {} -- Table to store drag connections
+    local dragConnections = {}
 
     local function connectDragEvents()
         dragConnections.InputBegan = MainFrame.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                if input.Position.Y <= (MainFrame.AbsolutePosition.Y + 40) then -- Only drag from title bar
+                if input.Position.Y <= (MainFrame.AbsolutePosition.Y + 40) then
                     local dragStart = UserInputService:GetMouseLocation()
                     local startPos = MainFrame.Position
                     local dragInputChangedConn
@@ -356,11 +356,11 @@ function Library:CreateWindow(name)
     BtnMinimize.MouseButton1Click:Connect(function()
         minimized = not minimized
         if minimized then
-            TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = UDim2.new(0, 150, 0, 40) }):Play() -- Slightly wider for better look
+            TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = UDim2.new(0, 150, 0, 40) }):Play()
             PageContainer.Visible = false
             TabContainer.Visible = false
             BtnMinimize.Text = "+"
-            Title.TextXAlignment = Enum.TextXAlignment.Center -- Center title when minimized
+            Title.TextXAlignment = Enum.TextXAlignment.Center
             disconnectDragEvents()
         else
             TweenService:Create(MainFrame, TweenInfo.new(0.3), { Size = UDim2.new(0, 520, 0, 340) }):Play()
@@ -369,7 +369,6 @@ function Library:CreateWindow(name)
             BtnMinimize.Text = "–"
             Title.TextXAlignment = Enum.TextXAlignment.Left
             connectDragEvents()
-            -- Ensure opacity is reapplied after maximize
             setMenuOpacity(MainFrame, theme.Opacity)
         end
     end)
@@ -378,28 +377,19 @@ function Library:CreateWindow(name)
         for pgName, pg in pairs(pages) do
             pg.Visible = (pgName == name)
             if pgName == name then
-                setMenuOpacity(pg, theme.Opacity) -- Ensure active page has correct opacity
+                setMenuOpacity(pg, theme.Opacity)
             end
         end
 
-        -- Update visual state of tab buttons
-        if currentActiveTabButton then
-            TweenService:Create(currentActiveTabButton, TweenInfo.new(0.2), { BackgroundColor3 = theme.TabBackground }):Play()
-            createTextLabel(currentActiveTabButton, currentActiveTabButton.Text, nil, theme.Text):Destroy() -- Remove old text label
-        end
-        if button then
-            TweenService:Create(button, TweenInfo.new(0.2), { BackgroundColor3 = theme.Accent }):Play()
-            currentActiveTabButton = button
-            local icon, text = string.match(button.Text, "^(%S+)%s+(.*)$") -- Extract icon and text
-            local newLabel = createTextLabel(button, text or "", theme.FontSize, theme.Text, theme.Font, Enum.TextXAlignment.Left)
-            newLabel.Size = UDim2.new(1, -30, 1, 0) -- Adjust size for icon
-            newLabel.Position = UDim2.new(0, 30, 0, 0)
-            if icon then
-                local iconLabel = createTextLabel(button, icon, 18, theme.Accent, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-                iconLabel.Size = UDim2.new(0, 24, 1, 0)
-                iconLabel.Position = UDim2.new(0, 6, 0, 0)
+        -- Atualiza o visual dos botões de abas
+        for tabName, btn in pairs(tabButtons) do
+            if btn == button then
+                TweenService:Create(btn, TweenInfo.new(0.2), { BackgroundColor3 = theme.Accent }):Play()
+            else
+                TweenService:Create(btn, TweenInfo.new(0.2), { BackgroundColor3 = theme.TabBackground }):Play()
             end
         end
+        currentActiveTabButton = button
     end
 
     local window = {}
@@ -430,14 +420,11 @@ function Library:CreateWindow(name)
         UserInputService.InputChanged:Connect(function(input)
             if mouseDownResize and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 local delta = UserInputService:GetMouseLocation() - initialMousePos
-
                 local newWidth = math.clamp(initialFrameSize.X.Offset + delta.X, 350, 900)
                 local newHeight = math.clamp(initialFrameSize.Y.Offset + delta.Y, 220, 600)
-
                 MainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
             end
         end)
-
         UserInputService.InputEnded:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 mouseDownResize = false
@@ -481,7 +468,7 @@ function Library:CreateWindow(name)
 
         Button.MouseEnter:Connect(function()
             if currentActiveTabButton ~= Button then
-                TweenService:Create(Button, TweenInfo.new(0.2), { BackgroundColor3 = theme.Accent * 0.8 }):Play() -- Slightly darker accent for hover
+                TweenService:Create(Button, TweenInfo.new(0.2), { BackgroundColor3 = theme.Accent * 0.8 }):Play()
             end
         end)
         Button.MouseLeave:Connect(function()
@@ -494,7 +481,7 @@ function Library:CreateWindow(name)
         Page.Visible = false
         Page.Size = UDim2.new(1, 0, 1, 0)
         Page.CanvasSize = UDim2.new(0, 0, 0, 0)
-        Page.ScrollBarThickness = 8 -- More visible
+        Page.ScrollBarThickness = 8
         Page.ScrollBarImageColor3 = theme.Accent
         Page.BackgroundColor3 = theme.ScrollViewBackground
         Page.BorderSizePixel = 0
@@ -512,6 +499,7 @@ function Library:CreateWindow(name)
         end)
 
         pages[tabName] = Page
+        tabButtons[tabName] = Button
 
         Button.MouseButton1Click:Connect(function()
             switchToPage(tabName, Button)
@@ -583,121 +571,7 @@ function Library:CreateWindow(name)
             }
         end
 
-        function tab:AddDropdownButtonOnOff(title, items, callback)
-            local container = Instance.new("Frame", Page)
-            container.Size = UDim2.new(1, -theme.Padding * 2, 0, theme.ControlHeight)
-            container.Position = UDim2.new(0, theme.Padding, 0, 0)
-            container.BackgroundColor3 = theme.TabBackground
-            container.BorderSizePixel = 0
-            container.ClipsDescendants = true
-
-            createCorner(container, theme.SmallCornerRadius)
-
-            local header = Instance.new("TextButton", container)
-            header.Size = UDim2.new(1, 0, 1, 0)
-            header.BackgroundTransparency = 1
-            header.Text = "▸ " .. title
-            header.TextColor3 = theme.Text
-            header.TextSize = theme.FontSize
-            header.Font = theme.Font
-            header.TextXAlignment = Enum.TextXAlignment.Left
-            header.TextYAlignment = Enum.TextYAlignment.Center
-            header.AutoButtonColor = false
-
-            local dropdownFrame = Instance.new("Frame")
-            dropdownFrame.Size = UDim2.new(1, -theme.Padding * 2, 0, 0)
-            dropdownFrame.BackgroundColor3 = theme.TabBackground
-            dropdownFrame.BorderSizePixel = 0
-            dropdownFrame.Visible = false
-            dropdownFrame.ZIndex = 3
-
-            createCorner(dropdownFrame, theme.SmallCornerRadius)
-
-            local listLayout = Instance.new("UIListLayout", dropdownFrame)
-            listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            listLayout.Padding = UDim.new(0, theme.ControlPadding / 2)
-            listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-            listLayout.FillDirection = Enum.FillDirection.Vertical
-
-            local states = {}
-            local itemButtons = {}
-
-            for _, name in ipairs(items) do
-                states[name] = false
-
-                local btn = Instance.new("TextButton", dropdownFrame)
-                btn.Size = UDim2.new(1, -theme.ControlPadding, 0, theme.ControlHeight)
-                btn.Position = UDim2.new(0, theme.ControlPadding / 2, 0, 0)
-                btn.BackgroundColor3 = theme.TabBackground
-                btn.TextColor3 = theme.Text
-                btn.Font = theme.Font
-                btn.TextSize = theme.FontSize - 2
-                btn.TextXAlignment = Enum.TextXAlignment.Left
-                btn.AutoButtonColor = false
-
-                createCorner(btn, UDim.new(0, 4))
-
-                local function updateBtnVisual()
-                    btn.Text = name .. ": " .. (states[name] and "ON" or "OFF")
-                    TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = states[name] and theme.Accent or theme.TabBackground }):Play()
-                end
-                updateBtnVisual()
-                itemButtons[name] = btn
-
-                btn.MouseButton1Click:Connect(function()
-                    states[name] = not states[name]
-                    updateBtnVisual()
-                    if callback then
-                        callback(states)
-                    end
-                end)
-                btn.MouseEnter:Connect(function()
-                    if not states[name] then
-                        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Accent * 0.8 }):Play()
-                    end
-                end)
-                btn.MouseLeave:Connect(function()
-                    if not states[name] then
-                        TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = theme.TabBackground }):Play()
-                    end
-                end)
-            end
-
-            local expanded = false
-
-            header.MouseButton1Click:Connect(function()
-                expanded = not expanded
-                header.Text = (expanded and "▾ " or "▸ ") .. title
-
-                if expanded then
-                    dropdownFrame.Parent = Page
-                    dropdownFrame.Size = UDim2.new(1, -theme.Padding * 2, 0, listLayout.AbsoluteContentSize.Y + theme.ControlPadding)
-                else
-                    dropdownFrame.Parent = nil
-                end
-                dropdownFrame.Visible = expanded
-                Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Fire()
-            end)
-
-            return {
-                Set = function(_, item, value)
-                    if states[item] ~= nil then
-                        states[item] = value
-                        if itemButtons[item] then
-                            itemButtons[item].BackgroundColor3 = value and theme.Accent or theme.TabBackground
-                            itemButtons[item].Text = item .. ": " .. (value and "ON" or "OFF")
-                        end
-                        if callback then
-                            callback(states)
-                        end
-                    end
-                end,
-                GetAll = function()
-                    return states
-                end
-            }
-        end
-
+        -- Corrigido: Dropdown de seleção singular
         function tab:AddSelectDropdown(title, items, callback)
             local container = Instance.new("Frame", Page)
             container.Size = UDim2.new(1, -theme.Padding * 2, 0, theme.ControlHeight)
@@ -705,7 +579,6 @@ function Library:CreateWindow(name)
             container.BackgroundColor3 = theme.TabBackground
             container.BorderSizePixel = 0
             container.ClipsDescendants = true
-
             createCorner(container, theme.SmallCornerRadius)
 
             local header = Instance.new("TextButton", container)
@@ -725,7 +598,6 @@ function Library:CreateWindow(name)
             dropdownFrame.BorderSizePixel = 0
             dropdownFrame.Visible = false
             dropdownFrame.ZIndex = 3
-
             createCorner(dropdownFrame, theme.SmallCornerRadius)
 
             local listLayout = Instance.new("UIListLayout", dropdownFrame)
@@ -756,9 +628,7 @@ function Library:CreateWindow(name)
                 btn.TextXAlignment = Enum.TextXAlignment.Left
                 btn.Text = name
                 btn.AutoButtonColor = false
-
                 createCorner(btn, UDim.new(0, 4))
-
                 btn.MouseButton1Click:Connect(function()
                     selectedItem = name
                     expanded = false
@@ -770,7 +640,6 @@ function Library:CreateWindow(name)
                     end
                     Layout:GetPropertyChangedSignal("AbsoluteContentSize"):Fire()
                 end)
-
                 btn.MouseEnter:Connect(function()
                     TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = theme.Accent }):Play()
                 end)
@@ -863,7 +732,6 @@ function Library:CreateWindow(name)
                     updateSliderValue(input.Position)
                 end
             end)
-
             UserInputService.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                     draggingSlider = false
@@ -888,10 +756,8 @@ function Library:CreateWindow(name)
         end
 
         return tab
-
     end
 
-    -- Aplica o tema ao iniciar
     local function applyTheme()
         MainFrame.BackgroundColor3 = theme.Background
         TabContainer.BackgroundColor3 = theme.TabBackground
@@ -900,26 +766,13 @@ function Library:CreateWindow(name)
         BtnMinimize.BackgroundColor3 = theme.TabBackground
         BtnMinimize.TextColor3 = theme.Text
         UIStroke.Color = theme.Stroke
-        -- Re-aplicar opacidade a todos os elementos
         setMenuOpacity(MainFrame, theme.Opacity)
-
-        -- Atualizar cores de elementos existentes (ex: botões de aba)
-        for tabName, page in pairs(pages) do
-            local tabButton = TabContainer:FindFirstChildOfClass("TextButton", function(btn) return btn.Text:find(tabName) end) -- Find tab button by name
-            if tabButton then
-                if tabButton == currentActiveTabButton then
-                    tabButton.BackgroundColor3 = theme.Accent
-                else
-                    tabButton.BackgroundColor3 = theme.TabBackground
-                end
-                tabButton.TextColor3 = theme.Text
-            end
-            -- Para os controles dentro das páginas, seria necessário iterar ou ter referências diretas
-            -- Para simplicidade aqui, vamos apenas garantir que a opacidade seja aplicada globalmente.
+        for tabName, btn in pairs(tabButtons) do
+            btn.BackgroundColor3 = (btn == currentActiveTabButton) and theme.Accent or theme.TabBackground
+            btn.TextColor3 = theme.Text
         end
     end
 
-    -- Carrega as configurações ao iniciar o menu
     local initialConfigData = readConfigFile(CONFIG_FILENAME)
     if initialConfigData then
         local ok, initialConfig = pcall(function() return HttpService:JSONDecode(initialConfigData) end)
@@ -933,28 +786,21 @@ function Library:CreateWindow(name)
                     end
                 end
             end
-            applyTheme() -- Aplica o tema carregado
+            applyTheme()
         else
             warn("Erro ao carregar ou decodificar configuração inicial.")
         end
     end
-    setMenuOpacity(MainFrame, theme.Opacity) -- Apply initial opacity to all elements
+    setMenuOpacity(MainFrame, theme.Opacity)
 
-    -- Inicializa na primeira aba se existir
-    task.wait(0.1) -- Small delay to ensure all elements are ready
+    task.wait(0.1)
     if firstTabName ~= nil then
-        -- Find the button for the first tab and set it as active
-        local firstTabButton = TabContainer:FindFirstChildOfClass("TextButton", function(btn)
-            -- Check for exact text match or with icon prefix
-            return btn.Text == firstTabName or btn.Text:find("  "..firstTabName, 1, true)
-        end)
+        local firstTabButton = tabButtons[firstTabName]
         switchToPage(firstTabName, firstTabButton)
     end
 
-    -- Conecta os eventos de arrastar após a criação completa do menu
     connectDragEvents()
 
-    -- Adiciona a customização ao criar a janela
     createCustomizationTab(window, MainFrame, applyTheme)
 
     return window
