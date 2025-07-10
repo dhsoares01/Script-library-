@@ -1,5 +1,5 @@
 --[[
-    📦 ESP v2 (Box 3D com contorno e visível através da parede)
+    📦 ESP v2 (Box 3D com contorno e só aparece quando no campo de visão)
     Recursos:
     - Line (tracer)
     - Box 3D
@@ -18,6 +18,7 @@ local ESPObjects = {}
 LibraryESP.TextPosition = "Top"      -- "Top", "Center", "Bottom", "Below", "LeftSide", "RightSide"
 LibraryESP.LineFrom = "Bottom"       -- "Top", "Center", "Bottom", "Below", "Left", "Right"
 
+-- Funções utilitárias de desenho
 local function DrawText(size, color)
     local text = Drawing.new("Text")
     text.Size = size
@@ -55,6 +56,7 @@ local function Draw3DBox(color)
     return lines
 end
 
+-- Criar ESP
 function LibraryESP:CreateESP(object, options)
     local esp = {
         Object = object,
@@ -68,6 +70,7 @@ function LibraryESP:CreateESP(object, options)
     return esp
 end
 
+-- Remover ESP
 function LibraryESP:RemoveESP(object)
     for i = #ESPObjects, 1, -1 do
         local esp = ESPObjects[i]
@@ -86,6 +89,7 @@ function LibraryESP:RemoveESP(object)
     end
 end
 
+-- Funções utilitárias
 local function getTextPosition(basePos, offsetType)
     local offset = Vector2.new(0, 0)
     if offsetType == "Top" then offset = Vector2.new(0, -16)
@@ -130,6 +134,7 @@ local function getObjectSize(object)
     return Vector3.new(1,1,1)
 end
 
+-- Loop principal
 RunService.RenderStepped:Connect(function()
     for i = #ESPObjects, 1, -1 do
         local esp = ESPObjects[i]
@@ -193,10 +198,14 @@ RunService.RenderStepped:Connect(function()
 
                 -- projetar na tela
                 local screenPoints = {}
+                local allOnScreen = true
                 for _, corner in ipairs(corners) do
                     local worldPos = objCFrame:PointToWorldSpace(corner)
-                    local vec = Camera:WorldToViewportPoint(worldPos)
+                    local vec, cornerOnScreen = Camera:WorldToViewportPoint(worldPos)
                     table.insert(screenPoints, Vector2.new(vec.X, vec.Y))
+                    if not cornerOnScreen then
+                        allOnScreen = false
+                    end
                 end
 
                 local edges = {
@@ -209,12 +218,17 @@ RunService.RenderStepped:Connect(function()
                     local from = screenPoints[edge[1]]
                     local to = screenPoints[edge[2]]
                     local pair = esp.Box[e]
-                    pair.Outline.From = from
-                    pair.Outline.To = to
-                    pair.Outline.Visible = true
-                    pair.Line.From = from
-                    pair.Line.To = to
-                    pair.Line.Visible = true
+                    if allOnScreen then
+                        pair.Outline.From = from
+                        pair.Outline.To = to
+                        pair.Outline.Visible = true
+                        pair.Line.From = from
+                        pair.Line.To = to
+                        pair.Line.Visible = true
+                    else
+                        pair.Outline.Visible = false
+                        pair.Line.Visible = false
+                    end
                 end
             end
         end
