@@ -1,127 +1,129 @@
-# 🎛️ Script GUI Menu Library
+# Custom Executor GUI Menu Library
 
----
+Uma biblioteca Lua para criar menus de executores customizados no Roblox, com suporte a múltiplas abas, drag & drop, resize, sliders, toggles, dropdowns e muito mais. Inspirada no visual e experiência de executores como Delta, Via e outros, ideal para ser usada via `loadstring` em scripts de execução.
 
-## 📖 Sobre a Biblioteca
+## Recursos
 
-Biblioteca de interface gráfica (GUI) em **Lua**, projetada para executores de scripts Roblox como **Delta**, **Fluxus** e outros. Facilita a criação de menus interativos, modernos e responsivos, para que você foque na lógica do seu script enquanto a biblioteca gerencia a interface.
+- Interface moderna e escura (dark theme)
+- Sistema de abas com fácil navegação
+- Drag & drop e redimensionamento do menu
+- Minimizar/restaurar a janela
+- Abas com ícones (opcional)
+- Suporte a Label, Botão, Toggle, Dropdown de seleção, Dropdown multi-toggle, Slider
+- Fácil integração com scripts de execução (Delta, Via, etc)
+- Design responsivo e intuitivo
 
----
+## Instalação
 
-## ✨ Funcionalidades Principais
+Recomenda-se utilizar via `loadstring` diretamente do seu repositório/raw:
 
-- **Design Sofisticado:** Tema escuro com cantos arredondados para uma experiência profissional e agradável.
-- **Interatividade Completa:**
-  - **Arrastar:** Mova a janela pela tela facilmente.
-  - **Redimensionar:** Ajuste o tamanho da janela pelo canto inferior direito.
-  - **Minimizar/Restaurar:** Controle a visibilidade da janela com um clique.
-- **Organização Lógica:** Sistema de abas para categorizar opções.
-- **Controles Abrangentes:**
-  - `Label`: Texto informativo.
-  - `Button`: Executa funções customizadas.
-  - `Toggle`: Ativa/desativa recursos (ON/OFF).
-  - `DropdownButtonOnOff`: Menu expansível com múltiplas opções independentes.
-  - `SelectDropdown`: Seleção única em lista expansível.
-  - `Slider`: Ajusta valores numéricos com feedback instantâneo.
-- **Compatibilidade Ampla:** Leve e eficiente, ideal para carregamento via `loadstring`.
+```lua
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
+```
 
----
+> **Nota:** Substitua a URL pelo link raw do seu script.
 
-## 🚀 Instalação e Uso Rápido
----
-
-🛠️ Exemplo Rápido
+## Exemplo de Uso
 
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 
+local win = Library:CreateWindow("Meu Executor Custom")
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
+local mainTab = win:CreateTab("Principal", "⭐")
+mainTab:AddLabel("Bem-vindo ao Executor!")
 
-local MyMenu = Library:CreateWindow("Meu Script Cheats")
-local MainOptions = MyMenu:CreateTab("Geral", "⭐")
-
-MainOptions:AddLabel("Opções Rápidas:")
-
-MainOptions:AddButton("Resetar Personagem", function()
-    game.Players.LocalPlayer.Character.Humanoid.Health = 0
-    warn("Personagem resetado!")
+mainTab:AddButton("Clique Aqui", function()
+    print("Botão pressionado!")
 end)
 
-local noClipToggle = MainOptions:AddToggle("NoClip", function(state)
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = state and 50 or 16
-    print("NoClip está: " .. (state and "ATIVADO" or "DESATIVADO"))
+local myToggle = mainTab:AddToggle("Ativar Função", function(state)
+    print("Toggle está:", state and "Ligado" or "Desligado")
 end)
 
-MainOptions:AddSlider("Jump Power", 10, 200, 50, function(value)
-    game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
-    print("Jump Power definido para: " .. value)
+mainTab:AddSlider("Volume", 0, 100, 50, function(value)
+    print("Volume ajustado para:", value)
 end)
 
-print("Menu carregado com sucesso!")
+mainTab:AddSelectDropdown("Escolha uma opção", {"A", "B", "C"}, function(selected)
+    print("Você selecionou:", selected)
+end)
 
+mainTab:AddDropdownButtonOnOff("Módulos", {"ESP", "Aimbot", "AutoFarm"}, function(states)
+    print("Estados dos módulos:", states)
+end)
 ```
----
-📚 API (Interface de Programação de Aplicações)
 
-Library
+## API
 
-Método	Parâmetros	Descrição	Retorno
+### `Library:CreateWindow(title)`
 
-CreateWindow(name)	name: string	Cria e retorna uma janela GUI	objeto window
+Cria uma nova janela de menu.
 
+- `title` _(string)_: Nome do menu.
 
-Window (objeto retornado)
-
-Método	Parâmetros	Descrição	Retorno
-
-CreateTab(tabName, icon?)	tabName: string, icon?: string	Cria uma aba dentro da janela	objeto tab
-
-
-Tab (objeto retornado)
-
-Método	Parâmetros	Descrição	Retorno
-
-AddLabel(text)	text: string	Adiciona texto informativo	—
-AddButton(text, callback)	text: string, callback: function	Adiciona botão clicável	—
-AddToggle(text, callback)	text: string, callback: function(state: boolean)	Botão ON/OFF. Retorna objeto com .Set(), .Get()	objeto toggle
-AddDropdownButtonOnOff(title, items, callback)	title: string, items: table, callback: function(states: table)	Menu expansível multi-toggle. Retorna objeto com .Set(), .GetAll()	objeto dropdown multi-toggle
-AddSelectDropdown(title, items, callback)	title: string, items: table, callback: function(selectedItem: string)	Menu expansível single-select. Retorna objeto com .Set(), .Get()	objeto dropdown single-select
-AddSlider(text, min, max, default, callback)	text: string, min: number, max: number, default: number, callback: function(value: number)	Slider numérico. Retorna objeto com .Set(), .Get()	objeto slider
-
-
+**Retorna:** Um objeto `window` com métodos para criar abas.
 
 ---
 
-🛠️ Desenvolvimento
+### `window:CreateTab(tabName, icon)`
 
-Código contido em um único arquivo .lua.
+Cria uma nova aba.
 
-Layouts e tamanhos gerenciados via UDim2 e UIListLayout.
+- `tabName` _(string)_: Nome da aba.
+- `icon` _(string|nil)_: (Opcional) Ícone em Unicode/Emoji.
 
-Usa TweenService para animações suaves.
-
-Usa UserInputService para funcionalidades de arrastar e redimensionar.
-
-
+**Retorna:** Um objeto `tab`.
 
 ---
 
-🤝 Contribuição
+#### Métodos do `tab`:
 
-Contribuições são bem-vindas!
+##### `tab:AddLabel(text)`
+Adiciona um label de texto.
 
-Abra uma Issue para bugs ou sugestões.
+##### `tab:AddButton(text, callback)`
+Adiciona um botão.
 
-Crie um Pull Request com melhorias, seguindo o estilo do código.
+##### `tab:AddToggle(text, callback)`
+Adiciona um botão de liga/desliga.
+- `callback(state)` recebe um boolean.
 
+##### `tab:AddDropdownButtonOnOff(title, items, callback)`
+Adiciona um dropdown múltiplo, cada item é toggle ON/OFF.
+- `callback(states)` recebe uma tabela `{[item] = true/false}`.
 
+##### `tab:AddSelectDropdown(title, items, callback)`
+Adiciona um dropdown para seleção única.
+- `callback(selected)` recebe o item escolhido.
+
+##### `tab:AddSlider(text, min, max, default, callback)`
+Adiciona um slider.
+- `callback(value)` recebe o valor atual.
 
 ---
 
-📄 Licença
+## Personalização Visual
 
-Este projeto está licenciado sob a Licença MIT. Consulte o arquivo LICENSE no repositório para detalhes.
+O tema pode ser alterado editando a tabela `theme` no início do arquivo. Cores e estilos são facilmente customizáveis.
 
+## Dicas
+
+- O menu pode ser arrastado e redimensionado pelo usuário.
+- O botão de minimizar esconde o conteúdo, deixando apenas o título visível.
+- Todos os elementos são criados dinamicamente, permitindo adicionar/remover abas e conteúdos conforme necessário.
+
+## Compatibilidade
+
+- **Roblox LuaU** (compatível com exploits/executores como Delta, Via, Synapse, etc)
+- Não requer dependências externas.
+
+## Licença
+
+MIT License
 
 ---
+
+**Autor:** [dhsoares01]
+
+**Contribua ou reporte bugs via issues/pull requests!**
