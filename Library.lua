@@ -5,7 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 
--- Temas prontos
+-- Temas prontos aprimorados
 local THEMES = {
     ["Dark"] = {
         Background = Color3.fromRGB(30, 30, 30),
@@ -23,9 +23,9 @@ local THEMES = {
         TabButtonHeight = 34,
         ControlHeight = 32,
         ControlPadding = 6,
-        Opacity = 1
+        Opacity = 0.95 -- Ligeiramente transparente para um visual moderno
     },
-    ["White"] = {
+    ["Light"] = { -- Renomeado de "White" para "Light" para consistência
         Background = Color3.fromRGB(240, 240, 240),
         TabBackground = Color3.fromRGB(220, 220, 220),
         Accent = Color3.fromRGB(0, 120, 255),
@@ -41,43 +41,61 @@ local THEMES = {
         TabButtonHeight = 34,
         ControlHeight = 32,
         ControlPadding = 6,
-        Opacity = 1
+        Opacity = 0.95
     },
-    ["Dark Forte"] = {
-        Background = Color3.fromRGB(18, 18, 18),
-        TabBackground = Color3.fromRGB(24, 24, 24),
-        Accent = Color3.fromRGB(0, 200, 255),
-        Text = Color3.fromRGB(240, 240, 240),
+    ["Deep Ocean"] = { -- Novo tema
+        Background = Color3.fromRGB(15, 25, 40),
+        TabBackground = Color3.fromRGB(25, 40, 60),
+        Accent = Color3.fromRGB(0, 180, 255),
+        Text = Color3.fromRGB(230, 240, 255),
         LabelText = Color3.fromRGB(180, 220, 255),
-        Stroke = Color3.fromRGB(80, 80, 80),
-        ScrollViewBackground = Color3.fromRGB(14, 14, 14),
-        ButtonBackground = Color3.fromRGB(40, 40, 40),
-        Warning = Color3.fromRGB(255, 60, 60),
-        CornerRadius = UDim.new(0, 8),
-        SmallCornerRadius = UDim.new(0, 6),
-        Padding = 8,
-        TabButtonHeight = 34,
-        ControlHeight = 32,
-        ControlPadding = 6,
-        Opacity = 1
+        Stroke = Color3.fromRGB(50, 80, 110),
+        ScrollViewBackground = Color3.fromRGB(10, 20, 35),
+        ButtonBackground = Color3.fromRGB(35, 55, 80),
+        Warning = Color3.fromRGB(255, 90, 90),
+        CornerRadius = UDim.new(0, 10), -- Bordas um pouco mais arredondadas
+        SmallCornerRadius = UDim.new(0, 7),
+        Padding = 10,
+        TabButtonHeight = 36,
+        ControlHeight = 34,
+        ControlPadding = 8,
+        Opacity = 0.9
     },
-    ["White and Dark"] = {
-        Background = Color3.fromRGB(245, 245, 245),
-        TabBackground = Color3.fromRGB(40, 40, 40),
-        Accent = Color3.fromRGB(120, 0, 255),
-        Text = Color3.fromRGB(30, 30, 30),
-        LabelText = Color3.fromRGB(50, 50, 250),
-        Stroke = Color3.fromRGB(60, 60, 60),
-        ScrollViewBackground = Color3.fromRGB(240, 240, 240),
-        ButtonBackground = Color3.fromRGB(180, 180, 180),
-        Warning = Color3.fromRGB(255, 60, 60),
+    ["Forest Green"] = { -- Novo tema
+        Background = Color3.fromRGB(30, 60, 30),
+        TabBackground = Color3.fromRGB(45, 80, 45),
+        Accent = Color3.fromRGB(80, 200, 80),
+        Text = Color3.fromRGB(240, 255, 240),
+        LabelText = Color3.fromRGB(180, 255, 180),
+        Stroke = Color3.fromRGB(70, 120, 70),
+        ScrollViewBackground = Color3.fromRGB(20, 50, 20),
+        ButtonBackground = Color3.fromRGB(55, 90, 55),
+        Warning = Color3.fromRGB(255, 100, 100),
         CornerRadius = UDim.new(0, 8),
         SmallCornerRadius = UDim.new(0, 6),
         Padding = 8,
         TabButtonHeight = 34,
         ControlHeight = 32,
         ControlPadding = 6,
-        Opacity = 1
+        Opacity = 0.95
+    },
+    ["Warm Grey"] = { -- Novo tema
+        Background = Color3.fromRGB(60, 60, 60),
+        TabBackground = Color3.fromRGB(75, 75, 75),
+        Accent = Color3.fromRGB(255, 150, 50),
+        Text = Color3.fromRGB(250, 250, 250),
+        LabelText = Color3.fromRGB(220, 220, 220),
+        Stroke = Color3.fromRGB(90, 90, 90),
+        ScrollViewBackground = Color3.fromRGB(50, 50, 50),
+        ButtonBackground = Color3.fromRGB(85, 85, 85),
+        Warning = Color3.fromRGB(255, 70, 70),
+        CornerRadius = UDim.new(0, 8),
+        SmallCornerRadius = UDim.new(0, 6),
+        Padding = 8,
+        TabButtonHeight = 34,
+        ControlHeight = 32,
+        ControlPadding = 6,
+        Opacity = 0.9
     }
 }
 
@@ -175,7 +193,9 @@ local function saveConfig(window, controls, windowName)
     if path then
         writefile(path, json)
     else
+        -- Fallback para clipboard em ambientes sem writefile
         setclipboard(json)
+        warn("No 'writefile' support. Configuration copied to clipboard.")
     end
 end
 
@@ -183,8 +203,13 @@ local function loadConfig(window, controls, windowName, labelRefs)
     local config = nil
     local path = getConfigPath(windowName)
     if path and pcall(function() return readfile(path) end) then
-        config = HttpService:JSONDecode(readfile(path))
-    else
+        local success, content = pcall(function() return readfile(path) end)
+        if success then
+            config = HttpService:JSONDecode(content)
+        end
+    end
+    
+    if not config then -- Tenta carregar do clipboard se não houver arquivo ou falhar
         local ok, clipboard = pcall(function() return getclipboard() end)
         if ok and clipboard then
             local decoded
@@ -194,6 +219,7 @@ local function loadConfig(window, controls, windowName, labelRefs)
             end
         end
     end
+
     if not config then return end
 
     for k, v in pairs(config.Theme or {}) do
@@ -343,6 +369,7 @@ function Library:CreateWindow(name)
             pg.Visible = (pgName == name)
         end
         if activeTabButton then
+            -- Restaura a cor de fundo original do botão inativo, ou uma cor mais escura
             TweenService:Create(activeTabButton, TweenInfo.new(0.15), { BackgroundColor3 = theme.ButtonBackground }):Play()
         end
         activeTabButton = button
@@ -362,10 +389,28 @@ function Library:CreateWindow(name)
         Title.TextColor3 = theme.Text
         BtnMinimize.TextColor3 = theme.Text
 
-        -- aplica cor só nos labels do menu:
+        -- aplica cor em todos os elementos da UI com base no tema
         for _, ref in ipairs(labelRefs) do
             if ref and ref:IsA("TextLabel") then
                 ref.TextColor3 = theme.LabelText or theme.Text
+            end
+        end
+        
+        -- Atualizar cores de botões ativos/inativos e outros controles
+        for _, obj in pairs(MainFrame:GetDescendants()) do
+            if obj:IsA("TextButton") then
+                if obj == activeTabButton then
+                    obj.BackgroundColor3 = theme.Accent
+                elseif obj.Name ~= "MinimizeButton" then -- Evita alterar o botão de minimizar
+                    obj.BackgroundColor3 = theme.ButtonBackground
+                end
+                obj.TextColor3 = theme.Text
+            elseif obj:IsA("TextBox") then
+                obj.BackgroundColor3 = theme.ScrollViewBackground
+                obj.TextColor3 = theme.Text
+                obj.PlaceholderColor3 = theme.LabelText
+            elseif obj:IsA("Frame") and (obj.Name == "ColorPreview" or obj.Name == "SliderFill") then
+                obj.BackgroundColor3 = theme.Accent
             end
         end
     end
@@ -425,7 +470,7 @@ function Library:CreateWindow(name)
 
         Button.MouseEnter:Connect(function()
             if Button ~= activeTabButton then
-                TweenService:Create(Button, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(60, 60, 60) }):Play()
+                TweenService:Create(Button, TweenInfo.new(0.2), { BackgroundColor3 = theme.ButtonBackground:Lerp(theme.Accent, 0.2) }):Play()
             end
         end)
         Button.MouseLeave:Connect(function()
@@ -491,7 +536,7 @@ function Library:CreateWindow(name)
                 end
             end)
             ToggleBtn.MouseEnter:Connect(function()
-                TweenService:Create(ToggleBtn, TweenInfo.new(0.15), { BackgroundColor3 = state and theme.Accent or Color3.fromRGB(60,60,60) }):Play()
+                TweenService:Create(ToggleBtn, TweenInfo.new(0.15), { BackgroundColor3 = state and theme.Accent or theme.ButtonBackground:Lerp(theme.Accent, 0.2) }):Play()
             end)
             ToggleBtn.MouseLeave:Connect(function()
                 TweenService:Create(ToggleBtn, TweenInfo.new(0.15), { BackgroundColor3 = state and theme.Accent or theme.ButtonBackground }):Play()
@@ -548,7 +593,7 @@ function Library:CreateWindow(name)
                     end
                 end)
                 btn.MouseEnter:Connect(function()
-                    TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = states[name] and theme.Accent or Color3.fromRGB(60,60,60) }):Play()
+                    TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = states[name] and theme.Accent or theme.ButtonBackground:Lerp(theme.Accent, 0.2) }):Play()
                 end)
                 btn.MouseLeave:Connect(function()
                     TweenService:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = states[name] and theme.Accent or theme.ButtonBackground }):Play()
@@ -564,19 +609,21 @@ function Library:CreateWindow(name)
 
             local id = "DropdownOnOff_"..title
             controls[id] = {
-                Set = function(_, item, value)
-                    if states[item] ~= nil then
-                        states[item] = value
-                        if itemButtons[item] then
-                            itemButtons[item].BackgroundColor3 = value and theme.Accent or theme.ButtonBackground
-                            itemButtons[item].Text = item .. ": " .. (value and "ON" or "OFF")
-                        end
-                        if callback then
-                            callback(states)
+                Set = function(_, valueTable) -- Permite setar múltiplos estados de uma vez
+                    for k, v in pairs(valueTable) do
+                        if states[k] ~= nil then
+                            states[k] = v
+                            if itemButtons[k] then
+                                itemButtons[k].BackgroundColor3 = v and theme.Accent or theme.ButtonBackground
+                                itemButtons[k].Text = k .. ": " .. (v and "ON" or "OFF")
+                            end
                         end
                     end
+                    if callback then
+                        callback(states)
+                    end
                 end,
-                GetAll = function()
+                Get = function()
                     return states
                 end
             }
@@ -643,7 +690,7 @@ function Library:CreateWindow(name)
                 updateHeaderText()
             end)
 
-            local id = "Dropdown_"..title
+            local id = "SelectDropdown_"..title
             controls[id] = {
                 Set = function(_, item)
                     if table.find(items, item) then
@@ -679,11 +726,13 @@ function Library:CreateWindow(name)
             createCorner(SliderBar, theme.SmallCornerRadius)
 
             local SliderFill = Instance.new("Frame", SliderBar)
-            local initialPercent = math.clamp((default - min) / (max - min), 0, 1)
+            local currentVal = default
+            local initialPercent = math.clamp((currentVal - min) / (max - min), 0, 1)
             SliderFill.Size = UDim2.new(initialPercent, 0, 1, 0)
             SliderFill.BackgroundColor3 = theme.Accent
             SliderFill.BorderSizePixel = 0
             createCorner(SliderFill, theme.SmallCornerRadius)
+            SliderFill.Name = "SliderFill" -- Adicionado para ApplyTheme
 
             local draggingSlider = false
 
@@ -691,6 +740,7 @@ function Library:CreateWindow(name)
                 local relativeX = math.clamp(input.Position.X - SliderBar.AbsolutePosition.X, 0, SliderBar.AbsoluteSize.X)
                 local percent = relativeX / SliderBar.AbsoluteSize.X
                 local value = math.floor(min + (max - min) * percent)
+                currentVal = value
                 SliderFill.Size = UDim2.new(percent, 0, 1, 0)
                 Label.Text = text .. ": " .. tostring(value)
                 if callback then
@@ -720,16 +770,137 @@ function Library:CreateWindow(name)
             local id = "Slider_"..text
             controls[id] = {
                 Set = function(self, value)
-                    local percent = math.clamp((value - min) / (max - min), 0, 1)
+                    currentVal = math.clamp(value, min, max)
+                    local percent = (currentVal - min) / (max - min)
                     SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-                    Label.Text = text .. ": " .. tostring(value)
+                    Label.Text = text .. ": " .. tostring(currentVal)
                     if callback then
-                        callback(value)
+                        callback(currentVal)
                     end
                 end,
                 Get = function(self)
-                    local size = SliderFill.Size.X.Scale
-                    return math.floor(min + (max - min) * size)
+                    return currentVal
+                end
+            }
+            return controls[id]
+        end
+
+        function tab:AddTextBox(text, placeholder, default, callback, isMultiLine)
+            local container = Instance.new("Frame", Page)
+            container.Size = UDim2.new(1, 0, 0, isMultiLine and theme.ControlHeight * 2 or theme.ControlHeight)
+            container.BackgroundTransparency = 1
+
+            local Label = createTextLabel(container, text, 14, theme.LabelText or theme.Text, Enum.Font.Gotham, Enum.TextXAlignment.Left)
+            Label.Size = UDim2.new(1, 0, 0, 16)
+            Label.Position = UDim2.new(0, 0, 0, 0)
+            table.insert(labelRefs, Label)
+
+            local TextBox = Instance.new("TextBox", container)
+            TextBox.Size = UDim2.new(1, 0, 0, isMultiLine and theme.ControlHeight * 1.5 or theme.ControlHeight - 16)
+            TextBox.Position = UDim2.new(0, 0, 0, 16)
+            TextBox.PlaceholderText = placeholder or ""
+            TextBox.Text = default or ""
+            TextBox.BackgroundColor3 = theme.ScrollViewBackground
+            TextBox.TextColor3 = theme.Text
+            TextBox.PlaceholderColor3 = theme.LabelText
+            TextBox.Font = Enum.Font.Gotham
+            TextBox.TextSize = 16
+            TextBox.ClearTextOnFocus = false
+            TextBox.MultiLine = isMultiLine or false
+            TextBox.TextXAlignment = Enum.TextXAlignment.Left
+            TextBox.TextYAlignment = Enum.TextYAlignment.Center
+            createCorner(TextBox, theme.SmallCornerRadius)
+            local UIStrokeBox = Instance.new("UIStroke", TextBox)
+            UIStrokeBox.Color = theme.Stroke
+            UIStrokeBox.Thickness = 1
+
+            TextBox.FocusLost:Connect(function(enterPressed)
+                if callback then
+                    callback(TextBox.Text)
+                end
+            end)
+            
+            local id = "TextBox_"..text
+            controls[id] = {
+                Set = function(self, value) TextBox.Text = value end,
+                Get = function(self) return TextBox.Text end
+            }
+            return controls[id]
+        end
+
+        function tab:AddColorPicker(text, defaultColor, callback)
+            local container = Instance.new("Frame", Page)
+            container.Size = UDim2.new(1, 0, 0, theme.ControlHeight * 2)
+            container.BackgroundTransparency = 1
+
+            local Label = createTextLabel(container, text .. ": " .. defaultColor.R .. "," .. defaultColor.G .. "," .. defaultColor.B, 14, theme.LabelText or theme.Text, Enum.Font.Gotham, Enum.TextXAlignment.Left)
+            Label.Size = UDim2.new(1, 0, 0, 16)
+            Label.Position = UDim2.new(0, 0, 0, 0)
+            table.insert(labelRefs, Label)
+
+            local ColorPreview = Instance.new("Frame", container)
+            ColorPreview.Name = "ColorPreview"
+            ColorPreview.Size = UDim2.new(0, theme.ControlHeight, 0, theme.ControlHeight)
+            ColorPreview.Position = UDim2.new(1, -theme.ControlHeight, 0, 16)
+            ColorPreview.BackgroundColor3 = defaultColor
+            ColorPreview.BorderSizePixel = 0
+            createCorner(ColorPreview, theme.SmallCornerRadius)
+
+            local ColorSlidersFrame = Instance.new("Frame", container)
+            ColorSlidersFrame.Size = UDim2.new(1, -theme.ControlHeight - theme.ControlPadding, 0, theme.ControlHeight + 10)
+            ColorSlidersFrame.Position = UDim2.new(0, 0, 0, 16)
+            ColorSlidersFrame.BackgroundTransparency = 1
+
+            local listLayout = Instance.new("UIListLayout", ColorSlidersFrame)
+            listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            listLayout.Padding = UDim.new(0, 2)
+            listLayout.FillDirection = Enum.FillDirection.Vertical
+
+            local rSlider, gSlider, bSlider
+            local currentColor = defaultColor
+
+            local function updateColorPreview()
+                ColorPreview.BackgroundColor3 = currentColor
+                Label.Text = text .. ": " .. math.floor(currentColor.R*255) .. "," .. math.floor(currentColor.G*255) .. "," .. math.floor(currentColor.B*255)
+                if callback then
+                    callback(currentColor)
+                end
+            end
+
+            rSlider = tab:AddSlider("R", 0, 255, math.floor(defaultColor.R*255), function(v)
+                currentColor = Color3.fromRGB(v, math.floor(currentColor.G*255), math.floor(currentColor.B*255))
+                updateColorPreview()
+            end)
+            rSlider._controlFrame.Parent = ColorSlidersFrame -- Reparenta para o frame de sliders
+            
+            gSlider = tab:AddSlider("G", 0, 255, math.floor(defaultColor.G*255), function(v)
+                currentColor = Color3.fromRGB(math.floor(currentColor.R*255), v, math.floor(currentColor.B*255))
+                updateColorPreview()
+            end)
+            gSlider._controlFrame.Parent = ColorSlidersFrame
+
+            bSlider = tab:AddSlider("B", 0, 255, math.floor(defaultColor.B*255), function(v)
+                currentColor = Color3.fromRGB(math.floor(currentColor.R*255), math.floor(currentColor.G*255), v)
+                updateColorPreview()
+            end)
+            bSlider._controlFrame.Parent = ColorSlidersFrame
+
+            -- Adiciona os labels dos sliders à lista de labels para aplicação de tema
+            table.insert(labelRefs, rSlider._controlFrame:FindFirstChildOfClass("TextLabel"))
+            table.insert(labelRefs, gSlider._controlFrame:FindFirstChildOfClass("TextLabel"))
+            table.insert(labelRefs, bSlider._controlFrame:FindFirstChildOfClass("TextLabel"))
+
+            local id = "ColorPicker_"..text
+            controls[id] = {
+                Set = function(self, color)
+                    currentColor = color
+                    rSlider:Set(math.floor(color.R*255))
+                    gSlider:Set(math.floor(color.G*255))
+                    bSlider:Set(math.floor(color.B*255))
+                    updateColorPreview()
+                end,
+                Get = function(self)
+                    return currentColor
                 end
             }
             return controls[id]
@@ -739,38 +910,59 @@ function Library:CreateWindow(name)
     end
 
     -- Aba de Configuração
-    local configTab = window:CreateTab("Config")
+    local configTab = window:CreateTab("Config", "⚙") -- Adicionado ícone
     configTab:AddLabel("Customização do Menu:")
 
     -- Tema pronto
-    configTab:AddSelectDropdown("Tema", {"Dark","White","Dark Forte","White and Dark"}, function(selected)
+    local themeDropdown = configTab:AddSelectDropdown("Tema", {"Dark","Light","Deep Ocean","Forest Green","Warm Grey"}, function(selected)
         local t = THEMES[selected] or THEMES["Dark"]
         for k,v in pairs(t) do
             theme[k] = v
         end
         window:ApplyTheme(labelRefs)
     end)
+    -- Seta o tema inicial do dropdown
+    local currentThemeName = "Dark"
+    for name, t in pairs(THEMES) do
+        local isMatch = true
+        for k, v in pairs(theme) do
+            if typeof(v) == "Color3" then
+                if not (v.R == t[k].R and v.G == t[k].G and v.B == t[k].B) then
+                    isMatch = false
+                    break
+                end
+            elseif v ~= t[k] then
+                isMatch = false
+                break
+            end
+        end
+        if isMatch then
+            currentThemeName = name
+            break
+        end
+    end
+    themeDropdown:Set(currentThemeName)
 
     -- Cor Accent
-    configTab:AddDropdownButtonOnOff("Cor Accent", {"Azul","Roxo","Verde","Vermelho"}, function(states)
-        if states["Azul"] then theme.Accent = Color3.fromRGB(0,120,255)
-        elseif states["Roxo"] then theme.Accent = Color3.fromRGB(120,0,255)
-        elseif states["Verde"] then theme.Accent = Color3.fromRGB(0,255,120)
-        elseif states["Vermelho"] then theme.Accent = Color3.fromRGB(255,50,50) end
+    local accentColorPicker = configTab:AddColorPicker("Cor Accent", theme.Accent, function(color)
+        theme.Accent = color
         window:ApplyTheme(labelRefs)
     end)
 
     -- Cor do texto dos labels
-    configTab:AddDropdownButtonOnOff("Cor Text", {"Branco","Azul","Amarelo","Roxo"}, function(states)
-        if states["Branco"] then theme.LabelText = Color3.fromRGB(255,255,255)
-        elseif states["Azul"] then theme.LabelText = Color3.fromRGB(60,180,255)
-        elseif states["Amarelo"] then theme.LabelText = Color3.fromRGB(240,220,60)
-        elseif states["Roxo"] then theme.LabelText = Color3.fromRGB(180,60,255) end
+    local labelTextColorPicker = configTab:AddColorPicker("Cor Texto Label", theme.LabelText, function(color)
+        theme.LabelText = color
+        window:ApplyTheme(labelRefs)
+    end)
+    
+    -- Cor de fundo
+    local backgroundColorPicker = configTab:AddColorPicker("Cor Fundo", theme.Background, function(color)
+        theme.Background = color
         window:ApplyTheme(labelRefs)
     end)
 
     -- Opacidade
-    configTab:AddSlider("Opacidade", 30, 100, math.floor((theme.Opacity or 1)*100), function(v)
+    local opacitySlider = configTab:AddSlider("Opacidade", 30, 100, math.floor((theme.Opacity or 1)*100), function(v)
         theme.Opacity = v/100
         MainFrame.BackgroundTransparency = 1-theme.Opacity
     end)
@@ -786,6 +978,12 @@ function Library:CreateWindow(name)
             theme[k] = v
         end
         window:ApplyTheme(labelRefs)
+        -- Atualiza os seletores de cor e dropdowns para refletir o tema resetado
+        accentColorPicker:Set(theme.Accent)
+        labelTextColorPicker:Set(theme.LabelText)
+        backgroundColorPicker:Set(theme.Background)
+        opacitySlider:Set(math.floor((theme.Opacity or 1)*100))
+        themeDropdown:Set("Dark") -- Assume que o tema padrão é "Dark"
     end)
 
     coroutine.wrap(function()
@@ -798,9 +996,11 @@ function Library:CreateWindow(name)
                 end
             end
         end
+        loadConfig(window, controls, name, labelRefs) -- Carrega a config ao iniciar
     end)()
 
     return window
 end
 
 return Library
+
