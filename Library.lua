@@ -1,619 +1,409 @@
 --[[
-    GuiMenuLibrary.lua
-    Biblioteca para criar menus GUI em executores como Delta via loadstring.
-    Design aprimorado, Slider, DropdownButtonOnOff, DropdownButton.
-    Bugs corrigidos: sombra branca e arrasto touch.
-    Adaptado para dispositivos móveis.
-    Desenvolvido por: dhsoares01
---]]
+UI BIBLIOTECA - Floating Menu UI Library for Roblox Executors (Delta, Fluxus, etc.)
+Author: dhsoares01
+GitHub: [https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua]
+License: MIT
 
-local GuiMenuLibrary = {}
-GuiMenuLibrary.__index = GuiMenuLibrary
+Features:
+- Draggable floating menu (mouse and touch support)
+- Header with title, minimize/expand and close buttons
+- Components: Toggle, Slider, ButtonOnOff, Label
+- When minimized, menu collapses, button toggles between "-" and "+"
+- When closed, disables all components except for those that must remain (e.g. slider reset to default)
+- Mobile touch drag support
 
-local UserInputService = game:GetService("UserInputService")
+Usage:
+local ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/youruser/yourrepo/main/UILibrary.lua"))()
+local myMenu = ui:CreateMenu("Meu Menu")
+local myToggle = myMenu:AddToggle("Ativar função", function(state) print("Toggle:", state) end)
+local mySlider = myMenu:AddSlider("Volume", 0, 100, 50, function(value) print("Slider:", value) end)
+local myButton = myMenu:AddButtonOnOff("Iniciar", function(on) print("Button:", on) end)
+myMenu:AddLabel("Desenvolvido por dhsoares01")
+]]
 
+local UIS = game:GetService("UserInputService")
+local TS = game:GetService("TweenService")
+
+local UILibrary = {}
+UILibrary.__index = UILibrary
+
+local COMPONENTS = {"Toggle", "Slider", "ButtonOnOff", "Label"}
+
+-- Default theme (customize as needed)
+local THEME = {
+    Background = Color3.fromRGB(40, 40, 40),
+    Header = Color3.fromRGB(30, 30, 30),
+    Accent = Color3.fromRGB(0, 170, 255),
+    Text = Color3.fromRGB(240, 240, 240),
+    Button = Color3.fromRGB(60, 60, 60),
+    ButtonOn = Color3.fromRGB(0, 220, 120),
+    SliderBar = Color3.fromRGB(70, 70, 70),
+    SliderFill = Color3.fromRGB(0, 170, 255)
+}
+
+-- Utility: Create UI element with properties
 local function create(class, props)
     local inst = Instance.new(class)
-    for prop, val in pairs(props or {}) do
-        inst[prop] = val
+    for k,v in pairs(props or {}) do
+        inst[k] = v
     end
     return inst
 end
 
--- Arrasto só no fundo do menu, não nas abas/conteúdo/topbar/botões, suportando mouse e toque (dedo)
-local function setupSmartDrag(MainFrame, disallowAreas)
-    local dragging = false
-    local dragStart, startPos
-    local dragTouchId = nil
+--[[
+    FloatingMenu Class
+]]
+local FloatingMenu = {}
+FloatingMenu.__index = FloatingMenu
 
-    local function isInDisallowArea(pos)
-        for _, area in ipairs(disallowAreas) do
-            if area and area.Visible ~= false then
-                local absPos = area.AbsolutePosition
-                local absSize = area.AbsoluteSize
-                if pos.X >= absPos.X and pos.X <= absPos.X + absSize.X
-                and pos.Y >= absPos.Y and pos.Y <= absPos.Y + absSize.Y then
-                    return true
-                end
-            end
+function FloatingMenu:Minimize()
+    if self._closed then return end
+    self._minimized = true
+    self._body.Visible = false
+    self._minBtn.Text = "+"
+end
+
+function FloatingMenu:Expand()
+    if self._closed then return end
+    self._minimized = false
+    self._body.Visible = true
+    self._minBtn.Text = "–"
+end
+
+function FloatingMenu:Close()
+    self._closed = true
+    self._main.Visible = false
+    -- Disable all component callbacks
+    for _,comp in pairs(self._components) do
+        if comp.Type == "Toggle" then
+            comp.Object.ToggleBtn.AutoButtonColor = false
+            comp.Object.ToggleBtn.MouseButton1Click:Disconnect()
+            comp.Object.ToggleBtn.Text = "OFF"
+            comp.Object.ToggleBtn.BackgroundColor3 = THEME.Button
+        elseif comp.Type == "ButtonOnOff" then
+            comp.Object.Btn.AutoButtonColor = false
+            comp.Object.Btn.MouseButton1Click:Disconnect()
+            comp.Object.Btn.Text = "OFF"
+            comp.Object.Btn.BackgroundColor3 = THEME.Button
+        elseif comp.Type == "Slider" then
+            -- Reset slider to default value and lock
+            comp.Object.SliderBar.Bar.Size = UDim2.new(0,0,1,0)
+            comp.Object.SliderBar.Fill.Size = UDim2.new(0,0,1,0)
+            comp.Object.SliderBar.Bar.InputBegan:Disconnect()
+            comp.Object.SliderBar.Bar.InputChanged:Disconnect()
+            comp.Object.SliderBar.Bar.InputEnded:Disconnect()
+            comp:Reset()
         end
-        return false
+    end
+end
+
+function FloatingMenu:_dragify(frame)
+    local dragToggle, dragInput, dragStart, startPos
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 
-    MainFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            if not isInDisallowArea(input.Position) then
-                dragging = true
-                dragStart = input.Position
-                startPos = MainFrame.Position
-                local conn; conn = input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragging = false
-                        if conn then conn:Disconnect() end
-                    end
-                end)
-            end
-        elseif input.UserInputType == Enum.UserInputType.Touch then
-            if not isInDisallowArea(input.Position) and not dragging then
-                dragging = true
-                dragTouchId = input.TouchId
-                dragStart = input.Position
-                startPos = MainFrame.Position
-                local conn; conn = input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragging = false
-                        dragTouchId = nil
-                        if conn then conn:Disconnect() end
-                    end
-                end)
-            end
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragToggle = true
+            dragStart = input.Position
+            startPos = frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragToggle = false
+                end
+            end)
         end
     end)
 
-    MainFrame.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-
-    UserInputService.TouchMoved:Connect(function(input)
-        if dragging and dragTouchId and input.TouchId == dragTouchId then
-            local delta = input.Position - dragStart
-            MainFrame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+    frame.InputChanged:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseMovement or
+            input.UserInputType == Enum.UserInputType.Touch) and dragToggle then
+            update(input)
         end
     end)
 end
 
-function GuiMenuLibrary:CreateMenu(options)
-    if game.CoreGui:FindFirstChild("DGuiMenu") then
-        game.CoreGui.DGuiMenu:Destroy()
-    end
+function FloatingMenu:AddToggle(text, callback)
+    local comp = {}
+    local holder = create("Frame", {
+        Name = "ToggleHolder",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1,0,0,30),
+        Parent = self._body
+    })
+    local label = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Text = text,
+        Font = Enum.Font.SourceSans,
+        TextColor3 = THEME.Text,
+        TextSize = 16,
+        Size = UDim2.new(0.7,0,1,0),
+        Position = UDim2.new(0,5,0,0),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = holder
+    })
+    local btn = create("TextButton", {
+        Name = "ToggleBtn",
+        BackgroundColor3 = THEME.Button,
+        Text = "OFF",
+        Font = Enum.Font.SourceSansBold,
+        TextColor3 = THEME.Text,
+        Size = UDim2.new(0,50,0,22),
+        Position = UDim2.new(1,-58,0.5,-11),
+        AnchorPoint = Vector2.new(0,0.5),
+        Parent = holder
+    })
+    local state = false
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        btn.Text = state and "ON" or "OFF"
+        btn.BackgroundColor3 = state and THEME.ButtonOn or THEME.Button
+        if callback then callback(state) end
+    end)
+    comp.Object = {Holder=holder, ToggleBtn=btn}
+    comp.Type = "Toggle"
+    table.insert(self._components, comp)
+    return comp
+end
 
-    local ScreenGui = create("ScreenGui", {
-        Name = "DGuiMenu",
-        ResetOnSpawn = false,
-        ZIndexBehavior = Enum.ZIndexBehavior.Global, -- Garante que o menu fique sempre na frente
+function FloatingMenu:AddButtonOnOff(text, callback)
+    local comp = {}
+    local holder = create("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1,0,0,30),
+        Parent = self._body
+    })
+    local label = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Text = text,
+        Font = Enum.Font.SourceSans,
+        TextColor3 = THEME.Text,
+        TextSize = 16,
+        Size = UDim2.new(0.7,0,1,0),
+        Position = UDim2.new(0,5,0,0),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = holder
+    })
+    local btn = create("TextButton", {
+        Name = "Btn",
+        BackgroundColor3 = THEME.Button,
+        Text = "OFF",
+        Font = Enum.Font.SourceSansBold,
+        TextColor3 = THEME.Text,
+        Size = UDim2.new(0,50,0,22),
+        Position = UDim2.new(1,-58,0.5,-11),
+        AnchorPoint = Vector2.new(0,0.5),
+        Parent = holder
+    })
+    local on = false
+    btn.MouseButton1Click:Connect(function()
+        on = not on
+        btn.Text = on and "ON" or "OFF"
+        btn.BackgroundColor3 = on and THEME.ButtonOn or THEME.Button
+        if callback then callback(on) end
+    end)
+    comp.Object = {Holder=holder, Btn=btn}
+    comp.Type = "ButtonOnOff"
+    table.insert(self._components, comp)
+    return comp
+end
+
+function FloatingMenu:AddSlider(text, min, max, default, callback)
+    local comp = {}
+    local holder = create("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1,0,0,38),
+        Parent = self._body
+    })
+    local label = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Text = ("%s: %d"):format(text, default),
+        Font = Enum.Font.SourceSans,
+        TextColor3 = THEME.Text,
+        TextSize = 16,
+        Size = UDim2.new(0.7,0,1,0),
+        Position = UDim2.new(0,5,0,0),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = holder
+    })
+    local sliderBar = create("Frame", {
+        Name = "SliderBar",
+        BackgroundColor3 = THEME.SliderBar,
+        BorderSizePixel = 0,
+        Size = UDim2.new(0.7,0,0,8),
+        Position = UDim2.new(0,5,1,-16),
+        Parent = holder
+    })
+    local fill = create("Frame", {
+        Name = "Fill",
+        BackgroundColor3 = THEME.SliderFill,
+        BorderSizePixel = 0,
+        Size = UDim2.new((default-min)/(max-min),0,1,0),
+        Parent = sliderBar
+    })
+    local dragging = false
+    local function setSlider(x)
+        local rel = math.clamp((x-sliderBar.AbsolutePosition.X)/sliderBar.AbsoluteSize.X, 0, 1)
+        local value = math.floor(min + (max-min)*rel + 0.5)
+        fill.Size = UDim2.new(rel,0,1,0)
+        label.Text = ("%s: %d"):format(text, value)
+        if callback then callback(value) end
+    end
+    sliderBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            setSlider(input.Position.X)
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or
+                         input.UserInputType == Enum.UserInputType.Touch) then
+            setSlider(input.Position.X)
+        end
+    end)
+    UIS.InputEnded:Connect(function(input)
+        if dragging then dragging = false end
+    end)
+    function comp:Reset()
+        fill.Size = UDim2.new((default-min)/(max-min),0,1,0)
+        label.Text = ("%s: %d"):format(text, default)
+        if callback then callback(default) end
+    end
+    comp.Object = {Holder=holder, SliderBar={Bar=sliderBar, Fill=fill}, Label=label}
+    comp.Type = "Slider"
+    table.insert(self._components, comp)
+    return comp
+end
+
+function FloatingMenu:AddLabel(text)
+    local holder = create("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1,0,0,24),
+        Parent = self._body
+    })
+    local label = create("TextLabel", {
+        BackgroundTransparency = 1,
+        Text = text,
+        Font = Enum.Font.SourceSansItalic,
+        TextColor3 = THEME.Text,
+        TextSize = 14,
+        Size = UDim2.new(1, -10, 1, 0),
+        Position = UDim2.new(0, 5, 0, 0),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = holder
+    })
+    return label
+end
+
+function UILibrary:CreateMenu(title)
+    local selfMenu = setmetatable({}, FloatingMenu)
+    selfMenu._components = {}
+    selfMenu._closed = false
+    selfMenu._minimized = false
+
+    -- Main container
+    local main = create("Frame", {
+        Name = "FloatingMenu",
+        AnchorPoint = Vector2.new(0,0),
+        Position = UDim2.new(0.25,0,0.2,0),
+        Size = UDim2.new(0,320,0,48),
+        BackgroundColor3 = THEME.Background,
+        BorderSizePixel = 0,
         Parent = game:GetService("CoreGui")
     })
+    selfMenu._main = main
 
-    -- Definições de tamanho e posição responsivas
-    local screen_width = UserInputService:GetScreenSize().X
-    local screen_height = UserInputService:GetScreenSize().Y
-
-    local menu_width = math.min(410, screen_width * 0.8)  -- Largura máxima de 80% da tela
-    local menu_height = math.min(280, screen_height * 0.7) -- Altura máxima de 70% da tela
-
-    local MainSize = UDim2.new(0, menu_width, 0, menu_height)
-    local MainAnchor = Vector2.new(0.5, 0.5)
-    local MainPos = UDim2.new(0.5, 0, 0.5, 0)
-
-    local Shadow = create("ImageLabel", {
-        Name = "Shadow",
-        Image = "rbxassetid://1316045217",
-        BackgroundTransparency = 1,
-        ImageTransparency = 0.35,
-        Size = UDim2.new(0, menu_width + 20, 0, menu_height + 20), -- Ajuste a sombra ao tamanho do menu
-        Position = MainPos,
-        AnchorPoint = MainAnchor,
-        ZIndex = 0,
-        Parent = ScreenGui
-    })
-
-    local MainFrame = create("Frame", {
-        Name = "MainFrame",
-        BackgroundColor3 = Color3.fromRGB(22, 23, 36),
+    -- Header
+    local header = create("Frame", {
+        Name = "Header",
+        BackgroundColor3 = THEME.Header,
         BorderSizePixel = 0,
-        Size = MainSize,
-        Position = MainPos,
-        AnchorPoint = MainAnchor,
-        Parent = ScreenGui,
-        ZIndex = 1,
+        Size = UDim2.new(1,0,0,36),
+        Parent = main
     })
-    create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = MainFrame})
-    create("UIStroke", {Color = Color3.fromRGB(40,90,255), Thickness = 2, Parent = MainFrame})
 
-    local TopBar = create("Frame", {
-        Name = "TopBar",
-        BackgroundColor3 = Color3.fromRGB(30, 32, 50),
-        BorderSizePixel = 0,
-        Size = UDim2.new(1, 0, 0, 36),
-        Parent = MainFrame
-    })
-    create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = TopBar})
-
-    local Title = create("TextLabel", {
-        Text = options.Title or "Menu",
-        Font = Enum.Font.GothamSemibold,
-        TextColor3 = Color3.fromRGB(255, 255, 255),
+    local titleLbl = create("TextLabel", {
         BackgroundTransparency = 1,
-        TextSize = 19,
-        Size = UDim2.new(1, -72, 1, 0),
-        Position = UDim2.new(0, 20, 0, 0),
+        Text = title or "Biblioteca UI",
+        Font = Enum.Font.SourceSansBold,
+        TextColor3 = THEME.Text,
+        TextSize = 18,
+        Size = UDim2.new(1,-80,1,0),
+        Position = UDim2.new(0,10,0,0),
         TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = TopBar
+        Parent = header
     })
 
-    local CloseBtn = create("TextButton", {
-        Name = "CloseBtn",
+    -- Minimize button
+    local minBtn = create("TextButton", {
+        Text = "–",
+        Font = Enum.Font.SourceSansBold,
+        TextSize = 22,
+        TextColor3 = THEME.Text,
+        BackgroundColor3 = Color3.fromRGB(50,50,50),
+        Size = UDim2.new(0,32,0,28),
+        Position = UDim2.new(1,-72,0.5,-14),
+        AnchorPoint = Vector2.new(0,0.5),
+        Parent = header
+    })
+    selfMenu._minBtn = minBtn
+
+    -- Close button
+    local closeBtn = create("TextButton", {
         Text = "×",
-        Font = Enum.Font.GothamBold,
-        TextColor3 = Color3.fromRGB(255, 80, 80),
-        TextSize = 24,
+        Font = Enum.Font.SourceSansBold,
+        TextSize = 22,
+        TextColor3 = THEME.Text,
+        BackgroundColor3 = Color3.fromRGB(90,30,30),
+        Size = UDim2.new(0,32,0,28),
+        Position = UDim2.new(1,-36,0.5,-14),
+        AnchorPoint = Vector2.new(0,0.5),
+        Parent = header
+    })
+
+    -- Body
+    local body = create("Frame", {
+        Name = "Body",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 36, 1, 0),
-        Position = UDim2.new(1, -36, 0, 0),
-        Parent = TopBar
+        Size = UDim2.new(1,0,1,-36),
+        Position = UDim2.new(0,0,0,36),
+        Parent = main
     })
-    CloseBtn.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
-    end)
+    selfMenu._body = body
 
-    local MinBtn = create("TextButton", {
-        Name = "MinBtn",
-        Text = "—",
-        Font = Enum.Font.GothamBold,
-        TextColor3 = Color3.fromRGB(180, 180, 180),
-        TextSize = 24,
-        BackgroundTransparency = 1,
-        Size = UDim2.new(0, 36, 1, 0),
-        Position = UDim2.new(1, -72, 0, 0),
-        Parent = TopBar
-    })
-
-    local TabsFrame = create("Frame", {
-        Name = "TabsFrame",
-        BackgroundColor3 = Color3.fromRGB(29, 30, 45),
-        BorderSizePixel = 0,
-        Size = UDim2.new(0, 110, 1, -36),
-        Position = UDim2.new(0, 0, 0, 36),
-        Parent = MainFrame
-    })
-    create("UICorner", {CornerRadius = UDim.new(0, 12), Parent = TabsFrame})
-
-    local TabsList = create("UIListLayout", {
-        Padding = UDim.new(0, 8),
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+    -- ListLayout for elements
+    local layout = create("UIListLayout", {
+        Padding = UDim.new(0, 2),
         SortOrder = Enum.SortOrder.LayoutOrder,
-        Parent = TabsFrame
-    })
-    TabsList.VerticalAlignment = Enum.VerticalAlignment.Top
-
-    local ContentFrame = create("Frame", {
-        Name = "ContentFrame",
-        BackgroundColor3 = Color3.fromRGB(25, 26, 40),
-        BorderSizePixel = 0,
-        Position = UDim2.new(0, 120, 0, 46),
-        Size = UDim2.new(1, -130, 1, -56),
-        Parent = MainFrame
-    })
-    create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = ContentFrame})
-
-    -- Scroll
-    local Scroll = create("ScrollingFrame", {
-        Name = "Scroll",
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        Size = UDim2.new(1, 0, 1, 0),
-        CanvasSize = UDim2.new(0,0,0,0),
-        ScrollBarThickness = 3,
-        ScrollBarImageColor3 = Color3.fromRGB(40,90,255),
-        Parent = ContentFrame,
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        TopImage = "rbxassetid://7445543660",
-        BottomImage = "rbxassetid://7445543660",
+        Parent = body
     })
 
-    local tabButtons = {}
-    local pages = {}
-    local function switchTab(tabIndex)
-        for i, page in ipairs(pages) do
-            page.Visible = (i == tabIndex)
-            tabButtons[i].BackgroundColor3 = i == tabIndex and Color3.fromRGB(40, 80, 255) or Color3.fromRGB(45, 45, 55)
-            tabButtons[i].TextColor3 = i == tabIndex and Color3.fromRGB(255,255,255) or Color3.fromRGB(170,170,200)
-        end
-    end
+    -- Drag support (mouse and touch)
+    selfMenu:_dragify(header)
 
-    for i, tab in ipairs(options.Tabs or { {Name = "Aba 1", Elements = {}} }) do
-        local btn = create("TextButton", {
-            Text = tab.Name,
-            Font = Enum.Font.GothamMedium,
-            TextSize = 15,
-            BackgroundColor3 = Color3.fromRGB(45, 45, 55),
-            TextColor3 = Color3.fromRGB(170,170,200),
-            Size = UDim2.new(1, -20, 0, 36),
-            Parent = TabsFrame,
-            AutoButtonColor = false
-        })
-        create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = btn})
-        btn.MouseButton1Click:Connect(function() switchTab(i) end)
-        tabButtons[i] = btn
-
-        local page = create("Frame", {
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0),
-            Position = UDim2.new(0, 0, 0, 0),
-            Visible = false,
-            Parent = Scroll
-        })
-
-        local layout = create("UIListLayout", {
-            Padding = UDim.new(0,12),
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = page
-        })
-
-        for _, el in ipairs(tab.Elements or {}) do
-            if el.Type == "Button" then
-                local btn = create("TextButton", {
-                    Text = el.Text or "Botão",
-                    Font = Enum.Font.GothamBold,
-                    TextSize = 16,
-                    BackgroundColor3 = Color3.fromRGB(40, 90, 255),
-                    TextColor3 = Color3.fromRGB(255,255,255),
-                    Size = UDim2.new(1, -10, 0, 36),
-                    Parent = page,
-                    AutoButtonColor = true
-                })
-                create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = btn})
-                create("UIStroke", {Color = Color3.fromRGB(40,90,255), Thickness = 1, Transparency = 0.7, Parent = btn})
-                if el.Callback then
-                    btn.MouseButton1Click:Connect(el.Callback)
-                end
-
-            elseif el.Type == "Label" then
-                local lbl = create("TextLabel", {
-                    Text = el.Text or "Texto",
-                    Font = Enum.Font.Gotham,
-                    TextSize = 15,
-                    BackgroundTransparency = 1,
-                    TextColor3 = Color3.fromRGB(210,210,230),
-                    Size = UDim2.new(1, -6, 0, 24),
-                    Parent = page,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-
-            elseif el.Type == "Toggle" then
-                local togFrame = create("Frame", {
-                    Size = UDim2.new(1, -10, 0, 36),
-                    BackgroundTransparency = 1,
-                    Parent = page
-                })
-                local togBtn = create("TextButton", {
-                    Text = "",
-                    BackgroundColor3 = Color3.fromRGB(50, 50, 90),
-                    Size = UDim2.new(0, 36, 0, 36),
-                    Position = UDim2.new(0, 0, 0, 0),
-                    Parent = togFrame,
-                    AutoButtonColor = true
-                })
-                create("UICorner", {CornerRadius = UDim.new(1,0), Parent = togBtn})
-
-                local on = el.State or false
-                local function update()
-                    togBtn.BackgroundColor3 = on and Color3.fromRGB(40, 180, 90) or Color3.fromRGB(50, 50, 90)
-                end
-                togBtn.MouseButton1Click:Connect(function()
-                    on = not on
-                    update()
-                    if el.Callback then el.Callback(on) end
-                end)
-                update()
-
-                create("TextLabel", {
-                    Text = el.Text or "Toggle",
-                    Font = Enum.Font.Gotham,
-                    TextSize = 15,
-                    BackgroundTransparency = 1,
-                    TextColor3 = Color3.fromRGB(210,210,230),
-                    Size = UDim2.new(1, -44, 1, 0),
-                    Position = UDim2.new(0, 44, 0, 0),
-                    Parent = togFrame,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-
-            elseif el.Type == "Slider" then
-                local sliderFrame = create("Frame", {
-                    Size = UDim2.new(1, -10, 0, 38),
-                    BackgroundTransparency = 1,
-                    Parent = page
-                })
-                local title = create("TextLabel", {
-                    Text = (el.Text or "Slider").." ["..tostring(el.Value or el.Min or 0).."]",
-                    Font = Enum.Font.Gotham,
-                    TextSize = 14,
-                    BackgroundTransparency = 1,
-                    TextColor3 = Color3.fromRGB(210,210,230),
-                    Size = UDim2.new(1, 0, 0, 14),
-                    Position = UDim2.new(0, 0, 0, 0),
-                    TextXAlignment = Enum.TextXAlignment.Left,
-                    Parent = sliderFrame
-                })
-                local bar = create("Frame", {
-                    BackgroundColor3 = Color3.fromRGB(43, 56, 108),
-                    Size = UDim2.new(1, -10, 0, 8),
-                    Position = UDim2.new(0, 5, 0, 20),
-                    Parent = sliderFrame
-                })
-                create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = bar})
-
-                local fill = create("Frame", {
-                    BackgroundColor3 = Color3.fromRGB(40, 90, 255),
-                    Size = UDim2.new(0,0,1,0),
-                    Position = UDim2.new(0,0,0,0),
-                    Parent = bar,
-                    ZIndex = 2
-                })
-                create("UICorner", {CornerRadius = UDim.new(1, 0), Parent = fill})
-
-                local knob = create("Frame", {
-                    BackgroundColor3 = Color3.fromRGB(255,255,255),
-                    Size = UDim2.new(0,12,0,20),
-                    Position = UDim2.new(0,0,0.5,-6),
-                    AnchorPoint = Vector2.new(0.5,0.5),
-                    Parent = bar,
-                    ZIndex = 3
-                })
-                create("UICorner", {CornerRadius = UDim.new(1,0), Parent = knob})
-                create("UIStroke", {Color = Color3.fromRGB(40,90,255), Thickness = 2, Parent = knob})
-
-                local min, max, value = el.Min or 0, el.Max or 100, el.Value or 0
-                local function updateSlider(newValue)
-                    value = math.clamp(newValue, min, max)
-                    local percent = (value-min)/(max-min)
-                    fill.Size = UDim2.new(percent,0,1,0)
-                    knob.Position = UDim2.new(percent,0,0.5,-6)
-                    title.Text = (el.Text or "Slider").." ["..tostring(math.floor(value*100)/100).."]"
-                    if el.Callback then el.Callback(value) end
-                end
-                updateSlider(value)
-                -- Mouse/touch drag
-                local dragging = false
-                bar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                        dragging = true
-                        local function setValueFromInput(pos)
-                            local rel = (pos.X-bar.AbsolutePosition.X)/bar.AbsoluteSize.X
-                            updateSlider(min+(max-min)*math.clamp(rel,0,1))
-                        end
-                        setValueFromInput(input.Position)
-                        local conn1, conn2
-                        conn1 = UserInputService.InputChanged:Connect(function(inp)
-                            if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
-                                setValueFromInput(inp.Position)
-                            end
-                        end)
-                        conn2 = input.Changed:Connect(function()
-                            if input.UserInputState == Enum.UserInputState.End then
-                                dragging = false
-                                if conn1 then conn1:Disconnect() end
-                                if conn2 then conn2:Disconnect() end
-                            end
-                        end)
-                    end
-                end)
-
-            elseif el.Type == "DropdownButtonOnOff" then
-                local open = false
-                local dropFrame = create("Frame", {
-                    Size = UDim2.new(1, -10, 0, 38),
-                    BackgroundTransparency = 1,
-                    Parent = page
-                })
-
-                local mainBtn = create("TextButton", {
-                    Text = el.Text or "Dropdown",
-                    Font = Enum.Font.GothamBold,
-                    TextSize = 15,
-                    BackgroundColor3 = Color3.fromRGB(40, 90, 255),
-                    TextColor3 = Color3.fromRGB(255,255,255),
-                    Size = UDim2.new(1, 0, 1, 0),
-                    Position = UDim2.new(0,0,0,0),
-                    Parent = dropFrame,
-                    AutoButtonColor = true
-                })
-                create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = mainBtn})
-
-                local optsFrame = create("Frame", {
-                    BackgroundColor3 = Color3.fromRGB(30, 32, 50),
-                    Size = UDim2.new(1, 0, 0, #(el.Options or {})*38),
-                    Position = UDim2.new(0,0,1,0),
-                    Visible = false,
-                    Parent = dropFrame,
-                    ZIndex = 10
-                })
-                create("UICorner", {CornerRadius = UDim.new(0,8), Parent = optsFrame})
-                create("UIStroke", {Color = Color3.fromRGB(40,90,255), Transparency=0.7, Thickness=1, Parent = optsFrame})
-
-                for i, opt in ipairs(el.Options or {}) do
-                    local optFrame = create("Frame", {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 38),
-                        Position = UDim2.new(0,0,0,(i-1)*38),
-                        Parent = optsFrame,
-                        ZIndex = 11
-                    })
-                    local btn = create("TextButton", {
-                        Text = opt,
-                        Font = Enum.Font.Gotham,
-                        TextSize = 14,
-                        BackgroundTransparency = 1,
-                        TextColor3 = Color3.fromRGB(210,210,230),
-                        Size = UDim2.new(1, -40, 1, 0),
-                        Position = UDim2.new(0, 0, 0, 0),
-                        Parent = optFrame,
-                        ZIndex = 12
-                    })
-                    local onoffBtn = create("TextButton", {
-                        Text = "OFF",
-                        Font = Enum.Font.GothamBold,
-                        TextSize = 14,
-                        BackgroundColor3 = Color3.fromRGB(70, 70, 90),
-                        TextColor3 = Color3.fromRGB(255,80,80),
-                        Size = UDim2.new(0,34,0,26),
-                        Position = UDim2.new(1, -36, 0.5, -13),
-                        AnchorPoint = Vector2.new(0,0),
-                        Parent = optFrame,
-                        ZIndex = 12,
-                        AutoButtonColor = true,
-                    })
-                    create("UICorner", {CornerRadius = UDim.new(1,0), Parent = onoffBtn})
-                    local isOn = false
-                    onoffBtn.MouseButton1Click:Connect(function()
-                        isOn = not isOn
-                        onoffBtn.Text = isOn and "ON" or "OFF"
-                        onoffBtn.BackgroundColor3 = isOn and Color3.fromRGB(40,180,90) or Color3.fromRGB(70,70,90)
-                        onoffBtn.TextColor3 = isOn and Color3.fromRGB(255,255,255) or Color3.fromRGB(255,80,80)
-                        if el.Callback then el.Callback(opt, isOn) end
-                    end)
-                end
-
-                mainBtn.MouseButton1Click:Connect(function()
-                    open = not open
-                    optsFrame.Visible = open
-                end)
-
-            elseif el.Type == "DropdownButton" then
-                local open = false
-                local dropFrame = create("Frame", {
-                    Size = UDim2.new(1, -10, 0, 38),
-                    BackgroundTransparency = 1,
-                    Parent = page
-                })
-
-                local mainBtn = create("TextButton", {
-                    Text = el.Text or "Dropdown",
-                    Font = Enum.Font.GothamBold,
-                    TextSize = 15,
-                    BackgroundColor3 = Color3.fromRGB(40, 90, 255),
-                    TextColor3 = Color3.fromRGB(255,255,255),
-                    Size = UDim2.new(1, 0, 1, 0),
-                    Position = UDim2.new(0,0,0,0),
-                    Parent = dropFrame,
-                    AutoButtonColor = true
-                })
-                create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = mainBtn})
-
-                local optsFrame = create("Frame", {
-                    BackgroundColor3 = Color3.fromRGB(30, 32, 50),
-                    Size = UDim2.new(1, 0, 0, #(el.Options or {})*38),
-                    Position = UDim2.new(0,0,1,0),
-                    Visible = false,
-                    Parent = dropFrame,
-                    ZIndex = 10
-                })
-                create("UICorner", {CornerRadius = UDim.new(0,8), Parent = optsFrame})
-                create("UIStroke", {Color = Color3.fromRGB(40,90,255), Transparency=0.7, Thickness=1, Parent = optsFrame})
-
-                for i, opt in ipairs(el.Options or {}) do
-                    local optFrame = create("Frame", {
-                        BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 38),
-                        Position = UDim2.new(0,0,0,(i-1)*38),
-                        Parent = optsFrame,
-                        ZIndex = 11
-                    })
-                    local btn = create("TextButton", {
-                        Text = opt,
-                        Font = Enum.Font.Gotham,
-                        TextSize = 14,
-                        BackgroundTransparency = 1,
-                        TextColor3 = Color3.fromRGB(210,210,230),
-                        Size = UDim2.new(1, -40, 1, 0),
-                        Position = UDim2.new(0, 0, 0, 0),
-                        Parent = optFrame,
-                        ZIndex = 12
-                    })
-                    local goBtn = create("TextButton", {
-                        Text = ">",
-                        Font = Enum.Font.GothamBold,
-                        TextSize = 16,
-                        BackgroundColor3 = Color3.fromRGB(40, 90, 255),
-                        TextColor3 = Color3.fromRGB(255,255,255),
-                        Size = UDim2.new(0,34,0,26),
-                        Position = UDim2.new(1, -36, 0.5, -13),
-                        AnchorPoint = Vector2.new(0,0),
-                        Parent = optFrame,
-                        ZIndex = 12,
-                        AutoButtonColor = true,
-                    })
-                    create("UICorner", {CornerRadius = UDim.new(1,0), Parent = goBtn})
-                    goBtn.MouseButton1Click:Connect(function()
-                        if el.Callback then el.Callback(opt) end
-                    end)
-                end
-
-                mainBtn.MouseButton1Click:Connect(function()
-                    open = not open
-                    optsFrame.Visible = open
-                end)
-            end
-        end
-        pages[i] = page
-    end
-    switchTab(1)
-
-    -- Áreas que NÃO permitem drag
-    local disallowAreas = {TopBar, TabsFrame, ContentFrame, CloseBtn, MinBtn}
-    setupSmartDrag(MainFrame, disallowAreas)
-
-    -- Função de recolher/expandir menu
-    local expanded = true
-    local originalSize = MainFrame.Size
-    local collapsedSize = UDim2.new(originalSize.X.Scale, originalSize.X.Offset, 0, TopBar.Size.Y.Offset or 36)
-    local originalTabsVisible = true
-    local originalContentVisible = true
-
-    MinBtn.MouseButton1Click:Connect(function()
-        expanded = not expanded
-        if not expanded then
-            -- Recolher: esconder abas e conteúdo, diminuir tamanho
-            originalTabsVisible = TabsFrame.Visible
-            originalContentVisible = ContentFrame.Visible
-            TabsFrame.Visible = false
-            ContentFrame.Visible = false
-            MainFrame.Size = collapsedSize
-            MinBtn.Text = "+"
+    -- Minimize/Expand logic
+    minBtn.MouseButton1Click:Connect(function()
+        if selfMenu._minimized then
+            selfMenu:Expand()
         else
-            -- Expandir: mostrar abas e conteúdo, restaurar tamanho
-            TabsFrame.Visible = originalTabsVisible
-            ContentFrame.Visible = originalContentVisible
-            MainFrame.Size = originalSize
-            MinBtn.Text = "—"
+            selfMenu:Minimize()
         end
     end)
 
-    return ScreenGui
+    -- Close logic
+    closeBtn.MouseButton1Click:Connect(function()
+        selfMenu:Close()
+    end)
+
+    return selfMenu
 end
 
-return GuiMenuLibrary
+return setmetatable(UILibrary, {
+    __call = function(cls, ...)
+        return cls
+    end
+})
