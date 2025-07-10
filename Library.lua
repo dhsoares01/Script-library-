@@ -1,439 +1,412 @@
---[[ 
-    Roblox UI Library 
-    - Floating Menu with header, minimize/expand, and close functionality
-    - Components: Toggle, Slider, ButtonOnOff, Label
-    - Mobile touch support (dragging/moving)
-    - Designed for easy usage via loadstring, customizable, and compatible with popular Roblox executors
-    - To use: 
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/<your-username>/<repo-name>/main/UILibrary.lua"))()
-    Author: dhsoares01
+--[[
+
+UI_Library.lua
+UI Library para Roblox: Menu Flutuante Interativo
+
+Como usar:
+UILib local = loadstring(jogo:HttpGet("https://raw.githubusercontent.com/seuusuario/seurepo/main/UI_Library.lua"))()
+UILib:Init({
+    Título = "Meu Menu",
+    DefaultPos = UDim2.new(0.3,0,0.3,0),
+    TamanhoPadrão = UDim2.new(0, 350, 0, 350),
+})
+
+local toggle = UILib:AddToggle("Ativar Função", false, function(state)
+    print("Alternar:", estado)
+fim)
+
+controle deslizante local = UILib:AddSlider("Volume", 0, 100, 50, função(val)
+    print("Controle deslizante:", val)
+fim)
+
+local onoff = UILib:AddButtonOnOff("Modo Turbo", falso, função(estado)
+    print("Turbo:", estado)
+fim)
+
+UILib:AddLabel("Informações úteis para o usuário.")
+
 ]]
 
-local UIS = game:GetService("UserInputService")
-local TS = game:GetService("TweenService")
+UIS local = jogo:GetService("UserInputService")
+TS local = jogo:GetService("TweenService")
+local runService = game:GetService("RunService")
 
-local Library = {}
-Library.__index = Library
+função local create(class, props)
+    inst local = Instância.novo(classe)
+    para k,v em pares(props ou {}) faça
+        inst[k]=v
+    fim
+    retornar inst
+fim
 
--- Utilities
-local function MakeDraggable(frame, dragBar)
-    local dragging, dragInput, mousePos, framePos
-    local TouchConnection
+IU local = {}
+UI.__index = IU
 
-    local function update(input)
-        local delta = input.Position - mousePos
-        frame.Position = UDim2.new(
-            framePos.X.Scale,
-            framePos.X.Offset + delta.X,
-            framePos.Y.Scale,
-            framePos.Y.Offset + delta.Y
+função local dragify(frame)
+    arrasto local, dragInput, dragStart, startPos
+    atualização de função local (entrada)
+        delta local = entrada.Posição - arrastarIniciar
+        frame.Posição = UDim2.new(
+            startPos.X.Escala, startPos.X.Deslocamento + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
         )
-    end
+    fim
 
-    dragBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            mousePos = input.Position
-            framePos = frame.Position
+    frame.InputBegan:Connect(função(entrada)
+        se (input.UserInputType == Enum.UserInputType.MouseButton1) ou
+           (input.UserInputType == Enum.UserInputType.Touch) então
+            arrastando = verdadeiro
+            arrastarIniciar = entrada.Posição
+            startPos = frame.Posição
+            entrada.Alterado:Conectar(função()
+                se input.UserInputState == Enum.UserInputState.End então
+                    arrastando = falso
+                fim
+            fim)
+        fim
+    fim)
+    frame.InputChanged:Connect(função(entrada)
+        se (input.UserInputType == Enum.UserInputType.MouseMovement) ou
+           (input.UserInputType == Enum.UserInputType.Touch) então
+            dragInput = entrada
+        fim
+    fim)
+    UIS.InputChanged:Connect(função(entrada)
+        se entrada == arrastarEntrada e arrastando então
+            atualização(entrada)
+        fim
+    fim)
+fim
 
-            if input.UserInputType == Enum.UserInputType.Touch then
-                TouchConnection = input.Changed:Connect(function()
-                    if input.UserInputState == Enum.UserInputState.End then
-                        dragging = false
-                        if TouchConnection then TouchConnection:Disconnect() end
-                    end
-                end)
-            end
-        end
-    end)
+função UI:Init(opts)
+    opts = opta ou {}
+    -- Remove outras instâncias
+    se game.CoreGui:FindFirstChild("UI_Library_Main") então
+        jogo.CoreGui.UI_Library_Main:Destroy()
+    fim
 
-    dragBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
+    -- GUI principal
+    ScreenGui local = criar("ScreenGui", {
+        Nome = "UI_Library_Main",
+        ResetOnSpawn = falso,
+        Pai = syn e syn.protect_gui e syn.protect_gui(game.CoreGui) ou game:GetService("CoreGui"),
+        ZIndexBehavior = Enum.ZIndexBehavior.Irmão,
+    })
 
-    UIS.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
-    end)
+    local Principal = criar("Quadro", {
+        Nome = "MainFrame",
+        Pai = ScreenGui,
+        BackgroundColor3 = Cor3.fromRGB(35,35,40),
+        BorderSizePixel = 0,
+        Posição = opts.DefaultPos ou UDim2.new(0.3,0,0.3,0),
+        Tamanho = opts.DefaultSize ou UDim2.new(0,350,0,350),
+        Ativo = verdadeiro,
+        Arrastável = falso,
+    })
 
-    dragBar.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-            if TouchConnection then TouchConnection:Disconnect() end
-        end
-    end)
-end
+    arrastar(Principal)
 
--- Main UI Library
-function Library:Create(title)
-    -- ScreenGui + Main Frame
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "UILib"
-    gui.ResetOnSpawn = false
-    pcall(function() gui.Parent = game:GetService("CoreGui") end)
-    if not gui.Parent then gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui") end
+    local UICorner = create("UICorner", {CornerRadius = UDim.new(0,8), Pai = Principal})
 
-    local main = Instance.new("Frame")
-    main.Name = "MainMenu"
-    main.Size = UDim2.new(0, 360, 0, 340)
-    main.Position = UDim2.new(0.5, -180, 0.4, 0)
-    main.BackgroundColor3 = Color3.fromRGB(28,28,40)
-    main.BorderSizePixel = 0
-    main.Active = true
-    main.Draggable = false
-    main.Parent = gui
+    -- Cabeçalho
+    Cabeçalho local = create("Quadro", {
+        Pai = Principal,
+        BackgroundColor3 = Cor3.fromRGB(47,47,60),
+        BorderSizePixel = 0,
+        Tamanho = UDim2.new(1,0,0,36),
+    })
+    create("UICorner", {CornerRadius=UDim.new(0,8), Pai=Cabeçalho})
 
-    -- Header
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 36)
-    header.BackgroundColor3 = Color3.fromRGB(38,38,60)
-    header.BorderSizePixel = 0
-    header.Parent = main
+    Título local = create("TextLabel", {
+        Pai = Cabeçalho,
+        Transparência de fundo = 1,
+        Posição = UDim2.new(0,12,0,0),
+        Tamanho = UDim2.new(1,-120,1,0),
+        Texto = opts.Title ou "Biblioteca de IU",
+        TextColor3 = Color3.fromRGB(240.240.240),
+        Tamanho do texto = 20,
+        Fonte = Enum.Font.GothamBold,
+        AlinhamentoTextoXAlinhamento = Enum.AlinhamentoTextoXAlinhamento.Esquerda,
+    })
 
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, -110, 1, 0)
-    titleLabel.Position = UDim2.new(0, 10, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = title or "UI Library"
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextColor3 = Color3.fromRGB(220,220,255)
-    titleLabel.TextSize = 18
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.Parent = header
+    -- Botões de cabeçalho
+    estados locais = {minimizado=falso}
+    função local makeButton(txt, pos, retorno de chamada)
+        local b = criar("TextButton", {
+            Pai = Cabeçalho,
+            Tamanho = UDim2.new(0,28,0,28),
+            Posição = pos,
+            BackgroundColor3 = Cor3.fromRGB(60,60,75),
+            Texto = txt,
+            Fonte = Enum.Font.GothamBold,
+            Tamanho do texto = 19,
+            TextColor3 = Cor3.novo(1,1,1),
+            BorderSizePixel = 0,
+            AutoButtonColor = verdadeiro,
+        })
+        criar("UICorner", {CornerRadius=UDim.new(0,5), Pai=b})
+        b.MouseButton1Click:Conectar(retorno de chamada)
+        retornar b
+    fim
 
-    local minimizeBtn = Instance.new("TextButton")
-    minimizeBtn.Size = UDim2.new(0, 32, 1, 0)
-    minimizeBtn.Position = UDim2.new(1, -90, 0, 0)
-    minimizeBtn.BackgroundColor3 = Color3.fromRGB(50,50,73)
-    minimizeBtn.Text = "–"
-    minimizeBtn.Font = Enum.Font.GothamBold
-    minimizeBtn.TextColor3 = Color3.fromRGB(200,200,220)
-    minimizeBtn.TextSize = 22
-    minimizeBtn.Parent = header
+    MinBtn local = makeButton("–", UDim2.new(1,-88,0.5,-14), função()
+        se não estados, minimizados então
+            estados.minimizado = verdadeiro
+            Conteúdo.Visível = falso
+            MinBtn.Text = "+"
+        outro
+            estados.minimizado = falso
+            Conteúdo.Visível = verdadeiro
+            MinBtn.Text = "–"
+        fim
+    fim)
 
-    local expandBtn = minimizeBtn:Clone()
-    expandBtn.Text = "+"
-    expandBtn.Name = "ExpandBtn"
-    expandBtn.Visible = false
-    expandBtn.Parent = header
+    CloseBtn local = makeButton("Ã—", UDim2.new(1,-48,0.5,-14), função()
+        para _,comp em ipairs(self._components) faça
+            se comp._reset então
+                comp._reset()
+            fim
+        fim
+        ScreenGui:Destruir()
+        setmetatable(self,nulo)
+    fim)
 
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 32, 1, 0)
-    closeBtn.Position = UDim2.new(1, -45, 0, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(60,25,33)
-    closeBtn.Text = "×"
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextColor3 = Color3.fromRGB(240, 110, 120)
-    closeBtn.TextSize = 22
-    closeBtn.Parent = header
+    -- Área de componentes
+    Conteúdo local = create("Quadro",{
+        Pai = Principal,
+        Transparência de fundo = 1,
+        Posição = UDim2.new(0,0,0,40),
+        Tamanho = UDim2.new(1,0,1,-44),
+    })
+    UIList local = criar("UIListLayout",{
+        Pai = Conteúdo,
+        Ordem de classificação = Enum.Ordem de classificação.Ordem de layout,
+        Preenchimento = UDim.new(0,8),
+    })
 
-    -- Container
-    local container = Instance.new("Frame")
-    container.Name = "Container"
-    container.Position = UDim2.new(0, 0, 0, 36)
-    container.Size = UDim2.new(1, 0, 1, -36)
-    container.BackgroundTransparency = 1
-    container.Parent = main
+    self.ScreenGui = GuiaDeTela
+    self.Main = Principal
+    self.Content = Conteúdo
+    self.Header = Cabeçalho
+    self._components = {}
+    self._defaultSize = Tamanho principal
+    self._defaultPos = Posição Principal
+fim
 
-    local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.Padding = UDim.new(0, 8)
-    UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    UIListLayout.Parent = container
+função UI:AddToggle(txt, padrão, retorno de chamada)
+    composição local = {}
+    comp._value = padrão ou falso
+    comp._reset = função()
+        comp._value = falso
+        toggleBtn.BackgroundColor3 = Cor3.fromRGB(70,70,80)
+        retorno de chamada(falso)
+    fim
 
-    -- Dragging support
-    MakeDraggable(main, header)
+    quadro local = create("Quadro",{
+        Pai = self.Content,
+        Transparência de fundo = 1,
+        Tamanho = UDim2.new(1, -20, 0, 38),
+    })
 
-    -- Minimize / Expand logic
-    local origSize = main.Size
-    local collapsedSize = UDim2.new(origSize.X.Scale, origSize.X.Offset, 0, 36)
+    rótulo local = create("TextLabel",{
+        Pai = quadro,
+        Transparência de fundo = 1,
+        Tamanho = UDim2.new(1,-50,1,0),
+        Texto = txt ou "Alternar",
+        TextColor3 = Color3.fromRGB(230.230.230),
+        Fonte = Enum.Font.Gotham,
+        Tamanho do texto = 17,
+        AlinhamentoTextoXAlinhamento = Enum.AlinhamentoTextoXAlinhamento.Esquerda,
+    })
 
-    minimizeBtn.MouseButton1Click:Connect(function()
-        TS:Create(main, TweenInfo.new(0.18), {Size = collapsedSize}):Play()
-        container.Visible = false
-        minimizeBtn.Visible = false
-        expandBtn.Visible = true
-    end)
-    expandBtn.MouseButton1Click:Connect(function()
-        TS:Create(main, TweenInfo.new(0.18), {Size = origSize}):Play()
-        container.Visible = true
-        minimizeBtn.Visible = true
-        expandBtn.Visible = false
-    end)
+    local toggleBtn = criar("TextButton",{
+        Pai = quadro,
+        Tamanho = UDim2.new(0,38,0.5,0),
+        Posição = UDim2.new(1,-44,0.25,0),
+        BackgroundColor3 = comp._value e Color3.fromRGB(80,190,80) ou Color3.fromRGB(70,70,80),
+        Texto = comp._value e "ON" ou "OFF",
+        TextColor3 = Cor3.novo(1,1,1),
+        Fonte = Enum.Font.GothamBold,
+        Tamanho do texto = 16,
+        BorderSizePixel = 0,
+        AutoButtonColor = verdadeiro,
+    })
+    criar("UICorner",{CornerRadius=UDim.new(0,7),Parent=toggleBtn})
 
-    -- Close logic
-    closeBtn.MouseButton1Click:Connect(function()
-        for _, comp in pairs(container:GetChildren()) do
-            if comp:IsA("Frame") and comp:FindFirstChild("_UILibType") then
-                if comp._UILibType.Value == "Slider" then
-                    -- Reset slider to default
-                    pcall(function()
-                        local slider = comp:FindFirstChild("SliderBar")
-                        local default = comp:FindFirstChild("_Default") and comp._Default.Value or 0
-                        local val = comp:FindFirstChild("_Value")
-                        if slider and val then
-                            local sliderSize = slider.AbsoluteSize.X
-                            local percent = (default - comp._Min.Value) / (comp._Max.Value - comp._Min.Value)
-                            slider.Position = UDim2.new(percent, -8, 0.5, -8)
-                            val.Value = default
-                        end
-                    end)
-                else
-                    comp.Visible = false
-                end
-            end
-        end
-    end)
+    toggleBtn.MouseButton1Click:Conectar(função()
+        comp._value = não comp._value
+        toggleBtn.Text = comp._value e "ON" ou "OFF"
+        toggleBtn.BackgroundColor3 = comp._value e Color3.fromRGB(80,190,80) ou Color3.fromRGB(70,70,80)
+        se retorno de chamada então retorno de chamada(comp._value) fim
+    fim)
 
-    local ui = setmetatable({
-        Container = container,
-        Gui = gui,
-        Main = main,
-    }, Library)
-    return ui
-end
+    tabela.inserir(self._components, comp)
+    retorno comp
+fim
 
--- COMPONENTS
+função UI:AddSlider(txt, min, max, padrão, retorno de chamada)
+    min, max = min ou 0, max ou 100
+    valor local = padrão ou mínimo
+    composição local = {}
+    comp._reset = função()
+        valor = min
+        valueBar.Size = UDim2.new(0,0,1,0)
+        valueLabel.Text = tostring(min)
+        se retorno de chamada então retorno de chamada(min) fim
+    fim
 
-function Library:AddLabel(text)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -20, 0, 30)
-    frame.BackgroundTransparency = 1
-    frame.LayoutOrder = 1
+    quadro local = create("Quadro",{
+        Pai = self.Content,
+        Transparência de fundo = 1,
+        Tamanho = UDim2.new(1,-20,0,52),
+    })
+    rótulo local = create("TextLabel",{
+        Pai = quadro,
+        Transparência de fundo = 1,
+        Tamanho = UDim2.new(1,0,0.3,0),
+        Posição = UDim2.new(0,0,0,0),
+        Texto = txt ou "Slider",
+        TextColor3 = Color3.fromRGB(230.230.230),
+        Fonte = Enum.Font.Gotham,
+        Tamanho do texto = 16,
+        AlinhamentoTextoXAlinhamento = Enum.AlinhamentoTextoXAlinhamento.Esquerda,
+    })
+    local sliderBar = create("Quadro",{
+        Pai = quadro,
+        BackgroundColor3 = Cor3.fromRGB(60,60,75),
+        Posição = UDim2.new(0,0,0.5,0),
+        Tamanho = UDim2.new(1,-50,0,10),
+        BorderSizePixel = 0,
+    })
+    criar("UICorner",{CornerRadius=UDim.new(0,4),Parent=sliderBar})
+    valor localBarra = criar("Quadro",{
+        Pai = sliderBar,
+        BackgroundColor3 = Cor3.fromRGB(70,180,250),
+        Tamanho = UDim2.new((valor-min)/(máx-min),0,1,0),
+        BorderSizePixel=0,
+    })
+    criar("UICorner",{CornerRadius=UDim.new(0,4),Parent=valueBar})
 
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text or "Label"
-    label.Font = Enum.Font.Gotham
-    label.TextColor3 = Color3.fromRGB(230,230,255)
-    label.TextSize = 16
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
+    valor localLabel = create("TextLabel",{
+        Pai = quadro,
+        Transparência de fundo = 1,
+        Posição = UDim2.new(1,-38,0.5,-6),
+        Tamanho = UDim2.new(0,36,0,20),
+        Texto = tostring(valor),
+        TextColor3 = Color3.fromRGB(220.220.220),
+        Fonte = Enum.Font.GothamBold,
+        Tamanho do texto = 15,
+        AlinhamentoTextoXAlinhamento = Enum.TextoXAlinhamento.Direita,
+    })
 
-    local t = Instance.new("StringValue")
-    t.Name = "_UILibType"
-    t.Value = "Label"
-    t.Parent = frame
+    arrasto local = falso
+    função local setSlider(pos)
+        rel local = math.clamp((pos.X - sliderBar.AbsolutePosition.X)/sliderBar.AbsoluteSize.X, 0, 1)
+        valor = math.floor((min + (max-min)*rel)+0,5)
+        valueBar.Size = UDim2.new(rel,0,1,0)
+        valueLabel.Text = tostring(valor)
+        se retorno de chamada então retorno de chamada(valor) fim
+    fim
 
-    frame.Parent = self.Container
-    return frame
-end
+    sliderBar.InputBegan:Connect(função(entrada)
+        se input.UserInputType == Enum.UserInputType.MouseButton1 ou input.UserInputType == Enum.UserInputType.Touch então
+            arrastando = verdadeiro
+            setSlider(entrada.Posição)
+        fim
+    fim)
+    UIS.InputChanged:Connect(função(entrada)
+        se arrastar e (input.UserInputType == Enum.UserInputType.MouseMovement ou input.UserInputType == Enum.UserInputType.Touch) então
+            setSlider(entrada.Posição)
+        fim
+    fim)
+    UIS.InputEnded:Connect(função(entrada)
+        se input.UserInputType == Enum.UserInputType.MouseButton1 ou input.UserInputType == Enum.UserInputType.Touch então
+            arrastando = falso
+        fim
+    fim)
 
-function Library:AddToggle(text, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -20, 0, 36)
-    frame.BackgroundTransparency = 1
-    frame.LayoutOrder = 2
+    tabela.inserir(self._components, comp)
+    retorno comp
+fim
 
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, 30, 0, 30)
-    toggleBtn.Position = UDim2.new(0, 0, 0.5, -15)
-    toggleBtn.BackgroundColor3 = Color3.fromRGB(50,130,90)
-    toggleBtn.Text = default and "✓" or ""
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.TextSize = 18
-    toggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
-    toggleBtn.Parent = frame
+função UI:AddButtonOnOff(txt, padrão, retorno de chamada)
+    composição local = {}
+    comp._value = padrão ou falso
+    comp._reset = função()
+        comp._value = falso
+        btn.BackgroundColor3 = Cor3.fromRGB(70,70,80)
+        btn.Text = txt.." [DESLIGADO]"
+        se retorno de chamada então retorno de chamada(falso) fim
+    fim
 
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -40, 1, 0)
-    label.Position = UDim2.new(0, 40, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text or "Toggle"
-    label.Font = Enum.Font.Gotham
-    label.TextColor3 = Color3.fromRGB(220,220,255)
-    label.TextSize = 16
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
+    quadro local = create("Quadro",{
+        Pai = self.Content,
+        Transparência de fundo = 1,
+        Tamanho = UDim2.new(1,-20,0,40),
+    })
+    botão local = create("TextButton",{
+        Pai = quadro,
+        Tamanho = UDim2.new(1,0,1,0),
+        BackgroundColor3 = comp._value e Color3.fromRGB(60,180,100) ou Color3.fromRGB(70,70,80),
+        Texto = txt .. (comp._value e " [ON]" ou " [OFF]"),
+        TextColor3 = Cor3.novo(1,1,1),
+        Fonte = Enum.Font.GothamBold,
+        Tamanho do texto = 16,
+        BorderSizePixel = 0,
+        AutoButtonColor = verdadeiro,
+    })
+    criar("UICorner",{CornerRadius=UDim.new(0,7),Parent=btn})
 
-    local state = Instance.new("BoolValue")
-    state.Name = "_Value"
-    state.Value = default or false
-    state.Parent = frame
+    btn.MouseButton1Click:Conectar(função()
+        comp._value = não comp._value
+        btn.Text = txt .. (comp._value e " [ON]" ou " [OFF]")
+        btn.BackgroundColor3 = comp._value e Color3.fromRGB(60,180,100) ou Color3.fromRGB(70,70,80)
+        se retorno de chamada então retorno de chamada(comp._value) fim
+    fim)
 
-    local t = Instance.new("StringValue")
-    t.Name = "_UILibType"
-    t.Value = "Toggle"
-    t.Parent = frame
+    tabela.inserir(self._components, comp)
+    retorno comp
+fim
 
-    toggleBtn.MouseButton1Click:Connect(function()
-        state.Value = not state.Value
-        toggleBtn.Text = state.Value and "✓" or ""
-        if callback then callback(state.Value) end
-    end)
+função UI:AddLabel(txt)
+    quadro local = create("Quadro",{
+        Pai = self.Content,
+        Transparência de fundo = 1,
+        Tamanho = UDim2.new(1,-20,0,26),
+    })
+    rótulo local = create("TextLabel",{
+        Pai = quadro,
+        Transparência de fundo = 1,
+        Tamanho = UDim2.new(1,0,1,0),
+        Texto = txt ou "Rótulo",
+        TextColor3 = Color3.fromRGB(200.200.200),
+        Fonte = Enum.Font.Gotham,
+        Tamanho do texto = 15,
+        AlinhamentoTextoXAlinhamento = Enum.AlinhamentoTextoXAlinhamento.Esquerda,
+    })
+fim
 
-    frame.Parent = self.Container
-    return frame
-end
+-- API
+UI_API local = setmetatable({}, UI)
+função UI_API:Init(opt)
+    UI.Init(self, opt)
+    retornar a si mesmo
+fim
 
-function Library:AddButtonOnOff(text, initial, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -20, 0, 36)
-    frame.BackgroundTransparency = 1
-    frame.LayoutOrder = 3
+função UI_API:AddToggle(...)
+    retornar UI.AddToggle(self, ...)
+fim
 
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(0, 70, 0, 30)
-    button.Position = UDim2.new(0, 0, 0.5, -15)
-    button.BackgroundColor3 = initial and Color3.fromRGB(60,180,100) or Color3.fromRGB(180,60,60)
-    button.Text = initial and "ON" or "OFF"
-    button.Font = Enum.Font.GothamBold
-    button.TextSize = 16
-    button.TextColor3 = Color3.fromRGB(255,255,255)
-    button.Parent = frame
+função UI_API:AddSlider(...)
+    retornar UI.AddSlider(self, ...)
+fim
 
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -80, 1, 0)
-    label.Position = UDim2.new(0, 80, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text or "Button"
-    label.Font = Enum.Font.Gotham
-    label.TextColor3 = Color3.fromRGB(220,220,255)
-    label.TextSize = 16
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
+função UI_API:AddButtonOnOff(...)
+    retornar UI.AddButtonOnOff(self, ...)
+fim
 
-    local state = Instance.new("BoolValue")
-    state.Name = "_Value"
-    state.Value = initial or false
-    state.Parent = frame
+função UI_API:AddLabel(...)
+    retornar UI.AddLabel(self, ...)
+fim
 
-    local t = Instance.new("StringValue")
-    t.Name = "_UILibType"
-    t.Value = "ButtonOnOff"
-    t.Parent = frame
-
-    button.MouseButton1Click:Connect(function()
-        state.Value = not state.Value
-        button.Text = state.Value and "ON" or "OFF"
-        button.BackgroundColor3 = state.Value and Color3.fromRGB(60,180,100) or Color3.fromRGB(180,60,60)
-        if callback then callback(state.Value) end
-    end)
-
-    frame.Parent = self.Container
-    return frame
-end
-
-function Library:AddSlider(text, min, max, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -20, 0, 50)
-    frame.BackgroundTransparency = 1
-    frame.LayoutOrder = 4
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 18)
-    label.Position = UDim2.new(0, 0, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = (text or "Slider") .. ": " .. tostring(default or min)
-    label.Font = Enum.Font.Gotham
-    label.TextColor3 = Color3.fromRGB(220,220,255)
-    label.TextSize = 15
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
-
-    local sliderBar = Instance.new("Frame")
-    sliderBar.Name = "SliderBar"
-    sliderBar.Size = UDim2.new(1, -10, 0, 10)
-    sliderBar.Position = UDim2.new(0, 5, 0, 25)
-    sliderBar.BackgroundColor3 = Color3.fromRGB(80,80,120)
-    sliderBar.BorderSizePixel = 0
-    sliderBar.Parent = frame
-
-    local sliderKnob = Instance.new("Frame")
-    sliderKnob.Size = UDim2.new(0, 16, 0, 16)
-    sliderKnob.Position = UDim2.new(0, -8, 0.5, -8)
-    sliderKnob.AnchorPoint = Vector2.new(0, 0.5)
-    sliderKnob.BackgroundColor3 = Color3.fromRGB(130,160,230)
-    sliderKnob.BorderSizePixel = 0
-    sliderKnob.Parent = sliderBar
-
-    local value = Instance.new("NumberValue")
-    value.Name = "_Value"
-    value.Value = default or min
-    value.Parent = frame
-
-    local minV = Instance.new("NumberValue")
-    minV.Name = "_Min"
-    minV.Value = min or 0
-    minV.Parent = frame
-
-    local maxV = Instance.new("NumberValue")
-    maxV.Name = "_Max"
-    maxV.Value = max or 100
-    maxV.Parent = frame
-
-    local defaultV = Instance.new("NumberValue")
-    defaultV.Name = "_Default"
-    defaultV.Value = default or min
-    defaultV.Parent = frame
-
-    local t = Instance.new("StringValue")
-    t.Name = "_UILibType"
-    t.Value = "Slider"
-    t.Parent = frame
-
-    -- Set knob position
-    local function setKnob(val)
-        val = math.clamp(val, minV.Value, maxV.Value)
-        local percent = (val - minV.Value) / (maxV.Value - minV.Value)
-        local px = percent * (sliderBar.AbsoluteSize.X - sliderKnob.AbsoluteSize.X)
-        sliderKnob.Position = UDim2.new(0, px, 0.5, -8)
-        value.Value = val
-        label.Text = (text or "Slider") .. ": " .. tostring(math.floor(val*100)/100)
-        if callback then callback(val) end
-    end
-
-    local dragging = false
-
-    local function updateInput(x)
-        local rel = x - sliderBar.AbsolutePosition.X
-        local percent = math.clamp(rel / sliderBar.AbsoluteSize.X, 0, 1)
-        local v = minV.Value + (maxV.Value - minV.Value) * percent
-        setKnob(v)
-    end
-
-    sliderBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            updateInput(input.Position.X)
-        end
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
-           input.UserInputType == Enum.UserInputType.Touch) then
-            updateInput(input.Position.X)
-        end
-    end)
-
-    sliderBar.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-    sliderKnob.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
-           input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            updateInput(input.Position.X)
-        end
-    end)
-
-    -- Default position
-    frame.Parent = self.Container
-    frame.Parent:WaitForChild(frame.Name or frame)
-    setKnob(default or min)
-
-    return frame
-end
-
-return Library
+retornar UI_API
