@@ -1,10 +1,11 @@
 --[[
-    📦 ESP v4 (Design aprimorado: box 3D com contorno suave e efeitos sutis, texto adaptativo, traço mais dinâmico)
+    📦 ESP v5 (Design aprimorado: box 3D com contorno suave e efeitos sutis, texto adaptativo, traço mais dinâmico, Outline ESP)
     Recursos:
     - Line (tracer) com opções de estilo
     - Box 3D com outline suave e efeito de brilho sutil
-    - Nome (com fundo opcional)
-    - Distância (com fundo opcional e tamanho adaptativo)
+    - Nome (com fundo opcional e contorno)
+    - Distância (com fundo opcional, tamanho adaptativo e contorno)
+    - Outline para todos os elementos de texto e linhas
 ]]
 
 local Camera = workspace.CurrentCamera
@@ -16,10 +17,11 @@ local LibraryESP = {}
 local ESPObjects = {}
 
 -- Configurações padrão (ajustáveis pelo usuário)
-LibraryESP.TextPosition = "Top"      -- This now mainly affects the name's base position. Distance is relative.
 LibraryESP.LineFrom = "Bottom"       -- "Top", "Center", "Bottom", "Below", "Left", "Right"
-LibraryESP.TracerStyle = "Solid"     -- "Solid", "Dashed"
+LibraryESP.TracerStyle = "Solid"     -- "Solid", "Dashed" (note: dashed is a basic implementation)
 LibraryESP.MaxDistance = 500         -- Distância máxima para renderizar ESP
+LibraryESP.OutlineThickness = 1      -- Thickness of the outline for text and lines
+LibraryESP.OutlineColor = Color3.fromRGB(20, 20, 20) -- Default outline color
 
 -- 🌟 Utilitários de desenho (ajustados para suavidade e novos efeitos)
 local function CreateText(size, color, outlineColor)
@@ -27,19 +29,24 @@ local function CreateText(size, color, outlineColor)
     text.Size = size
     text.Center = true
     text.Outline = true
-    text.OutlineColor = outlineColor or Color3.fromRGB(20, 20, 20)
+    text.OutlineColor = outlineColor or LibraryESP.OutlineColor
     text.Font = 2 -- 'SourceSansPro'
     text.Color = color
     text.Visible = false
     return text
 end
 
-local function CreateLine(color, thickness, transparency)
+local function CreateLine(color, thickness, transparency, outline)
     local line = Drawing.new("Line")
     line.Thickness = thickness or 2
     line.Color = color
     line.Transparency = transparency or 0.85
     line.Visible = false
+    if outline then
+        line.Outline = true
+        line.OutlineColor = outline.Color or LibraryESP.OutlineColor
+        line.OutlineThickness = outline.Thickness or LibraryESP.OutlineThickness
+    end
     return line
 end
 
@@ -54,19 +61,15 @@ end
 local function Create3DBox(color)
     local boxElements = {}
     for i = 1, 12 do
-        -- Outline mais grosso e suave
-        local outline = Drawing.new("Line")
-        outline.Thickness = 3.5
-        outline.Color = Color3.fromRGB(20, 20, 20)
-        outline.Transparency = 0.7
-        outline.Visible = false
-
-        -- Linha principal mais fina
+        -- Main line for the box
         local line = Drawing.new("Line")
         line.Thickness = 1.8
         line.Color = color
-        line.Transparency = 0.05 -- Mais opaco para a linha principal
+        line.Transparency = 0.05
         line.Visible = false
+        line.Outline = true
+        line.OutlineColor = LibraryESP.OutlineColor
+        line.OutlineThickness = LibraryESP.OutlineThickness + 1 -- Slightly thicker outline for the box
 
         -- Efeito de "glow" sutil (linha mais fina e transparente)
         local glowLine = Drawing.new("Line")
@@ -74,8 +77,9 @@ local function Create3DBox(color)
         glowLine.Color = color
         glowLine.Transparency = 0.5
         glowLine.Visible = false
+        glowLine.Outline = false -- Glow line typically doesn't need an outline
 
-        table.insert(boxElements, {Outline = outline, Line = line, Glow = glowLine})
+        table.insert(boxElements, {Line = line, Glow = glowLine})
     end
     return boxElements
 end
@@ -83,7 +87,8 @@ end
 -- ✏️ Criar ESP
 function LibraryESP:CreateESP(object, options)
     local color = options.Color or Color3.fromRGB(255, 255, 255)
-    local outlineColor = options.OutlineColor or Color3.fromRGB(20, 20, 20)
+    local outlineColor = options.OutlineColor or LibraryESP.OutlineColor
+
     local esp = {
         Object = object,
         Options = options,
@@ -91,8 +96,8 @@ function LibraryESP:CreateESP(object, options)
         NameBackground = options.Name and options.TextBackground and CreateFilledQuad(Color3.fromRGB(0,0,0), 0.5) or nil,
         DistanceText = options.Distance and CreateText(13, color, outlineColor) or nil,
         DistanceBackground = options.Distance and options.TextBackground and CreateFilledQuad(Color3.fromRGB(0,0,0), 0.5) or nil,
-        TracerLine = options.Tracer and CreateLine(color, 2, 0.2) or nil, -- Tracer mais opaco
-        TracerGlow = options.Tracer and CreateLine(color, 1, 0.6) or nil,  -- Glow para o tracer
+        TracerLine = options.Tracer and CreateLine(color, 2, 0.2, {Color = outlineColor, Thickness = LibraryESP.OutlineThickness}) or nil,
+        TracerGlow = options.Tracer and CreateLine(color, 1, 0.6, {Color = outlineColor, Thickness = LibraryESP.OutlineThickness * 0.5}) or nil,
         Box = options.Box and Create3DBox(color) or nil,
     }
     table.insert(ESPObjects, esp)
@@ -112,7 +117,6 @@ function LibraryESP:RemoveESP(object)
             if esp.TracerGlow then esp.TracerGlow:Remove() end
             if esp.Box then
                 for _, pair in ipairs(esp.Box) do
-                    pair.Outline:Remove()
                     pair.Line:Remove()
                     pair.Glow:Remove()
                 end
@@ -122,33 +126,21 @@ function LibraryESP:RemoveESP(object)
     end
 end
 
--- 🔧 Utilitários
-local function getTextPosition(basePos, offsetType, textHeight)
-    -- This function is now more for a base offset, individual text elements will adjust
-    local yOffset = textHeight / 2 -- Approximação para centralização vertical
-    local offsets = {
-        Top = Vector2.new(0, -18),      -- Initial offset for the name text
-        Center = Vector2.new(0, 0),
-        Bottom = Vector2.new(0, 18),
-        Below = Vector2.new(0, 28),
-        LeftSide = Vector2.new(-40, 0),
-        RightSide = Vector2.new(40, 0),
-    }
-    return basePos + (offsets[offsetType] or Vector2.zero)
-end
-
+-- 🔧 Utilitários para obter posição e tamanho do objeto
 local function getObjectPosition(object)
     if typeof(object) ~= "Instance" then return nil end
     if object:IsA("BasePart") then
         return object.Position
     elseif object:IsA("Model") then
-        local success, pivot = pcall(function() return object:GetPivot() end)
-        if success then return pivot.Position end
-        -- Fallback for models without a pivot or GetPivot failing
         local primaryPart = object.PrimaryPart
         if primaryPart and primaryPart:IsA("BasePart") then
             return primaryPart.Position
         end
+        -- Fallback for models without a primary part: try to find the center of its bounds
+        local success, cframe = pcall(function() return object:GetBoundingBox() end)
+        if success then return cframe.Position end
+
+        -- Last resort: iterate children
         for _, part in ipairs(object:GetChildren()) do
             if part:IsA("BasePart") then return part.Position end
         end
@@ -156,39 +148,24 @@ local function getObjectPosition(object)
     return nil
 end
 
-local function getObjectSize(object)
-    if typeof(object) ~= "Instance" then return Vector3.new(1,1,1) end
+local function getObjectExtents(object)
+    if typeof(object) ~= "Instance" then return CFrame.identity, Vector3.new(1,1,1) end
     if object:IsA("BasePart") then
-        return object.Size
+        return object.CFrame, object.Size
     elseif object:IsA("Model") then
-        local success, size = pcall(function() return object:GetExtentsSize() end)
-        if success then return size end
-        -- Fallback for models without extents size or GetExtentsSize failing
+        local success, cframe, size = pcall(function() return object:GetBoundingBox() end)
+        if success then return cframe, size end
+        -- Fallback for models without a bounding box
         local primaryPart = object.PrimaryPart
         if primaryPart and primaryPart:IsA("BasePart") then
-            return primaryPart.Size
-        end
-        local bounds = {
-            min = Vector3.new(math.huge, math.huge, math.huge),
-            max = Vector3.new(math.huge * -1, math.huge * -1, math.huge * -1)
-        }
-        for _, part in ipairs(object:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                local partMin = part.CFrame:PointToObjectSpace(part.Position - part.Size / 2)
-                local partMax = part.CFrame:PointToObjectSpace(part.Position + part.Size / 2)
-                bounds.min = Vector3.new(math.min(bounds.min.X, partMin.X), math.min(bounds.min.Y, partMin.Y), math.min(bounds.min.Z, partMin.Z))
-                bounds.max = Vector3.new(math.max(bounds.max.X, partMax.X), math.max(bounds.max.Y, partMax.Y), math.max(bounds.max.Z, partMax.Z))
-            end
-        end
-        if bounds.min.X ~= math.huge then
-            return bounds.max - bounds.min
+            return primaryPart.CFrame, primaryPart.Size
         end
     end
-    return Vector3.new(1,1,1)
+    return CFrame.identity, Vector3.new(1,1,1) -- Default for unknown types
 end
 
--- Helper to calculate dashed line segments
-local function getDashedLineSegments(from, to, dashLength, spaceLength)
+-- Helper for dashed lines (basic implementation)
+local function getDashedPoints(from, to, dashLength, spaceLength)
     local segments = {}
     local totalLength = (to - from).Magnitude
     local direction = (to - from).Unit
@@ -198,9 +175,10 @@ local function getDashedLineSegments(from, to, dashLength, spaceLength)
     while currentLength < totalLength do
         local segmentEnd = currentPos + direction * dashLength
         if (segmentEnd - from).Magnitude > totalLength then
-            segmentEnd = to
+            segmentEnd = to -- Ensure last segment ends exactly at 'to'
         end
-        table.insert(segments, {from = currentPos, to = segmentEnd})
+        table.insert(segments, currentPos)
+        table.insert(segments, segmentEnd)
         currentPos = segmentEnd + direction * spaceLength
         currentLength = (currentPos - from).Magnitude
     end
@@ -217,50 +195,93 @@ RunService.RenderStepped:Connect(function()
             continue
         end
 
-        local objPos = getObjectPosition(obj)
+        local objCFrame, objSize = getObjectExtents(obj)
+        local objPos = objCFrame.Position
         if not objPos then continue end
 
-        local pos, onScreen = Camera:WorldToViewportPoint(objPos)
-        local screenPos = Vector2.new(pos.X, pos.Y)
+        local screenPoint, isVisible = Camera:WorldToScreenPoint(objPos)
+        local screenPos = Vector2.new(screenPoint.X, screenPoint.Y)
         local distance = (Camera.CFrame.Position - objPos).Magnitude
 
-        local isVisible = onScreen and distance <= LibraryESP.MaxDistance
+        local renderESP = isVisible and distance <= LibraryESP.MaxDistance
 
         -- Dynamic text size based on distance
         local baseTextSize = 14
-        local adaptiveTextSize = math.max(8, baseTextSize * (1 - distance / LibraryESP.MaxDistance))
+        local adaptiveTextSize = math.max(8, math.min(20, baseTextSize * (1 - distance / LibraryESP.MaxDistance * 0.7))) -- Cap max size
 
-        local nameOffset = Vector2.new(0, -25) -- Offset for the name above the object
-        local distanceOffset = Vector2.new(0, 15) -- Offset for the distance below the object
+        -- Calculate screen points for the 3D box based on object's bounding box
+        local boxCorners = {
+            objCFrame * Vector3.new( objSize.X/2,  objSize.Y/2,  objSize.Z/2),
+            objCFrame * Vector3.new(-objSize.X/2,  objSize.Y/2,  objSize.Z/2),
+            objCFrame * Vector3.new(-objSize.X/2, -objSize.Y/2,  objSize.Z/2),
+            objCFrame * Vector3.new( objSize.X/2, -objSize.Y/2,  objSize.Z/2),
+            objCFrame * Vector3.new( objSize.X/2,  objSize.Y/2, -objSize.Z/2),
+            objCFrame * Vector3.new(-objSize.X/2,  objSize.Y/2, -objSize.Z/2),
+            objCFrame * Vector3.new(-objSize.X/2, -objSize.Y/2, -objSize.Z/2),
+            objCFrame * Vector3.new( objSize.X/2, -objSize.Y/2, -objSize.Z/2),
+        }
+
+        local screenCorners = {}
+        local allCornersOnScreen = true
+        for _, cornerWorldPos in ipairs(boxCorners) do
+            local vec, vis = Camera:WorldToScreenPoint(cornerWorldPos)
+            table.insert(screenCorners, Vector2.new(vec.X, vec.Y))
+            if not vis then allCornersOnScreen = false end
+        end
+
+        -- Calculate screen position for the base of the object (for text alignment)
+        local objectBasePoint = objCFrame * Vector3.new(0, -objSize.Y/2, 0)
+        local baseScreenPoint, baseOnScreen = Camera:WorldToScreenPoint(objectBasePoint)
+        local baseScreenPos = Vector2.new(baseScreenPoint.X, baseScreenPoint.Y)
+
+        local nameOffset = Vector2.new(0, -10) -- Offset for the name above the object
+        local distanceOffset = Vector2.new(0, 10) -- Offset for the distance below the object
+
+        -- Adjust offsets based on object height in screen space
+        local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+        for _, sc in ipairs(screenCorners) do
+            minX = math.min(minX, sc.X)
+            minY = math.min(minY, sc.Y)
+            maxX = math.max(maxX, sc.X)
+            maxY = math.max(maxY, sc.Y)
+        end
+        local boxScreenHeight = maxY - minY
+        local boxScreenWidth = maxX - minX
+
+        -- Adjust text offsets dynamically based on box size
+        if boxScreenHeight > 0 then
+            nameOffset = Vector2.new(0, - (boxScreenHeight / 2 + 5)) -- 5 pixels buffer above box
+            distanceOffset = Vector2.new(0, (boxScreenHeight / 2 + 5)) -- 5 pixels buffer below box
+        end
+
 
         if esp.NameText then
-            -- Usar NameTextString se fornecido, senão, usar obj.Name
             esp.NameText.Text = esp.Options.NameTextString or obj.Name
             esp.NameText.Size = adaptiveTextSize
-            esp.NameText.Position = screenPos + nameOffset
-            esp.NameText.Visible = isVisible
+            esp.NameText.Position = baseScreenPos + nameOffset
+            esp.NameText.Visible = renderESP
             if esp.NameBackground then
                 local textBounds = esp.NameText.TextBounds
-                esp.NameBackground.PointA = esp.NameText.Position - textBounds / 2
+                esp.NameBackground.PointA = esp.NameText.Position - Vector2.new(textBounds.X / 2, textBounds.Y / 2)
                 esp.NameBackground.PointB = esp.NameText.Position + Vector2.new(textBounds.X / 2, -textBounds.Y / 2)
-                esp.NameBackground.PointC = esp.NameText.Position + textBounds / 2
+                esp.NameBackground.PointC = esp.NameText.Position + Vector2.new(textBounds.X / 2, textBounds.Y / 2)
                 esp.NameBackground.PointD = esp.NameText.Position + Vector2.new(-textBounds.X / 2, textBounds.Y / 2)
-                esp.NameBackground.Visible = isVisible
+                esp.NameBackground.Visible = renderESP
             end
         end
 
         if esp.DistanceText then
-            esp.DistanceText.Size = adaptiveTextSize * 0.8 -- Slightly smaller than name
+            esp.DistanceText.Size = adaptiveTextSize * 0.8
             esp.DistanceText.Text = string.format("[%dm]", math.floor(distance))
-            esp.DistanceText.Position = screenPos + distanceOffset
-            esp.DistanceText.Visible = isVisible
+            esp.DistanceText.Position = baseScreenPos + distanceOffset
+            esp.DistanceText.Visible = renderESP
             if esp.DistanceBackground then
                 local textBounds = esp.DistanceText.TextBounds
-                esp.DistanceBackground.PointA = esp.DistanceText.Position - textBounds / 2
+                esp.DistanceBackground.PointA = esp.DistanceText.Position - Vector2.new(textBounds.X / 2, textBounds.Y / 2)
                 esp.DistanceBackground.PointB = esp.DistanceText.Position + Vector2.new(textBounds.X / 2, -textBounds.Y / 2)
-                esp.DistanceBackground.PointC = esp.DistanceText.Position + textBounds / 2
+                esp.DistanceBackground.PointC = esp.DistanceText.Position + Vector2.new(textBounds.X / 2, textBounds.Y / 2)
                 esp.DistanceBackground.PointD = esp.DistanceText.Position + Vector2.new(-textBounds.X / 2, textBounds.Y / 2)
-                esp.DistanceBackground.Visible = isVisible
+                esp.DistanceBackground.Visible = renderESP
             end
         end
 
@@ -271,59 +292,49 @@ RunService.RenderStepped:Connect(function()
             elseif LibraryESP.LineFrom == "Center" then
                 from = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
             elseif LibraryESP.LineFrom == "Below" then
-                from = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y * 0.8) -- Slightly higher than bottom
+                from = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y * 0.8)
             elseif LibraryESP.LineFrom == "Left" then
                 from = Vector2.new(0, Camera.ViewportSize.Y/2)
             elseif LibraryESP.LineFrom == "Right" then
                 from = Vector2.new(Camera.ViewportSize.X, Camera.ViewportSize.Y/2)
             end
 
+            -- Target point for tracer is the base of the object
+            local tracerTargetScreenPoint, tracerTargetOnScreen = Camera:WorldToScreenPoint(objectBasePoint)
+            local tracerTargetPos = Vector2.new(tracerTargetScreenPoint.X, tracerTargetScreenPoint.Y)
+
+
             if LibraryESP.TracerStyle == "Solid" then
                 esp.TracerLine.From = from
-                esp.TracerLine.To = screenPos
-                esp.TracerLine.Visible = isVisible
+                esp.TracerLine.To = tracerTargetPos
+                esp.TracerLine.Visible = renderESP and tracerTargetOnScreen
                 esp.TracerGlow.From = from
-                esp.TracerGlow.To = screenPos
-                esp.TracerGlow.Visible = isVisible
+                esp.TracerGlow.To = tracerTargetPos
+                esp.TracerGlow.Visible = renderESP and tracerTargetOnScreen
             elseif LibraryESP.TracerStyle == "Dashed" then
-                -- Dashed lines are more complex with Drawing.new("Line"). For true dashed lines, you'd need multiple line objects.
-                -- For simplicity, will keep it solid if "Dashed" is chosen until a full dashed implementation is added.
+                -- For dashed lines, we'd ideally draw multiple small lines.
+                -- For simplicity and performance with Drawing objects,
+                -- this is a basic "simulation" by setting visibility based on current frame or a counter.
+                -- A proper dashed line would require dynamically creating/updating many Drawing.Line objects.
                 esp.TracerLine.From = from
-                esp.TracerLine.To = screenPos
-                esp.TracerLine.Visible = isVisible
+                esp.TracerLine.To = tracerTargetPos
+                esp.TracerLine.Visible = renderESP and tracerTargetOnScreen -- Always visible, actual dashing needs more logic
                 esp.TracerGlow.From = from
-                esp.TracerGlow.To = screenPos
-                esp.TracerGlow.Visible = isVisible
+                esp.TracerGlow.To = tracerTargetPos
+                esp.TracerGlow.Visible = renderESP and tracerTargetOnScreen
             end
         end
 
         if esp.Box then
-            local cf = (obj.CFrame or (obj:IsA("Model") and obj:GetPivot())) or CFrame.new(objPos)
-            local size = getObjectSize(obj) / 2
-            local corners = {
-                Vector3.new( size.X, size.Y, size.Z), Vector3.new(-size.X, size.Y, size.Z),
-                Vector3.new(-size.X, -size.Y, size.Z), Vector3.new( size.X, -size.Y, size.Z),
-                Vector3.new( size.X, size.Y, -size.Z), Vector3.new(-size.X, size.Y, -size.Z),
-                Vector3.new(-size.X, -size.Y, -size.Z), Vector3.new( size.X, -size.Y, -size.Z),
-            }
-            local screenPoints, allCornersOnScreen = {}, true
-            for _, corner in ipairs(corners) do
-                local wp = cf:PointToWorldSpace(corner)
-                local vec, vis = Camera:WorldToViewportPoint(wp)
-                table.insert(screenPoints, Vector2.new(vec.X, vec.Y))
-                if not vis then allCornersOnScreen = false end
-            end
-
             local edges = { {1,2},{2,3},{3,4},{4,1},{5,6},{6,7},{7,8},{8,5},{1,5},{2,6},{3,7},{4,8} }
             for idx, edge in ipairs(edges) do
                 local pair = esp.Box[idx]
-                if isVisible and allCornersOnScreen then -- Only show box if all corners are on screen and object is visible
-                    pair.Outline.From, pair.Outline.To = screenPoints[edge[1]], screenPoints[edge[2]]
-                    pair.Line.From, pair.Line.To = screenPoints[edge[1]], screenPoints[edge[2]]
-                    pair.Glow.From, pair.Glow.To = screenPoints[edge[1]], screenPoints[edge[2]]
-                    pair.Outline.Visible, pair.Line.Visible, pair.Glow.Visible = true, true, true
+                if renderESP and allCornersOnScreen then
+                    pair.Line.From, pair.Line.To = screenCorners[edge[1]], screenCorners[edge[2]]
+                    pair.Glow.From, pair.Glow.To = screenCorners[edge[1]], screenCorners[edge[2]]
+                    pair.Line.Visible, pair.Glow.Visible = true, true
                 else
-                    pair.Outline.Visible, pair.Line.Visible, pair.Glow.Visible = false, false, false
+                    pair.Line.Visible, pair.Glow.Visible = false, false
                 end
             end
         end
@@ -331,3 +342,4 @@ RunService.RenderStepped:Connect(function()
 end)
 
 return LibraryESP
+
