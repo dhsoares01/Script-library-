@@ -94,5 +94,3 @@ Pre-built themes included:
 ```lua
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
 ```
-
-Replace with your actual GitHub raw URL when hosting.
