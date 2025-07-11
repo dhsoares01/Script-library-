@@ -234,8 +234,9 @@ RunService.RenderStepped:Connect(function()
         local distanceOffset = Vector2.new(0, 15) -- Offset for the distance below the object
 
         if esp.NameText then
+            -- Usar NameTextString se fornecido, senão, usar obj.Name
+            esp.NameText.Text = esp.Options.NameTextString or obj.Name
             esp.NameText.Size = adaptiveTextSize
-            esp.NameText.Text = esp.Options.NameString or obj.Name
             esp.NameText.Position = screenPos + nameOffset
             esp.NameText.Visible = isVisible
             if esp.NameBackground then
