@@ -16,7 +16,7 @@ local LibraryESP = {}
 local ESPObjects = {}
 
 -- Configurações padrão (ajustáveis pelo usuário)
-LibraryESP.TextPosition = "Center"      -- "Top", "Center", "Bottom", "Below", "LeftSide", "RightSide"
+LibraryESP.TextPosition = "Top"      -- This now mainly affects the name's base position. Distance is relative.
 LibraryESP.LineFrom = "Bottom"       -- "Top", "Center", "Bottom", "Below", "Left", "Right"
 LibraryESP.TracerStyle = "Solid"     -- "Solid", "Dashed"
 LibraryESP.MaxDistance = 500         -- Distância máxima para renderizar ESP
@@ -124,14 +124,15 @@ end
 
 -- 🔧 Utilitários
 local function getTextPosition(basePos, offsetType, textHeight)
-    local yOffset = textHeight / 2 -- Aproximação para centralização vertical
+    -- This function is now more for a base offset, individual text elements will adjust
+    local yOffset = textHeight / 2 -- Approximação para centralização vertical
     local offsets = {
-        Top = Vector2.new(0, -18 - yOffset),
-        Center = Vector2.new(0, -yOffset),
-        Bottom = Vector2.new(0, 18 - yOffset),
-        Below = Vector2.new(0, 28 - yOffset),
-        LeftSide = Vector2.new(-40, -yOffset),
-        RightSide = Vector2.new(40, -yOffset),
+        Top = Vector2.new(0, -18),      -- Initial offset for the name text
+        Center = Vector2.new(0, 0),
+        Bottom = Vector2.new(0, 18),
+        Below = Vector2.new(0, 28),
+        LeftSide = Vector2.new(-40, 0),
+        RightSide = Vector2.new(40, 0),
     }
     return basePos + (offsets[offsetType] or Vector2.zero)
 end
@@ -228,10 +229,14 @@ RunService.RenderStepped:Connect(function()
         -- Dynamic text size based on distance
         local baseTextSize = 14
         local adaptiveTextSize = math.max(8, baseTextSize * (1 - distance / LibraryESP.MaxDistance))
+
+        local nameOffset = Vector2.new(0, -25) -- Offset for the name above the object
+        local distanceOffset = Vector2.new(0, 15) -- Offset for the distance below the object
+
         if esp.NameText then
             esp.NameText.Size = adaptiveTextSize
             esp.NameText.Text = esp.Options.NameString or obj.Name
-            esp.NameText.Position = getTextPosition(screenPos, LibraryESP.TextPosition, esp.NameText.Size)
+            esp.NameText.Position = screenPos + nameOffset
             esp.NameText.Visible = isVisible
             if esp.NameBackground then
                 local textBounds = esp.NameText.TextBounds
@@ -245,9 +250,8 @@ RunService.RenderStepped:Connect(function()
 
         if esp.DistanceText then
             esp.DistanceText.Size = adaptiveTextSize * 0.8 -- Slightly smaller than name
-            local nameTextHeight = esp.NameText and esp.NameText.Size or 0
-            esp.DistanceText.Position = getTextPosition(screenPos, LibraryESP.TextPosition, nameTextHeight + esp.DistanceText.Size) + Vector2.new(0, nameTextHeight * 0.7)
             esp.DistanceText.Text = string.format("[%dm]", math.floor(distance))
+            esp.DistanceText.Position = screenPos + distanceOffset
             esp.DistanceText.Visible = isVisible
             if esp.DistanceBackground then
                 local textBounds = esp.DistanceText.TextBounds
@@ -281,12 +285,8 @@ RunService.RenderStepped:Connect(function()
                 esp.TracerGlow.To = screenPos
                 esp.TracerGlow.Visible = isVisible
             elseif LibraryESP.TracerStyle == "Dashed" then
-                local dashLength = 10
-                local spaceLength = 5
-                local segments = getDashedLineSegments(from, screenPos, dashLength, spaceLength)
                 -- Dashed lines are more complex with Drawing.new("Line"). For true dashed lines, you'd need multiple line objects.
-                -- For simplicity, let's revert to solid if "Dashed" is chosen, or implement multiple lines per tracer.
-                -- For now, will keep it solid if not implemented.
+                -- For simplicity, will keep it solid if "Dashed" is chosen until a full dashed implementation is added.
                 esp.TracerLine.From = from
                 esp.TracerLine.To = screenPos
                 esp.TracerLine.Visible = isVisible
