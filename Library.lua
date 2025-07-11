@@ -782,7 +782,7 @@ function Library:CreateWindow(name)
     end
 
     -- Aba de Configuração
-    local configTab = window:CreateTab("Config", "⚙️")
+    local configTab = window:CreateTab("Config", "")
     configTab:AddLabel("Customização do Menu:")
 
     configTab:AddSelectDropdown("Tema", {"Dark","White","Dark Forte","White and Dark"}, function(selected)
