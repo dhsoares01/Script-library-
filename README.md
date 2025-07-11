@@ -1,129 +1,94 @@
-# Custom Executor GUI Menu Library
+# Roblox UI Menu Library
 
-Uma biblioteca Lua para criar menus de executores customizados no Roblox, com suporte a múltiplas abas, drag & drop, resize, sliders, toggles, dropdowns e muito mais. Inspirada no visual e experiência de executores como Delta, Via e outros, ideal para ser usada via `loadstring` em scripts de execução.
+Uma biblioteca moderna, flexível e fácil de usar para criar menus customizados em jogos Roblox. Inclui temas, animações, tela de loading, salvamento de configurações, opacidade global, e diversos controles para criar menus profissionais e agradáveis visualmente.
 
-## Recursos
+---
 
-- Interface moderna e escura (dark theme)
-- Sistema de abas com fácil navegação
-- Drag & drop e redimensionamento do menu
-- Minimizar/restaurar a janela
-- Abas com ícones (opcional)
-- Suporte a Label, Botão, Toggle, Dropdown de seleção, Dropdown multi-toggle, Slider
-- Fácil integração com scripts de execução (Delta, Via, etc)
-- Design responsivo e intuitivo
+## 🚀 Principais Recursos
 
-## Instalação
+- **Tela de Loading Customizada:** Com animação e tempo mínimo de exibição, sempre centralizada e na camada mais alta.
+- **Temas Prontos:** Dark, White, Dark Forte, White and Dark. Fácil de expandir.
+- **Opacidade Total:** Controle de opacidade aplicado em todo o menu, incluindo abas, header e ScrollViews.
+- **Salvamento e Carregamento de Configurações:** Todos os controles (toggles, sliders, dropdowns) são salvos e restaurados, incluindo tema, fonte, tamanho do menu e outras preferências.
+- **Aba de Configuração Rica:** Troca de tema, cor accent, cor do texto, fonte, raio dos cantos, tamanho do menu, opacidade e mais.
+- **Layout Moderno:** Cantos arredondados, padding, botões animados, menu redimensionável e minimizável.
+- **Extensível:** Fácil adicionar novas abas, botões e controles customizados.
+- **100% Roblox Lua:** Não depende de módulos externos além dos padrões do Roblox.
 
-Recomenda-se utilizar via `loadstring` diretamente do seu repositório/raw:
+---
+
+## 📦 Instalação
+
+1. Adicione o arquivo `Library.lua` ao seu projeto Roblox (pode ser como ModuleScript).
+2. Importe a Library no seu script principal:
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
 ```
 
-> **Nota:** Substitua a URL pelo link raw do seu script.
+---
 
-## Exemplo de Uso
+## 📝 Exemplo de Uso
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/main/Library.lua"))()
 
-local win = Library:CreateWindow("Meu Executor Custom")
+local Window = Library:CreateWindow("Meu Menu Customizado")
 
-local mainTab = win:CreateTab("Principal", "⭐")
-mainTab:AddLabel("Bem-vindo ao Executor!")
+local Tab1 = Window:CreateTab("Principal", "🏠")
+Tab1:AddLabel("Bem-vindo ao menu!")
+Tab1:AddToggle("Ativar Modo X", function(state) print("Modo X:", state) end)
+Tab1:AddSlider("Volume", 0, 100, 50, function(val) print("Volume:", val) end)
 
-mainTab:AddButton("Clique Aqui", function()
-    print("Botão pressionado!")
-end)
-
-local myToggle = mainTab:AddToggle("Ativar Função", function(state)
-    print("Toggle está:", state and "Ligado" or "Desligado")
-end)
-
-mainTab:AddSlider("Volume", 0, 100, 50, function(value)
-    print("Volume ajustado para:", value)
-end)
-
-mainTab:AddSelectDropdown("Escolha uma opção", {"A", "B", "C"}, function(selected)
-    print("Você selecionou:", selected)
-end)
-
-mainTab:AddDropdownButtonOnOff("Módulos", {"ESP", "Aimbot", "AutoFarm"}, function(states)
-    print("Estados dos módulos:", states)
-end)
+local TabConfig = Window:CreateTab("Config", "⚙️")
+-- A aba Config já vem pronta, mas você pode adicionar mais controles se quiser!
 ```
 
-## API
+---
 
-### `Library:CreateWindow(title)`
+## 🧩 Controles Disponíveis
 
-Cria uma nova janela de menu.
-
-- `title` _(string)_: Nome do menu.
-
-**Retorna:** Um objeto `window` com métodos para criar abas.
+- **AddLabel(text):** Adiciona um label de texto.
+- **AddButton(text, callback):** Botão com callback.
+- **AddToggle(text, callback):** Toggle ON/OFF.
+- **AddDropdownButtonOnOff(title, items, callback):** Dropdown com múltiplas opções ON/OFF.
+- **AddSelectDropdown(title, items, callback):** Dropdown de seleção única.
+- **AddSlider(text, min, max, default, callback):** Slider ajustável.
 
 ---
 
-### `window:CreateTab(tabName, icon)`
+## 💾 Salvamento/Carregamento
 
-Cria uma nova aba.
-
-- `tabName` _(string)_: Nome da aba.
-- `icon` _(string|nil)_: (Opcional) Ícone em Unicode/Emoji.
-
-**Retorna:** Um objeto `tab`.
+- O menu salva automaticamente todos os controles se você clicar em "Salvar Config" na aba Config.
+- As configurações são restauradas automaticamente no próximo uso (por arquivo ou clipboard, se não houver permissão de escrita).
 
 ---
 
-#### Métodos do `tab`:
+## 🎨 Customização Visual
 
-##### `tab:AddLabel(text)`
-Adiciona um label de texto.
-
-##### `tab:AddButton(text, callback)`
-Adiciona um botão.
-
-##### `tab:AddToggle(text, callback)`
-Adiciona um botão de liga/desliga.
-- `callback(state)` recebe um boolean.
-
-##### `tab:AddDropdownButtonOnOff(title, items, callback)`
-Adiciona um dropdown múltiplo, cada item é toggle ON/OFF.
-- `callback(states)` recebe uma tabela `{[item] = true/false}`.
-
-##### `tab:AddSelectDropdown(title, items, callback)`
-Adiciona um dropdown para seleção única.
-- `callback(selected)` recebe o item escolhido.
-
-##### `tab:AddSlider(text, min, max, default, callback)`
-Adiciona um slider.
-- `callback(value)` recebe o valor atual.
+- **Temas**: Troque rapidamente entre temas na aba Config.
+- **Cores**: Defina cor accent e cor do texto dos labels.
+- **Fonte**: Troque entre várias fontes Roblox.
+- **Opacidade**: Ajuste a transparência do menu inteiro.
+- **Tamanho**: Redimensione livremente, ou use presets rápidos.
 
 ---
 
-## Personalização Visual
+## 🛠️ Dicas de Expansão
 
-O tema pode ser alterado editando a tabela `theme` no início do arquivo. Cores e estilos são facilmente customizáveis.
-
-## Dicas
-
-- O menu pode ser arrastado e redimensionado pelo usuário.
-- O botão de minimizar esconde o conteúdo, deixando apenas o título visível.
-- Todos os elementos são criados dinamicamente, permitindo adicionar/remover abas e conteúdos conforme necessário.
-
-## Compatibilidade
-
-- **Roblox LuaU** (compatível com exploits/executores como Delta, Via, Synapse, etc)
-- Não requer dependências externas.
-
-## Licença
-
-MIT License
+- Use `Window:CreateTab("Nova Aba", "🔧")` para adicionar novas abas.
+- Adicione mais temas ao objeto `THEMES`.
+- Modifique a função `ApplyTheme` para customizações avançadas.
+- O menu pode ser minimizado, arrastado e redimensionado pelo usuário.
 
 ---
 
-**Autor:** [dhsoares01]
+## 📋 Licença
 
-**Contribua ou reporte bugs via issues/pull requests!**
+Uso livre para qualquer projeto Roblox. Sinta-se à vontade para modificar e compartilhar!
+
+---
+
+## ✨ Créditos
+
+Criado por [DH SOARES](https://github.com/HOLD2292), inspirado em UIs modernas de jogos.
