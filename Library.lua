@@ -1,10 +1,11 @@
 --[[ 
+  Library V4
   Biblioteca de UI aprimorada para Roblox 
   - Expansão do menu mantém tamanho anterior
   - Tela de loading exibida antes do menu, e só some após carregar configs
   - Opacidade aplicada ao ScrollView do menu
   - Salvamento e recuperação de todos controles (toggles, sliders, DropdownButtonOnOff, DropdownSelect, etc)
-  - Loading animado!
+  - Loading animado e centralizado na camada mais alta, com tempo mínimo de 5 segundos!
 --]]
 
 local Library = {}
@@ -144,9 +145,9 @@ local function saveConfig(window, controls, windowName)
     for key, ctrl in pairs(controls) do
         if ctrl.Get then
             config.Controls[key] = ctrl:Get()
-        elseif ctrl.GetAll then -- Para DropdownButtonOnOff
+        elseif ctrl.GetAll then
             config.Controls[key] = ctrl:GetAll()
-        elseif ctrl.GetSelected then -- Para DropdownSelect
+        elseif ctrl.GetSelected then
             config.Controls[key] = ctrl:GetSelected()
         end
     end
@@ -211,18 +212,19 @@ function Library:CreateWindow(name)
     local labelRefs = {}
     local scrollViews = {}
 
-    -- Tela de Loading
+    -- Tela de Loading (centralizada, top layer, tempo mínimo 5s)
     local loadingGui = Instance.new("ScreenGui")
     loadingGui.Name = "UILoadingScreen"
     loadingGui.Parent = CoreGui
     loadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    loadingGui.DisplayOrder = 2^31-1 -- força camada máxima (top layer)
 
     local loadingFrame = Instance.new("Frame", loadingGui)
     loadingFrame.Size = UDim2.new(0, 380, 0, 120)
-    loadingFrame.Position = UDim2.new(0.5, -190, 0.5, -60)
+    loadingFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    loadingFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     loadingFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
     loadingFrame.BackgroundTransparency = 0.05
-    loadingFrame.AnchorPoint = Vector2.new(0.5,0.5)
     loadingFrame.BorderSizePixel = 0
     loadingFrame.Visible = true
     createCorner(loadingFrame, UDim.new(0, 14))
@@ -843,9 +845,15 @@ function Library:CreateWindow(name)
 
     -- Inicialização de loading e carregamento de config
     coroutine.wrap(function()
+        local loadingStart = tick()
         task.wait(0.1)
         loadConfig(window, controls, name, labelRefs)
         task.wait(0.3)
+        -- Aguarda tempo mínimo de 5 segundos para loading
+        local elapsed = tick() - loadingStart
+        if elapsed < 5 then
+            task.wait(5 - elapsed)
+        end
         anim = false
         loadingGui.Enabled = false
         loadingGui:Destroy()
