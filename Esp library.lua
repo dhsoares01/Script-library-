@@ -1,5 +1,5 @@
 --[[
-    📦 ESP v5 (Design aprimorado: box 3D com contorno suave e efeitos sutis, texto adaptativo, traço mais dinâmico)
+    📦 ESP v4 (Design aprimorado: box 3D com contorno suave e efeitos sutis, texto adaptativo, traço mais dinâmico)
     Recursos:
     - Line (tracer) com opções de estilo
     - Box 3D com outline suave e efeito de brilho sutil
@@ -87,7 +87,6 @@ function LibraryESP:CreateESP(object, options)
     local esp = {
         Object = object,
         Options = options,
-        -- Prioriza NameString, depois DisplayName, depois obj.Name
         NameText = options.Name and CreateText(14, color, outlineColor) or nil,
         NameBackground = options.Name and options.TextBackground and CreateFilledQuad(Color3.fromRGB(0,0,0), 0.5) or nil,
         DistanceText = options.Distance and CreateText(13, color, outlineColor) or nil,
@@ -126,7 +125,7 @@ end
 -- 🔧 Utilitários
 local function getTextPosition(basePos, offsetType, textHeight)
     -- This function is now more for a base offset, individual text elements will adjust
-    local yOffset = textHeight / 2 -- Aproximação para centralização vertical
+    local yOffset = textHeight / 2 -- Approximação para centralização vertical
     local offsets = {
         Top = Vector2.new(0, -18),      -- Initial offset for the name text
         Center = Vector2.new(0, 0),
@@ -236,8 +235,7 @@ RunService.RenderStepped:Connect(function()
 
         if esp.NameText then
             esp.NameText.Size = adaptiveTextSize
-            -- Prioriza NameString, depois DisplayName (options.NameString), depois obj.Name
-            esp.NameText.Text = esp.Options.NameString or esp.Options.DisplayName or obj.Name
+            esp.NameText.Text = esp.Options.NameString or obj.Name
             esp.NameText.Position = screenPos + nameOffset
             esp.NameText.Visible = isVisible
             if esp.NameBackground then
@@ -329,6 +327,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-})
+end)
 
 return LibraryESP
