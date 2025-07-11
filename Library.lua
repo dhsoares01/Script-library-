@@ -1,12 +1,27 @@
 --[[ 
-  Library V4
   Biblioteca de UI aprimorada para Roblox 
   - Expansão do menu mantém tamanho anterior
   - Tela de loading exibida antes do menu, e só some após carregar configs
   - Opacidade aplicada ao ScrollView do menu
   - Salvamento e recuperação de todos controles (toggles, sliders, DropdownButtonOnOff, DropdownSelect, etc)
-  - Loading animado e centralizado na camada mais alta, com tempo mínimo de 5 segundos!
+  - Loading animado, centralizado, camada mais alta, tempo mínimo 5s, logo e círculo animado!
 --]]
+
+local Library = {}
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+
+local FONTS = {
+    ["Gotham"] = Enum.Font.Gotham,
+    ["GothamBold"] = Enum.Font.GothamBold,
+    ["GothamSemibold"] = Enum.Font.GothamSemibold,
+    ["Arial"] = Enum.Font.Arial,
+    ["SourceSans"] = Enum.Font.SourceSans,
+    ["Roboto"] = Enum.Font.Roboto,
+}
 
 local Library = {}
 
@@ -44,7 +59,66 @@ local THEMES = {
         Opacity = 1,
         Font = "Gotham"
     },
-    -- outros temas...
+
+    ["White"] = {
+        Background = Color3.fromRGB(240, 240, 240),
+        TabBackground = Color3.fromRGB(230, 230, 230),
+        Accent = Color3.fromRGB(0, 120, 255),
+        Text = Color3.fromRGB(20, 20, 20),
+        LabelText = Color3.fromRGB(60, 60, 60),
+        Stroke = Color3.fromRGB(200, 200, 200),
+        ScrollViewBackground = Color3.fromRGB(250, 250, 250),
+        ButtonBackground = Color3.fromRGB(220, 220, 220),
+        Warning = Color3.fromRGB(255, 60, 60),
+        CornerRadius = UDim.new(0, 10),
+        SmallCornerRadius = UDim.new(0, 8),
+        Padding = 10,
+        TabButtonHeight = 38,
+        ControlHeight = 36,
+        ControlPadding = 8,
+        Opacity = 1,
+        Font = "Gotham"
+    },
+
+    ["Dark Forte"] = {
+        Background = Color3.fromRGB(15, 15, 15),
+        TabBackground = Color3.fromRGB(25, 25, 25),
+        Accent = Color3.fromRGB(255, 0, 85),
+        Text = Color3.fromRGB(255, 255, 255),
+        LabelText = Color3.fromRGB(200, 200, 200),
+        Stroke = Color3.fromRGB(50, 50, 50),
+        ScrollViewBackground = Color3.fromRGB(10, 10, 10),
+        ButtonBackground = Color3.fromRGB(40, 40, 40),
+        Warning = Color3.fromRGB(255, 85, 0),
+        CornerRadius = UDim.new(0, 10),
+        SmallCornerRadius = UDim.new(0, 8),
+        Padding = 10,
+        TabButtonHeight = 38,
+        ControlHeight = 36,
+        ControlPadding = 8,
+        Opacity = 1,
+        Font = "GothamBold"
+    },
+
+    ["White and Dark"] = {
+        Background = Color3.fromRGB(240, 240, 240),
+        TabBackground = Color3.fromRGB(30, 30, 30),
+        Accent = Color3.fromRGB(0, 120, 255),
+        Text = Color3.fromRGB(20, 20, 20),
+        LabelText = Color3.fromRGB(60, 60, 60),
+        Stroke = Color3.fromRGB(100, 100, 100),
+        ScrollViewBackground = Color3.fromRGB(250, 250, 250),
+        ButtonBackground = Color3.fromRGB(40, 40, 40),
+        Warning = Color3.fromRGB(255, 60, 60),
+        CornerRadius = UDim.new(0, 10),
+        SmallCornerRadius = UDim.new(0, 8),
+        Padding = 10,
+        TabButtonHeight = 38,
+        ControlHeight = 36,
+        ControlPadding = 8,
+        Opacity = 1,
+        Font = "Gotham"
+    }
 }
 
 local DEFAULT_THEME = table.clone(THEMES["Dark"])
@@ -212,26 +286,77 @@ function Library:CreateWindow(name)
     local labelRefs = {}
     local scrollViews = {}
 
-    -- Tela de Loading (centralizada, top layer, tempo mínimo 5s)
+    -- Tela de Loading (centralizada, top layer, tempo mínimo 5s, design melhorado)
     local loadingGui = Instance.new("ScreenGui")
     loadingGui.Name = "UILoadingScreen"
     loadingGui.Parent = CoreGui
     loadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-    loadingGui.DisplayOrder = 2^31-1 -- força camada máxima (top layer)
+    loadingGui.DisplayOrder = 2^31-1
 
     local loadingFrame = Instance.new("Frame", loadingGui)
-    loadingFrame.Size = UDim2.new(0, 380, 0, 120)
+    loadingFrame.Size = UDim2.new(0, 400, 0, 180)
     loadingFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     loadingFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-    loadingFrame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-    loadingFrame.BackgroundTransparency = 0.05
+    loadingFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    loadingFrame.BackgroundTransparency = 0
     loadingFrame.BorderSizePixel = 0
     loadingFrame.Visible = true
-    createCorner(loadingFrame, UDim.new(0, 14))
+    createCorner(loadingFrame, UDim.new(0, 18))
 
-    local loadingLabel = createTextLabel(loadingFrame, "Carregando Menu...", 20, Color3.new(1,1,1), Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-    loadingLabel.Size = UDim2.new(1, 0, 1, 0)
-    loadingLabel.Position = UDim2.new(0, 0, 0, 0)
+    -- Logo
+    local logo = Instance.new("ImageLabel", loadingFrame)
+    logo.Image = "https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/file_00000000d87c622f85a325b6fb76c039.png"
+    logo.BackgroundTransparency = 1
+    logo.Size = UDim2.new(0, 68, 0, 68)
+    logo.Position = UDim2.new(0.5, -34, 0, 22)
+    logo.ScaleType = Enum.ScaleType.Fit
+
+    -- Círculo animado (loader)
+    local circle = Instance.new("Frame", loadingFrame)
+    circle.Size = UDim2.new(0, 64, 0, 64)
+    circle.Position = UDim2.new(0.5, -32, 0, 20)
+    circle.BackgroundTransparency = 1
+    circle.ZIndex = 5
+
+    local circleUI = Instance.new("UIStroke", circle)
+    circleUI.Thickness = 5
+    circleUI.Color = Color3.fromRGB(0, 120, 255)
+    circleUI.Transparency = 0
+    circleUI.LineJoinMode = Enum.LineJoinMode.Round
+    circleUI.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    -- Helper for arc effect
+    local arc = Instance.new("ImageLabel", circle)
+    arc.BackgroundTransparency = 1
+    arc.Image = "rbxassetid://13762349403" -- Circular arc asset (or any arc image)
+    arc.ImageColor3 = Color3.fromRGB(0, 120, 255)
+    arc.Size = UDim2.new(1, 0, 1, 0)
+    arc.AnchorPoint = Vector2.new(0.5, 0.5)
+    arc.Position = UDim2.new(0.5, 0, 0.5, 0)
+    arc.ZIndex = 6
+
+    -- Arc rotation animation
+    coroutine.wrap(function()
+        local r = 0
+        while loadingGui.Parent do
+            arc.Rotation = r
+            r = (r + 3) % 360
+            task.wait(0.016)
+        end
+    end)()
+
+    -- Textos (logo + loader label)
+    local logoText = createTextLabel(loadingFrame, "Script Library", 19, Color3.fromRGB(0, 170, 255), Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    logoText.Position = UDim2.new(0, 0, 0, 96)
+    logoText.Size = UDim2.new(1, 0, 0, 30)
+    logoText.TextTransparency = 0
+    logoText.BackgroundTransparency = 1
+
+    local loadingLabel = createTextLabel(loadingFrame, "Carregando Menu...", 16, Color3.fromRGB(220,220,220), Enum.Font.Gotham, Enum.TextXAlignment.Center)
+    loadingLabel.Size = UDim2.new(1, 0, 0, 28)
+    loadingLabel.Position = UDim2.new(0, 0, 1, -36)
+    loadingLabel.TextYAlignment = Enum.TextYAlignment.Top
+    loadingLabel.TextTransparency = 0.05
 
     -- Loading animado (pontinhos)
     local anim = true
@@ -782,7 +907,7 @@ function Library:CreateWindow(name)
     end
 
     -- Aba de Configuração
-    local configTab = window:CreateTab("Config", "")
+    local configTab = window:CreateTab("Config", "⚙️")
     configTab:AddLabel("Customização do Menu:")
 
     configTab:AddSelectDropdown("Tema", {"Dark","White","Dark Forte","White and Dark"}, function(selected)
