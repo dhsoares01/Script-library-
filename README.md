@@ -49,6 +49,7 @@ local configTab = window:CreateTab("Settings")
 configTab:AddSlider("Walk Speed", 16, 100, 16, function(value)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
 end)
+```
 
 Controls
 Basic Controls
