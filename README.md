@@ -89,4 +89,6 @@ Requirements
  * HTTP access enabled for remote script loading.
 Installation
 To use the library, simply load it via loadstring:
+```lua
 local Library = loadstring(game:HttpGet("[https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua](https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua)"))()
+```
