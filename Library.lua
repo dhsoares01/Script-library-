@@ -310,7 +310,7 @@ function Library:CreateWindow(name)
     logo.Size = UDim2.new(0, 68, 0, 68)
     logo.Position = UDim2.new(0.5, -34, 0, 22)
     logo.ScaleType = Enum.ScaleType.Fit
-    logo.ZIndex = 6
+    logo.ZIndex = 99
 
     -- Círculo animado (loader)
     local circle = Instance.new("Frame", loadingFrame)
