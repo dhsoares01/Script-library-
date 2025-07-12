@@ -6,29 +6,31 @@ A customizable and feature-rich UI library for Roblox Lua scripts, designed to w
 
 - **Modern UI Design**: Clean, responsive interface with smooth animations
 - **Multiple Themes**: Pre-built themes including Dark, White, Dark Forte, and White+Dark
-- **Customizable Controls**: 
+- **Extensive Customization**: Tailor the look and feel of your UI directly from a dedicated configuration tab.
+- **Enhanced Controls**: 
   - Toggles
-  - Sliders
+  - Sliders (for integers and **new: for floating-point numbers**)
   - Dropdown menus (single select and multi-select)
   - Buttons
   - Labels
-- **Configuration System**:
-  - Save/load UI configurations
-  - Customize colors, fonts, corner radius, and opacity
-  - Persistent settings between sessions
-- **Loading Screen**: 
-  - Animated loading screen with minimum display time
-  - Centered logo and rotating loader
-- **Window Controls**:
-  - Draggable window
-  - Resizable frame
-  - Minimize/maximize functionality
-- **Responsive Design**: Adapts to different screen sizes
+- **Advanced Configuration System**:
+  - **Persistent Settings**: Save and load all UI configurations (theme, colors, control states) to a file or clipboard.
+  - **Dynamic Customization**: Change colors (accent, text), fonts, corner radius, and opacity on the fly.
+  - **Window Size Presets**: Easily adjust the main window size.
+- **Immersive Loading Screen**: 
+  - Animated loading screen with a minimum display time (5 seconds).
+  - Centralized logo and a smooth rotating loader.
+  - Ensures settings are loaded before the main menu appears.
+- **Flexible Window Controls**:
+  - Draggable window for easy positioning.
+  - Resizable frame allowing custom window dimensions.
+  - Minimize/maximize functionality for convenience.
+- **Responsive Design**: Adapts gracefully to different screen sizes.
 
 ## Usage
 
 ```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
+local Library = loadstring(game:HttpGet("[https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua](https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua)"))()
 
 local window = Library:CreateWindow("My Awesome Script")
 
@@ -38,59 +40,52 @@ mainTab:AddToggle("Enable Feature", function(state)
     print("Feature is now", state and "ON" or "OFF")
 end)
 
+-- New: Example of a slider for floating-point numbers (e.g., for multipliers, percentages)
+mainTab:AddFloatSlider("Damage Multiplier", 0.5, 5.0, 1.0, 1, function(value)
+    print("Damage Multiplier set to:", value)
+end)
+
 local configTab = window:CreateTab("Settings")
 configTab:AddSlider("Walk Speed", 16, 100, 16, function(value)
     game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
 end)
-```
 
-## Controls
-
-### Basic Controls
-- `:AddLabel(text)` - Adds a text label
-- `:AddButton(text, callback)` - Adds a clickable button
-- `:AddToggle(text, callback)` - Adds an on/off toggle switch
-
-### Advanced Controls
-- `:AddDropdownButtonOnOff(title, items, callback)` - Multi-select dropdown
-- `:AddSelectDropdown(title, items, callback)` - Single-select dropdown
-- `:AddSlider(text, min, max, default, callback)` - Value slider with range
-
-### Configuration
-The library includes a built-in configuration tab with:
-- Theme selection
-- Color customization
-- Font selection
-- Corner radius adjustment
-- Opacity control
-- Window size presets
-- Save/Load configuration buttons
-- Theme reset
-
-## Themes
-
+Controls
+Basic Controls
+ * :AddLabel(text) - Adds a static text label.
+ * :AddButton(text, callback) - Adds a clickable button that executes a function on click.
+ * :AddToggle(text, callback) - Adds an on/off toggle switch that reports its state.
+Advanced Controls
+ * :AddDropdownButtonOnOff(title, items, callback) - Creates a dropdown menu where multiple items can be toggled on or off.
+ * :AddSelectDropdown(title, items, callback) - Creates a dropdown menu for selecting a single item from a list.
+ * :AddSlider(text, min, max, default, callback) - Implements a slider for selecting integer values within a specified range.
+ * :AddFloatSlider(text, min, max, default, decimals, callback) - NEW: Implements a slider for selecting floating-point values. decimals (optional, default 2) controls the number of decimal places for display and value snapping.
+Configuration Tab
+The library includes a robust, built-in "Config" tab that allows users to fully customize the UI:
+ * Theme Selection: Switch between "Dark", "White", "Dark Forte", and "White and Dark".
+ * Color Customization: Adjust accent and text colors.
+ * Font Selection: Choose from various Roblox fonts.
+ * Corner Radius Adjustment: Modify the roundness of UI elements.
+ * Opacity Control: Set the transparency level of the entire menu.
+ * Window Size Presets: Apply predefined window sizes ("Small", "Medium", "Large") or use a custom size (via resizing).
+ * Save/Load Configuration: Persist your custom settings.
+ * Theme Reset: Revert to the default theme settings.
+Themes
 Pre-built themes included:
-1. **Dark** - Default dark theme with blue accent
-2. **White** - Light theme with blue accent
-3. **Dark Forte** - High-contrast dark theme with pink accent
-4. **White and Dark** - Light background with dark sidebar
-
-## Technical Details
-
-- Uses Roblox TweenService for smooth animations
-- Supports clipboard configuration transfer
-- Loading screen ensures minimum 5s display time
-- Responsive design with dynamic resizing
-- Optimized for performance
-
-## Requirements
-
-- Roblox Lua environment
-- Executor with loadstring support (Delta, Synapse, etc.)
-- HTTP access for remote loading
-
-## Installation
-
-```lua
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua"))()
-```
+ * Dark - Default dark theme with blue accent.
+ * White - Light theme with blue accent.
+ * Dark Forte - High-contrast dark theme with a vibrant pink accent.
+ * White and Dark - A modern blend of a light background with a dark sidebar.
+Technical Details
+ * Utilizes Roblox's TweenService for smooth and professional animations.
+ * Features a flexible configuration system that supports writefile and readfile (for executors), with a fallback to setclipboard and getclipboard for portability.
+ * The loading screen is designed to ensure a minimum 5-second display time, providing a premium user experience.
+ * Implements a responsive design with dynamic resizing, adapting the UI layout as the window size changes.
+ * Optimized for performance, ensuring a fluid experience even with complex UI structures.
+Requirements
+ * Roblox Lua environment.
+ * Executor with loadstring support (e.g., Delta, Synapse X, Script-Ware).
+ * HTTP access enabled for remote script loading.
+Installation
+To use the library, simply load it via loadstring:
+local Library = loadstring(game:HttpGet("[https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua](https://raw.githubusercontent.com/dhsoares01/Script-library-/refs/heads/main/Library.lua)"))()
